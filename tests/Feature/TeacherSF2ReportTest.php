@@ -140,7 +140,7 @@ test('sf2 report exports isolated month sheet and maps all weekday columns clean
     $response->sendContent();
     $content = ob_get_clean();
 
-    $tempFile = tempnam(sys_get_temp_dir(), 'test_sf2_verif_');
+    $tempFile = storage_path('framework/cache/test_sf2_verif_'.uniqid('', true).'.xlsx');
     file_put_contents($tempFile, $content);
 
     try {

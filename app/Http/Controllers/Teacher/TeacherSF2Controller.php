@@ -565,12 +565,11 @@ class TeacherSF2Controller extends Controller
             $sheet->setCellValue($col.'52', $combinedDayAbsent > 0 ? $combinedDayAbsent : '');
         }
 
-        $writer = new XlsxWriter($spreadsheet);
-
+        $gradeClean = preg_replace('/^grade\s*/i', '', (string) ($sectionInfo?->gr_level ?? ''));
         $filename = sprintf(
             'SF2_%s_Grade%s_%s_%s.xlsx',
             str_replace(' ', '_', $sectionInfo?->sect_name ?? 'Section'),
-            $sectionInfo?->gr_level ?? '',
+            str_replace(' ', '_', $gradeClean),
             $periodStart->format('F'),
             str_replace([' ', '/'], ['_', '-'], (string) ($schoolYearLabel ?? $selectedYear)),
         );
@@ -597,14 +596,23 @@ class TeacherSF2Controller extends Controller
             ],
         );
 
-        return response()->streamDownload(
-            function () use ($writer) {
-                $writer->save('php://output');
-            },
+        $tempDir = storage_path('framework/cache');
+        if (! is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $tempFile = $tempDir.'/sf2_export_'.uniqid('', true).'.xlsx';
+        $writer = new XlsxWriter($spreadsheet);
+        $writer->save($tempFile);
+
+        return response()->download(
+            $tempFile,
             $filename,
             [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
             ],
-        );
+        )->deleteFileAfterSend(true);
     }
 }

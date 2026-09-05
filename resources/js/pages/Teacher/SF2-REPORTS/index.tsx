@@ -1,10 +1,12 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
+    AlertCircle,
     CalendarDays,
     CheckCircle2,
     Clock,
     Download,
     FileSpreadsheet,
+    Loader2,
     ShieldCheck,
     Users,
     UserX,
@@ -202,6 +204,9 @@ export default function SF2ReportsIndex() {
         });
     }
 
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
+
     function buildExportUrl() {
         const query: Record<string, string> = {
             month,
@@ -212,6 +217,82 @@ export default function SF2ReportsIndex() {
         }
 
         return sf2Routes.export.url({ query });
+    }
+
+    async function handleExport() {
+        if (isExporting) {
+            return;
+        }
+
+        setIsExporting(true);
+        setExportError(null);
+
+        try {
+            const url = buildExportUrl();
+            const response = await fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json, text/html, */*',
+                },
+            });
+
+            // If session expired or redirected to login
+            if (response.redirected || response.status === 401 || response.status === 419) {
+                window.location.href = response.url || '/login';
+                return;
+            }
+
+            if (!response.ok) {
+                let errorMessage = `Export failed (HTTP ${response.status}).`;
+                try {
+                    const text = await response.text();
+                    try {
+                        const parsed = JSON.parse(text);
+                        if (parsed.message) {
+                            errorMessage = parsed.message;
+                        }
+                    } catch {
+                        if (text && text.length < 250 && !text.includes('<!DOCTYPE')) {
+                            errorMessage = text;
+                        }
+                    }
+                } catch {
+                    // Ignore text extraction errors
+                }
+                setExportError(errorMessage);
+                return;
+            }
+
+            // Extract filename from Content-Disposition header if provided
+            const disposition = response.headers.get('content-disposition');
+            const gradeClean = (sectionInfo?.gr_level ?? '').replace(/^grade\s*/i, '').trim();
+            const defaultFilename = `SF2_${(sectionInfo?.sect_name ?? 'Section').replace(/\s+/g, '_')}_Grade${gradeClean ? `_${gradeClean}` : ''}_${MONTHS[selectedMonth - 1] ?? 'Month'}_${schoolYearLabel ? schoolYearLabel.replace(/[\s/]+/g, '-') : selectedYear}.xlsx`;
+            let filename = defaultFilename;
+
+            if (disposition) {
+                const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+                if (match?.[1]) {
+                    filename = decodeURIComponent(match[1].trim());
+                }
+            }
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error: unknown) {
+            console.error('SF2 export error:', error);
+            setExportError(error instanceof Error ? error.message : 'Export failed.');
+        } finally {
+            setIsExporting(false);
+        }
     }
 
     const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -389,14 +470,32 @@ export default function SF2ReportsIndex() {
                         </div>
 
                         {rows.length > 0 ? (
-                            <a
-                                href={buildExportUrl()}
-                                download
-                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:shadow-md cursor-pointer hover:opacity-95"
-                            >
-                                <Download className="size-4" aria-hidden />
-                                Export Excel
-                            </a>
+                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={handleExport}
+                                    disabled={isExporting}
+                                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:shadow-md cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    {isExporting ? (
+                                        <>
+                                            <Loader2 className="size-4 animate-spin" aria-hidden />
+                                            <span>Exporting...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="size-4" aria-hidden />
+                                            <span>Export Excel</span>
+                                        </>
+                                    )}
+                                </button>
+                                {exportError && (
+                                    <p className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                                        <AlertCircle className="size-3.5" aria-hidden />
+                                        {exportError}
+                                    </p>
+                                )}
+                            </div>
                         ) : null}
                     </div>
 
