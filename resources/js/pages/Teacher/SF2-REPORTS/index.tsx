@@ -391,6 +391,7 @@ export default function SF2ReportsIndex() {
                         {rows.length > 0 ? (
                             <a
                                 href={buildExportUrl()}
+                                download
                                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:shadow-md cursor-pointer hover:opacity-95"
                             >
                                 <Download className="size-4" aria-hidden />

@@ -7,14 +7,13 @@ use App\Models\AuditTrail;
 use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use stdClass;
+use Symfony\Component\HttpFoundation\Response;
 
 class TeacherSF2Controller extends Controller
 {
@@ -311,8 +310,21 @@ class TeacherSF2Controller extends Controller
             ->get()
             ->groupBy('stu_id');
 
-        $templatePath = storage_path('app/templates/sf2-template.xlsx');
-        abort_unless(file_exists($templatePath), 500, 'SF2 template file not found.');
+        $templateCandidates = [
+            storage_path('app/templates/sf2-template.xlsx'),
+            storage_path('app/private/templates/sf2-template.xlsx'),
+            resource_path('templates/sf2-template.xlsx'),
+            database_path('templates/sf2-template.xlsx'),
+        ];
+        $templatePath = null;
+        foreach ($templateCandidates as $candidate) {
+            if (file_exists($candidate)) {
+                $templatePath = $candidate;
+                break;
+            }
+        }
+
+        abort_unless($templatePath !== null, 500, 'SF2 template file not found.');
 
         $reader = IOFactory::createReaderForFile($templatePath);
         $reader->setReadDataOnly(false);
@@ -325,16 +337,28 @@ class TeacherSF2Controller extends Controller
         ];
         $monthName = $monthNames[$selectedMonth];
 
-        $sheetIndex = 0;
-        foreach ($spreadsheet->getAllSheets() as $i => $s) {
+        $targetSheet = null;
+        foreach ($spreadsheet->getAllSheets() as $s) {
             if (strtoupper(trim($s->getTitle())) === $monthName) {
-                $sheetIndex = $i;
+                $targetSheet = $s;
                 break;
             }
         }
 
-        $spreadsheet->setActiveSheetIndex($sheetIndex);
-        $sheet = $spreadsheet->getActiveSheet();
+        if ($targetSheet === null) {
+            $sheet = $spreadsheet->getSheet(0);
+            $sheet->setTitle($monthName);
+        } else {
+            $sheet = $targetSheet;
+        }
+
+        // Remove all other sheets so only the selected month's sheet is included
+        foreach ($spreadsheet->getAllSheets() as $s) {
+            if ($s !== $sheet) {
+                $spreadsheet->removeSheetByIndex($spreadsheet->getIndex($s));
+            }
+        }
+        $spreadsheet->setActiveSheetIndex(0);
 
         $sheet->setCellValue('I7', $semester);
         $sheet->setCellValue('I12', $sectionInfo?->sect_name ?? '');
@@ -347,43 +371,60 @@ class TeacherSF2Controller extends Controller
             $sheet->setCellValue('BJ89', $adviserName);
         }
 
-        $dayColumns = [];
-        $scanLimit = Coordinate::columnIndexFromString('BF');
-        for ($col = 1; $col <= $scanLimit; $col++) {
-            $colLetter = Coordinate::stringFromColumnIndex($col);
-            $cellValue = $sheet->getCell($colLetter.'16')->getValue();
-            if (is_numeric($cellValue) && $cellValue >= 1 && $cellValue <= 31) {
-                $dayColumns[] = $colLetter;
-            }
-        }
+        // Official DepEd SF2 grid columns: 5 weeks x 5 days (Mon to Fri)
+        $weekCols = [
+            0 => [1 => 'K', 2 => 'M', 3 => 'N', 4 => 'O', 5 => 'S'],
+            1 => [1 => 'V', 2 => 'W', 3 => 'Z', 4 => 'AA', 5 => 'AB'],
+            2 => [1 => 'AE', 2 => 'AH', 3 => 'AI', 4 => 'AL', 5 => 'AN'],
+            3 => [1 => 'AP', 2 => 'AR', 3 => 'AS', 4 => 'AU', 5 => 'AV'],
+            4 => [1 => 'AW', 2 => 'AY', 3 => 'BB', 4 => 'BD', 5 => 'BE'],
+        ];
 
-        $schoolDays = [];
-        for ($day = 1; $day <= $daysInMonth; $day++) {
-            if (! Carbon::createFromDate($selectedYear, $selectedMonth, $day)->isWeekend()) {
-                $schoolDays[] = $day;
-            }
-        }
+        $allDayColumns = [
+            'K', 'M', 'N', 'O', 'S',
+            'V', 'W', 'Z', 'AA', 'AB',
+            'AE', 'AH', 'AI', 'AL', 'AN',
+            'AP', 'AR', 'AS', 'AU', 'AV',
+            'AW', 'AY', 'BB', 'BD', 'BE',
+        ];
 
-        $dowMap = ['Monday' => 'M', 'Tuesday' => 'T', 'Wednesday' => 'W', 'Thursday' => 'TH', 'Friday' => 'F'];
-
-        foreach ($dayColumns as $i => $col) {
-            if (isset($schoolDays[$i])) {
-                $dayNum = $schoolDays[$i];
-                $sheet->setCellValue($col.'16', $dayNum);
-                $dow = Carbon::createFromDate($selectedYear, $selectedMonth, $dayNum)->format('l');
-                $sheet->setCellValue($col.'17', $dowMap[$dow] ?? '');
-            } else {
-                $sheet->setCellValue($col.'16', '');
-                $sheet->setCellValue($col.'17', '');
-            }
-        }
-
-        /** @var array<int, string> $dayToCol */
         $dayToCol = [];
-        foreach ($schoolDays as $i => $dayNum) {
-            if (isset($dayColumns[$i])) {
-                $dayToCol[$dayNum] = $dayColumns[$i];
+        $weekIndex = 0;
+        $hasSeenWeekday = false;
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $date = Carbon::createFromDate($selectedYear, $selectedMonth, $day);
+            $dow = (int) $date->isoFormat('E'); // 1 (Mon) to 7 (Sun)
+            if ($dow === 1 && $hasSeenWeekday) {
+                $weekIndex++;
             }
+            if ($dow <= 5 && $weekIndex < 5) {
+                $hasSeenWeekday = true;
+                $col = $weekCols[$weekIndex][$dow] ?? null;
+                if ($col) {
+                    $dayToCol[$day] = $col;
+                }
+            }
+        }
+
+        // Clear row 16 for all 25 day columns, then set active day numbers
+        foreach ($allDayColumns as $col) {
+            $sheet->setCellValue($col.'16', '');
+        }
+        foreach ($dayToCol as $dayNum => $col) {
+            $sheet->setCellValue($col.'16', $dayNum);
+        }
+
+        // Ensure row 17 days of week
+        $dowHeaders = [
+            'K' => 'M', 'M' => 'T', 'N' => 'W', 'O' => 'TH', 'S' => 'F',
+            'V' => 'M', 'W' => 'T', 'Z' => 'W', 'AA' => 'TH', 'AB' => 'F',
+            'AE' => 'M', 'AH' => 'T', 'AI' => 'W', 'AL' => 'TH', 'AN' => 'F',
+            'AP' => 'M', 'AR' => 'T', 'AS' => 'W', 'AU' => 'TH', 'AV' => 'F',
+            'AW' => 'M', 'AY' => 'T', 'BB' => 'W', 'BD' => 'TH', 'BE' => 'F',
+        ];
+        foreach ($dowHeaders as $col => $header) {
+            $sheet->setCellValue($col.'17', $header);
         }
 
         $maleRowSlots = range(18, 32);
@@ -395,11 +436,24 @@ class TeacherSF2Controller extends Controller
             $sheet->setCellValue('G'.$row, '');
             $sheet->setCellValue('BI'.$row, '');
             $sheet->setCellValue('BL'.$row, '');
-            foreach ($dayColumns as $col) {
+            foreach ($allDayColumns as $col) {
                 $sheet->setCellValue($col.$row, '');
             }
             $sheet->getRowDimension($row)->setVisible(false);
         }
+
+        // Clear summary rows 33, 51, 52 across all 25 columns
+        foreach ($allDayColumns as $col) {
+            $sheet->setCellValue($col.'33', '');
+            $sheet->setCellValue($col.'51', '');
+            $sheet->setCellValue($col.'52', '');
+        }
+        $sheet->setCellValue('BI33', '');
+        $sheet->setCellValue('BL33', '');
+        $sheet->setCellValue('BI51', '');
+        $sheet->setCellValue('BL51', '');
+        $sheet->setCellValue('BI52', '');
+        $sheet->setCellValue('BL52', '');
 
         // Split students by gender (Male / Female)
         $maleStudents = $students->filter(fn ($s) => strtolower((string) ($s->gender ?? 'male')) !== 'female')->values();
@@ -512,14 +566,6 @@ class TeacherSF2Controller extends Controller
         }
 
         $writer = new XlsxWriter($spreadsheet);
-        $tempFile = tempnam(sys_get_temp_dir(), 'sf2_');
-
-        try {
-            $writer->save($tempFile);
-            $content = (string) file_get_contents($tempFile);
-        } finally {
-            @unlink($tempFile);
-        }
 
         $filename = sprintf(
             'SF2_%s_Grade%s_%s_%s.xlsx',
@@ -551,9 +597,14 @@ class TeacherSF2Controller extends Controller
             ],
         );
 
-        return response($content, 200, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return response()->streamDownload(
+            function () use ($writer) {
+                $writer->save('php://output');
+            },
+            $filename,
+            [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ],
+        );
     }
 }
