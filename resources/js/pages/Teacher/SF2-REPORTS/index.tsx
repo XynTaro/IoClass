@@ -158,6 +158,14 @@ function statusCell(status: AttendanceStatus) {
     );
 }
 
+function formatGradeLevel(grLevel?: string | null): string {
+    if (!grLevel) {
+        return '';
+    }
+    const clean = grLevel.replace(/^(?:grade\s*)+/i, '').trim();
+    return clean ? `Grade ${clean}` : grLevel.trim();
+}
+
 export default function SF2ReportsIndex() {
     const {
         sectionInfo,
@@ -267,8 +275,8 @@ export default function SF2ReportsIndex() {
 
             // Extract filename from Content-Disposition header if provided
             const disposition = response.headers.get('content-disposition');
-            const gradeClean = (sectionInfo?.gr_level ?? '').replace(/^grade\s*/i, '').trim();
-            const defaultFilename = `SF2_${(sectionInfo?.sect_name ?? 'Section').replace(/\s+/g, '_')}_Grade${gradeClean ? `_${gradeClean}` : ''}_${MONTHS[selectedMonth - 1] ?? 'Month'}_${schoolYearLabel ? schoolYearLabel.replace(/[\s/]+/g, '-') : selectedYear}.xlsx`;
+            const gradeClean = (sectionInfo?.gr_level ?? '').replace(/^(?:grade\s*)+/i, '').trim();
+            const defaultFilename = `SF2_${(sectionInfo?.sect_name ?? 'Section').replace(/\s+/g, '_')}_Grade${gradeClean}_${MONTHS[selectedMonth - 1] ?? 'Month'}_${schoolYearLabel ? schoolYearLabel.replace(/[\s/]+/g, '-') : selectedYear}.xlsx`;
             let filename = defaultFilename;
 
             if (disposition) {
@@ -451,7 +459,7 @@ export default function SF2ReportsIndex() {
                             <div className="flex flex-wrap items-center gap-2 pt-1">
                                 {sectionInfo && (
                                     <span className="inline-flex items-center rounded-lg border border-blue-500/20 bg-blue-500/8 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                                        Grade {sectionInfo.gr_level} – {sectionInfo.sect_name}
+                                        {formatGradeLevel(sectionInfo.gr_level)} – {sectionInfo.sect_name}
                                     </span>
                                 )}
                                 {schoolYearLabel && (

@@ -377,7 +377,7 @@ export default function Show() {
                                                 )}
                                             </div>
                                             <span className="text-sm font-semibold">
-                                                {sec.gr_level ? `Grade ${sec.gr_level} — ` : ''}{sec.sect_name}
+                                                {sec.gr_level ? (/^grade/i.test(sec.gr_level) ? `${sec.gr_level} — ` : `Grade ${sec.gr_level} — `) : ''}{sec.sect_name}
                                             </span>
                                             <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                                                 {sec.students.length} student{sec.students.length !== 1 ? 's' : ''}
