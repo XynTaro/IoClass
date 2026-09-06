@@ -307,11 +307,10 @@ export default function TeacherProfileIndex() {
                                     <div className="relative">
                                         <Avatar className="size-24 border-4 border-background bg-blue-600 text-2xl font-bold text-white shadow-lg">
                                             <AvatarImage
-                                                src={auth.user.avatar || ''}
+                                                src={auth.user.avatar}
                                                 alt={fullName}
-                                                className="object-cover"
                                             />
-                                            <AvatarFallback className="bg-blue-600 text-white font-bold">
+                                            <AvatarFallback className="bg-blue-600 text-white">
                                                 {initials}
                                             </AvatarFallback>
                                         </Avatar>

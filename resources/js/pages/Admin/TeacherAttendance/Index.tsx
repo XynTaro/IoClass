@@ -103,14 +103,6 @@ const PRESET_REMARKS = [
     'Personal Leave',
 ];
 
-function getAvatarUrl(avatar: string | null | undefined): string | undefined {
-    if (!avatar) return undefined;
-    if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/')) {
-        return avatar;
-    }
-    return `/storage/${avatar}`;
-}
-
 export default function TeacherAttendanceIndex() {
     const { attendance, summary, filters } = usePage<PageProps>().props;
 
@@ -343,8 +335,8 @@ export default function TeacherAttendanceIndex() {
                 return (
                     <div className="flex items-center gap-3 py-1">
                         <Avatar className="size-10 rounded-full border-2 border-emerald-500/20 shadow-sm transition-transform hover:scale-105">
-                            {getAvatarUrl(item.avatar) && <AvatarImage src={getAvatarUrl(item.avatar)} alt={fullName} className="object-cover" />}
-                            <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 font-bold text-xs dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
+                            <AvatarImage src={item.avatar} alt={fullName} />
+                            <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 text-xs dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
                                 {initials || 'TC'}
                             </AvatarFallback>
                         </Avatar>
@@ -732,8 +724,8 @@ export default function TeacherAttendanceIndex() {
                                         <div className="space-y-3">
                                             <div className="flex items-start justify-between">
                                                 <Avatar className="size-12 rounded-2xl border-2 border-emerald-500/20 shadow-sm">
-                                                    {getAvatarUrl(item.avatar) && <AvatarImage src={getAvatarUrl(item.avatar)} alt={fullName} className="object-cover" />}
-                                                    <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 font-bold text-sm dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
+                                                    <AvatarImage src={item.avatar} alt={fullName} />
+                                                    <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 text-sm dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
                                                         {initials || 'TC'}
                                                     </AvatarFallback>
                                                 </Avatar>
@@ -817,8 +809,8 @@ export default function TeacherAttendanceIndex() {
                     <DialogHeader className="space-y-2">
                         <div className="flex items-center gap-3">
                             <Avatar className="size-11 rounded-2xl border-2 border-emerald-500/20 shadow-sm">
-                                {getAvatarUrl(editingTeacher?.avatar) && <AvatarImage src={getAvatarUrl(editingTeacher?.avatar)} className="object-cover" />}
-                                <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold text-xs">
+                                <AvatarImage src={editingTeacher?.avatar} />
+                                <AvatarFallback className="bg-emerald-100 text-emerald-800 text-xs">
                                     {editingTeacher?.tch_fname?.[0]}
                                     {editingTeacher?.tch_lname?.[0]}
                                 </AvatarFallback>

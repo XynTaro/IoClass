@@ -369,11 +369,10 @@ export default function AdminProfileIndex() {
                                     <div className="relative">
                                         <Avatar className="size-24 border-4 border-background bg-emerald-600 text-2xl font-bold text-white shadow-lg">
                                             <AvatarImage
-                                                src={auth.user.avatar || ''}
+                                                src={auth.user.avatar}
                                                 alt={fullName}
-                                                className="object-cover"
                                             />
-                                            <AvatarFallback className="bg-emerald-600 font-bold text-white">
+                                            <AvatarFallback className="bg-emerald-600 text-white">
                                                 {initials}
                                             </AvatarFallback>
                                         </Avatar>

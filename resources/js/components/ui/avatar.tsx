@@ -1,7 +1,7 @@
 import { Avatar as AvatarPrimitive } from "radix-ui"
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+import { cn, getAvatarUrl } from "@/lib/utils"
 
 function Avatar({
   className,
@@ -25,12 +25,18 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+}: Omit<React.ComponentProps<typeof AvatarPrimitive.Image>, 'src'> & {
+  src?: string | null;
+}) {
+  const resolvedSrc = getAvatarUrl(src);
+  if (!resolvedSrc) return null;
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
-      className={cn("aspect-square size-full", className)}
+      src={resolvedSrc}
+      className={cn("aspect-square size-full object-cover", className)}
       {...props}
     />
   )
@@ -44,7 +50,7 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        "flex size-full items-center justify-center rounded-[inherit] bg-muted text-sm font-semibold text-muted-foreground select-none group-data-[size=sm]/avatar:text-xs",
         className
       )}
       {...props}

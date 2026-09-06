@@ -87,7 +87,7 @@ export function TeacherTopBar({
                         >
                             <Avatar className="size-9 border border-border/80">
                                 <AvatarImage
-                                    src={auth.user?.avatar || ''}
+                                    src={auth.user?.avatar}
                                     alt={auth.user?.name || 'User'}
                                 />
                                 <AvatarFallback className="bg-blue-100 text-sm font-semibold text-blue-900 dark:bg-blue-950 dark:text-blue-100">

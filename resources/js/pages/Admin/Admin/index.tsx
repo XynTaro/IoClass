@@ -104,12 +104,12 @@ export default function Index() {
             header: 'Profile',
             cell: ({ row }) => {
                 const admin = row.original;
-                const initials = `${admin.fname?.[0] ?? ''}${admin.lname?.[0] ?? ''}`.toUpperCase();
+                const initials = `${admin.fname?.[0] ?? ''}${admin.lname?.[0] ?? ''}`.toUpperCase() || 'A';
                 return (
                     <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
-                            <AvatarImage src={admin.avatar ? `/storage/${admin.avatar}` : ''} alt={admin.fname} />
-                            <AvatarFallback className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 font-semibold">{initials}</AvatarFallback>
+                            <AvatarImage src={admin.avatar} alt={admin.fname} />
+                            <AvatarFallback className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300">{initials}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium text-foreground">
                             {admin.fname} {admin.mname ? `${admin.mname} ` : ''}{admin.lname}

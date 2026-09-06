@@ -155,12 +155,12 @@ export default function Index() {
             header: 'Profile',
             cell: ({ row }) => {
                 const teacher = row.original;
-                const initials = `${teacher.tch_fname?.[0] ?? ''}${teacher.tch_lname?.[0] ?? ''}`.toUpperCase();
+                const initials = `${teacher.tch_fname?.[0] ?? ''}${teacher.tch_lname?.[0] ?? ''}`.toUpperCase() || 'T';
                 return (
                     <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
-                            <AvatarImage src={teacher.avatar ? `/storage/${teacher.avatar}` : ''} alt={teacher.tch_fname} />
-                            <AvatarFallback className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 font-semibold">{initials}</AvatarFallback>
+                            <AvatarImage src={teacher.avatar} alt={teacher.tch_fname} />
+                            <AvatarFallback className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">{initials}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium text-foreground">
                             {teacher.tch_fname} {teacher.tch_mname ? `${teacher.tch_mname} ` : ''}{teacher.tch_lname}

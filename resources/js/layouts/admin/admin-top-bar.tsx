@@ -87,7 +87,7 @@ export function AdminTopBar({
                         >
                             <Avatar className="size-9 border border-border/80">
                                 <AvatarImage
-                                    src={auth.user?.avatar || ''}
+                                    src={auth.user?.avatar}
                                     alt={auth.user?.name || 'User'}
                                 />
 

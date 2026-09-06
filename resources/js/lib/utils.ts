@@ -34,3 +34,28 @@ export function formatEmailInput(value: string): string {
 export function formatLrnInput(value: string): string {
     return value.replace(/\D/g, '');
 }
+
+/**
+ * Resolve a raw avatar value from the database or Inertia shared props
+ * into a usable image URL.
+ *
+ * - `null` / `undefined` / `""` → `undefined` (no image)
+ * - Absolute URLs (`http://`, `https://`, `blob:`, `data:`) → unchanged
+ * - Already root-relative (`/storage/...`) → unchanged
+ * - Raw DB path (`avatars/xyz.jpg`) → `/storage/avatars/xyz.jpg`
+ */
+export function getAvatarUrl(avatar?: string | null): string | undefined {
+    if (!avatar) return undefined;
+    if (
+        avatar.startsWith('http://') ||
+        avatar.startsWith('https://') ||
+        avatar.startsWith('blob:') ||
+        avatar.startsWith('data:')
+    ) {
+        return avatar;
+    }
+    if (avatar.startsWith('/')) {
+        return avatar;
+    }
+    return `/storage/${avatar}`;
+}

@@ -92,7 +92,7 @@ class AdminTeacherAttendanceController extends Controller
                 ? Carbon::parse($row->time_in)->format('h:i A')
                 : null;
             $row->avatar = $row->avatar
-                ? asset('storage/'.$row->avatar)
+                ? '/storage/'.$row->avatar
                 : null;
 
             return $row;

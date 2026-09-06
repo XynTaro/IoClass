@@ -56,7 +56,7 @@ class AuditTrailController extends Controller
                     $avatar = $adminAvatars[$log->actor_id] ?? null;
                 }
             }
-            $log->actor_avatar = $avatar ? asset('storage/'.$avatar) : null;
+            $log->actor_avatar = $avatar ? '/storage/'.$avatar : null;
 
             return $log;
         });

@@ -344,13 +344,12 @@ export default function Index() {
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="size-9 border border-border/80">
                                                                 <AvatarImage
-                                                                    src={log.actor_avatar || ''}
+                                                                    src={log.actor_avatar}
                                                                     alt={name}
-                                                                    className="object-cover"
                                                                 />
                                                                 <AvatarFallback
                                                                     className={cn(
-                                                                        'text-xs font-semibold',
+                                                                        'text-xs',
                                                                         avatarColor(name),
                                                                     )}
                                                                 >
