@@ -29,6 +29,7 @@ use App\Http\Controllers\Teacher\TeacherStudentController;
 use App\Http\Controllers\Teacher\TeacherStudentRecordController;
 use App\Http\Controllers\Teacher\TeacherVerificationController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
@@ -197,3 +198,15 @@ Route::middleware(['auth:teacher', 'teacher.password.changed'])->prefix('teacher
 });
 
 require __DIR__.'/settings.php';
+
+Route::get('/storage/{path}', function (string $path) {
+    try {
+        if (! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($path);
+    } catch (Throwable) {
+        abort(404);
+    }
+})->where('path', '.*');
