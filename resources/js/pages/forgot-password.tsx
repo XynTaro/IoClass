@@ -25,7 +25,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
             <Head title="Forgot password" />
             <AuthSplitShell>
                 <div className="space-y-2 text-center">
-                    <div className="mb-5 hidden justify-center lg:flex">
+                    <div className="mb-5 flex justify-center">
                         <div className="relative">
                             <div className="absolute -inset-1 rounded-full bg-emerald-400/20 blur" />
                             <img

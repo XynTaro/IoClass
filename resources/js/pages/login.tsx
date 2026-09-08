@@ -141,8 +141,8 @@ export default function Login({ status }: { status?: string }) {
                         >
                             {/* Heading */}
                             <div className="space-y-2 text-center">
-                                {/* Logo (desktop only) */}
-                                <div className="mb-5 hidden justify-center lg:flex">
+                                {/* Logo */}
+                                <div className="mb-5 flex justify-center">
                                     <div className="relative">
                                         <div className="absolute -inset-1 rounded-full bg-emerald-400/20 blur" />
                                         <img
