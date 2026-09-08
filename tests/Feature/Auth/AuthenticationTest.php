@@ -73,3 +73,47 @@ test('unauthenticated users accessing protected routes receive 401 response', fu
 
     $response->assertStatus(401);
 });
+
+test('authenticated admins can refresh session via keep-alive', function () {
+    $admin = Admin::factory()->create();
+
+    $response = $this->actingAs($admin, 'admin')->postJson(route('session.keep-alive'));
+
+    $response->assertOk()
+        ->assertJson([
+            'status' => 'active',
+        ]);
+});
+
+test('authenticated teachers can refresh session via keep-alive', function () {
+    $teacher = Teacher::create([
+        'tch_fname' => 'Jane',
+        'tch_lname' => 'Doe',
+        'tch_email' => 'teacher-keepalive@school.test',
+        'tch_pw' => 'password',
+        'is_deleted' => false,
+    ]);
+
+    $response = $this->actingAs($teacher, 'teacher')->postJson(route('session.keep-alive'));
+
+    $response->assertOk()
+        ->assertJson([
+            'status' => 'active',
+        ]);
+});
+
+test('unauthenticated users receive 401 on session keep-alive', function () {
+    $response = $this->postJson(route('session.keep-alive'));
+
+    $response->assertStatus(401)
+        ->assertJson([
+            'status' => 'unauthenticated',
+        ]);
+});
+
+test('login page shows inactivity notice when reason query parameter is set', function () {
+    $response = $this->get(route('login', ['reason' => 'inactivity']));
+
+    $response->assertOk();
+    $response->assertSee('You were automatically logged out due to 30 minutes of inactivity.');
+});

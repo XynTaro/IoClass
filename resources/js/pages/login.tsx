@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import { AlertCircle, Clock, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 
 import { inputErrorClass } from '@/components/form-field-error';
@@ -170,9 +170,20 @@ export default function Login({ status }: { status?: string }) {
                             {/* Form card */}
                             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-zinc-300/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700/80">
                                 {status && (
-                                    <p className="mb-4 text-center text-sm font-medium text-emerald-600">
-                                        {status}
-                                    </p>
+                                    status.toLowerCase().includes('inactivity') ? (
+                                        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-left dark:border-amber-900/50 dark:bg-amber-950/30">
+                                            <div className="flex items-center gap-2.5">
+                                                <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                                                    {status}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="mb-4 text-center text-sm font-medium text-emerald-600">
+                                            {status}
+                                        </p>
+                                    )
                                 )}
 
                                 <Form action="/login" method="post" className="space-y-5">

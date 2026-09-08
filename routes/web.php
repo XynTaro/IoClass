@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\School_YearController;
 use App\Http\Controllers\Admin\SectionController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\SessionKeepAliveController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Teacher\TeacherAttendanceController;
 use App\Http\Controllers\Teacher\TeacherDashboardController;
@@ -40,8 +41,13 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('login', function () {
+    $status = session('status');
+    if (! $status && request()->query('reason') === 'inactivity') {
+        $status = 'You were automatically logged out due to 30 minutes of inactivity.';
+    }
+
     return Inertia::render('login', [
-        'status' => session('status'),
+        'status' => $status,
     ]);
 })->name('login');
 
@@ -50,6 +56,9 @@ Route::post('login', [AuthController::class, 'login'])
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout');
+
+Route::post('/session/keep-alive', SessionKeepAliveController::class)
+    ->name('session.keep-alive');
 
 Route::middleware('guest')->group(function () {
     Route::get('forgot-password', [ForgotPasswordController::class, 'create'])

@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import FlashToast from '@/components/FlashToast';
+import { IdleTimeoutModal } from '@/components/IdleTimeoutModal';
 import { LogoutOverlay } from '@/components/LogoutOverlay';
 import PageSkeleton, { type SkeletonVariant } from '@/components/PageSkeleton';
 import { TeacherSidebar } from '@/layouts/teacher/teacher-sidebar';
@@ -72,6 +73,7 @@ export default function TeacherLayout({ children, breadcrumbs }: Props) {
             </div>
             <FlashToast />
             <LogoutOverlay />
+            <IdleTimeoutModal />
         </div>
     );
 }
