@@ -490,11 +490,11 @@ export default function TeacherDashboard() {
 
                     <div className="grid gap-4 lg:grid-cols-2">
                         {/* Status breakdown */}
-                        <Card className="overflow-hidden py-0 gap-0 transition-shadow duration-300 hover:shadow-md">
-                            <CardHeader className="pb-4">
+                        <Card className="flex flex-col justify-between overflow-hidden p-5 sm:p-6 transition-shadow duration-300 hover:shadow-md">
+                            <CardHeader className="p-0 pb-4">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-1">
-                                        <CardTitle className="text-base">
+                                        <CardTitle className="text-base font-semibold">
                                             Status breakdown
                                         </CardTitle>
                                         <CardDescription>
@@ -513,9 +513,9 @@ export default function TeacherDashboard() {
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="flex flex-1 flex-col justify-between p-0">
                                 {totalAll === 0 ? (
-                                    <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center">
+                                    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
                                         <TrendingUp
                                             className="size-6 text-muted-foreground/50"
                                             aria-hidden
@@ -525,9 +525,9 @@ export default function TeacherDashboard() {
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-6">
+                                    <div className="flex flex-1 flex-col justify-between gap-3">
                                         {/* Composition bar */}
-                                        <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-muted">
+                                        <div className="flex h-2.5 w-full gap-1 overflow-hidden rounded-full bg-muted/60">
                                             {(
                                                 [
                                                     'present',
@@ -553,7 +553,7 @@ export default function TeacherDashboard() {
                                             })}
                                         </div>
 
-                                        <div className="space-y-4">
+                                        <div className="space-y-2">
                                             {(
                                                 [
                                                     'present',
@@ -562,20 +562,20 @@ export default function TeacherDashboard() {
                                                 ] as const
                                             ).map((key, index) => {
                                                 const value = totals[key] ?? 0;
-                                                const pct = Math.round(
+                                                const pct = totalAll > 0 ? Math.round(
                                                     (100 * value) / totalAll,
-                                                );
+                                                ) : 0;
                                                 const style =
                                                     STATUS_STYLES[key];
                                                 return (
                                                     <div
                                                         key={key}
-                                                        className="space-y-1.5 rounded-lg p-2 transition-colors hover:bg-muted/40"
+                                                        className="space-y-1.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/40"
                                                     >
                                                         <div className="flex items-center justify-between text-sm">
-                                                            <span className="inline-flex items-center gap-2 font-medium">
+                                                            <span className="inline-flex items-center gap-2 font-medium text-foreground">
                                                                 <span
-                                                                    className={`size-2.5 rounded-full ${style.dot}`}
+                                                                    className={`size-2 rounded-full ${style.dot}`}
                                                                 />
                                                                 {style.label}
                                                             </span>
@@ -596,7 +596,7 @@ export default function TeacherDashboard() {
                                                             <div
                                                                 className={`dash-width-grow h-full rounded-full ${style.bar}`}
                                                                 style={{
-                                                                    width: `${Math.max(1, pct)}%`,
+                                                                    width: `${pct}%`,
                                                                     animationDelay: `${550 + index * 80}ms`,
                                                                 }}
                                                             />
@@ -611,11 +611,11 @@ export default function TeacherDashboard() {
                         </Card>
 
                         {/* Trend */}
-                        <Card className="overflow-visible py-0 gap-0 transition-shadow duration-300 hover:shadow-md">
-                            <CardHeader className="pb-3">
+                        <Card className="flex flex-col justify-between overflow-hidden p-5 sm:p-6 transition-shadow duration-300 hover:shadow-md">
+                            <CardHeader className="p-0 pb-3">
                                 <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="space-y-1">
-                                        <CardTitle className="text-base">
+                                        <CardTitle className="text-base font-semibold">
                                             Trend
                                         </CardTitle>
                                         <CardDescription>
@@ -653,9 +653,9 @@ export default function TeacherDashboard() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="flex flex-1 flex-col justify-end p-0">
                                 {trend.length === 0 || !trendHasData ? (
-                                    <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center">
+                                    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
                                         <CalendarDays
                                             className="size-6 text-muted-foreground/50"
                                             aria-hidden
@@ -667,7 +667,7 @@ export default function TeacherDashboard() {
                                 ) : (
                                     <ChartContainer
                                         config={chartConfig}
-                                        className="aspect-auto h-[200px] w-full"
+                                        className="aspect-auto h-[180px] w-full"
                                     >
                                         <BarChart
                                             data={trend}
@@ -751,23 +751,23 @@ export default function TeacherDashboard() {
 
                     <div className="grid gap-4 lg:grid-cols-2">
                         {/* Section Attendance Breakdown */}
-                        <Card className="overflow-hidden py-0 gap-0 transition-shadow duration-300 hover:shadow-md">
-                            <CardHeader className="pb-4">
-                                <CardTitle className="text-base">Section breakdown</CardTitle>
+                        <Card className="flex flex-col justify-between overflow-hidden p-5 sm:p-6 transition-shadow duration-300 hover:shadow-md">
+                            <CardHeader className="p-0 pb-4">
+                                <CardTitle className="text-base font-semibold">Section breakdown</CardTitle>
                                 <CardDescription>
                                     Average attendance rates across your sections for the selected range
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="flex flex-1 flex-col justify-between p-0">
                                 {sectionAttendance.length === 0 ? (
-                                    <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center">
+                                    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center">
                                         <TrendingUp className="size-6 text-muted-foreground/50" aria-hidden />
                                         <p className="text-sm text-muted-foreground">
                                             No section attendance records yet.
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         {sectionAttendance.map((item) => {
                                             let barColor = 'bg-red-500';
                                             let textColor = 'text-red-600 dark:text-red-400';
@@ -780,7 +780,7 @@ export default function TeacherDashboard() {
                                             }
 
                                             return (
-                                                <div key={item.sect_id} className="space-y-2 rounded-lg p-2 transition-colors hover:bg-muted/40">
+                                                <div key={item.sect_id} className="space-y-2 rounded-xl border border-border/50 bg-muted/20 p-3.5 transition-colors hover:bg-muted/40">
                                                     <div className="flex items-center justify-between text-sm">
                                                         <span className="font-semibold text-foreground">
                                                             {item.name}
@@ -797,7 +797,7 @@ export default function TeacherDashboard() {
                                                     </div>
                                                     <div className="flex justify-between text-[11px] text-muted-foreground">
                                                         <span>{formatStat(item.total_records)} total check-ins</span>
-                                                        <span>{item.attendance_rate >= 90 ? 'Excellent' : item.attendance_rate >= 80 ? 'Good' : 'Needs Attention'}</span>
+                                                        <span className="font-medium">{item.attendance_rate >= 90 ? 'Excellent' : item.attendance_rate >= 80 ? 'Good' : 'Needs Attention'}</span>
                                                     </div>
                                                 </div>
                                             );
@@ -808,9 +808,9 @@ export default function TeacherDashboard() {
                         </Card>
 
                         {/* At-Risk Students */}
-                        <Card className="overflow-hidden py-0 gap-0 transition-shadow duration-300 hover:shadow-md">
-                            <CardHeader className="pb-4">
-                                <CardTitle className="text-base flex items-center gap-2">
+                        <Card className="flex flex-col justify-between overflow-hidden p-5 sm:p-6 transition-shadow duration-300 hover:shadow-md">
+                            <CardHeader className="p-0 pb-4">
+                                <CardTitle className="text-base font-semibold flex items-center gap-2">
                                     <span>At-risk students</span>
                                     {atRiskStudents.length > 0 && (
                                         <span className="flex size-5 items-center justify-center rounded-full bg-red-500/10 text-xs font-semibold text-red-600 dark:text-red-400 ring-1 ring-red-500/20">
@@ -822,9 +822,9 @@ export default function TeacherDashboard() {
                                     Students with low attendance rates or high absence counts in the selected range
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="flex flex-1 flex-col justify-center p-0">
                                 {atRiskStudents.length === 0 ? (
-                                    <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center">
+                                    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-7 px-4 text-center">
                                         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400">
                                             <UserCheck className="size-5" aria-hidden />
                                         </div>
