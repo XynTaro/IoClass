@@ -5,8 +5,10 @@
 #define WIFI_SSID "Okieee"
 #define WIFI_PASS "11111111"
 
-// Laravel API — use your PC's LAN IP, not localhost
-#define SERVER_BASE "http://192.168.48.1:8000/api/rfid"
+// Laravel API — Local development or Production Cloud URL:
+// Local:      "http://192.168.48.1:8000/api/rfid"
+// Production: "https://ioclass-production-1n8wom.laravel.cloud/api/rfid"
+#define SERVER_BASE "https://ioclass-production-1n8wom.laravel.cloud/api/rfid"
 
 // Must match RFID_DEVICE_TOKEN in Laravel .env
 #define DEVICE_TOKEN "esp32-room-a"
