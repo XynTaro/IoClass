@@ -3,6 +3,7 @@
 use App\Models\Teacher;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 test('sf2 report uses school year to resolve calendar year for a month', function () {
     $syId = DB::table('school_year')->insertGetId([
@@ -152,6 +153,11 @@ test('sf2 report exports isolated month sheet and maps all weekday columns clean
         expect($activeSheet->getCell('I12')->getValue())->toBe('Jupiter');
         expect((string) $activeSheet->getCell('AN8')->getValue())->toBe('7');
         expect($activeSheet->getCell('BN11')->getValue())->toBe('SEPTEMBER');
+        expect($activeSheet->getStyle('K16')->getAlignment()->getHorizontal())->toBe(Alignment::HORIZONTAL_CENTER);
+        expect($activeSheet->getStyle('K18')->getAlignment()->getHorizontal())->toBe(Alignment::HORIZONTAL_CENTER);
+        expect($activeSheet->getStyle('K33')->getAlignment()->getHorizontal())->toBe(Alignment::HORIZONTAL_CENTER);
+        expect($activeSheet->getStyle('K51')->getAlignment()->getHorizontal())->toBe(Alignment::HORIZONTAL_CENTER);
+        expect($activeSheet->getStyle('K52')->getAlignment()->getHorizontal())->toBe(Alignment::HORIZONTAL_CENTER);
     } finally {
         @unlink($tempFile);
     }

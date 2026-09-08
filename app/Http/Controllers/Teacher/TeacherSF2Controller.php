@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use stdClass;
 use Symfony\Component\HttpFoundation\Response;
@@ -406,6 +407,11 @@ class TeacherSF2Controller extends Controller
                 }
             }
         }
+
+        // Center-align day column cells (dates, attendance status marks 'X', and daily summaries)
+        $sheet->getStyle('K16:BH52')->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+            ->setVertical(Alignment::VERTICAL_CENTER);
 
         // Clear row 16 for all 25 day columns, then set active day numbers
         foreach ($allDayColumns as $col) {
