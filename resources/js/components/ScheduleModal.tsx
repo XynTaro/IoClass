@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { CalendarDays, Check, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
@@ -513,17 +513,30 @@ export default function ScheduleModal({
         }
     }, [schedule, mode, open]);
 
+    const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+
     useEffect(() => {
         if (!open) {
             setSlots([createEmptySlot()]);
             setAdviserGradeFilter('');
             adviserForm.reset();
             submitForm.clearErrors();
+            setClientErrors({});
         }
     }, [open]);
 
     const updateSlot = (index: number, slot: ScheduleSlotState) => {
         setSlots((current) => current.map((item, i) => (i === index ? slot : item)));
+        // Clear client errors for this slot
+        setClientErrors((prev) => {
+            const next = { ...prev };
+            Object.keys(next).forEach((key) => {
+                if (key.startsWith(`schedules.${index}.`)) {
+                    delete next[key];
+                }
+            });
+            return next;
+        });
     };
 
     const addSlot = () => {
@@ -536,6 +549,34 @@ export default function ScheduleModal({
 
     const buildSchedulePayload = (): ScheduleSlotPayload[] => slots.map(slotToPayload);
 
+    const isSlotEmpty = (slot: ScheduleSlotState): boolean => {
+        return (
+            !slot.sect_id &&
+            !slot.room_id &&
+            !slot.subj_id &&
+            (!slot.days || slot.days.length === 0) &&
+            !slot.start_time &&
+            !slot.end_time
+        );
+    };
+
+    const validateSlot = (slot: ScheduleSlotState, index: number): Record<string, string> => {
+        const errs: Record<string, string> = {};
+        if (!slot.sect_id) errs[`schedules.${index}.sect_id`] = 'Please select a section.';
+        if (!slot.room_id) errs[`schedules.${index}.room_id`] = 'Please select a room.';
+        if (!slot.subj_id) errs[`schedules.${index}.subj_id`] = 'Please select a subject.';
+        if (!slot.days || slot.days.length === 0) errs[`schedules.${index}.days`] = 'Please select at least one day.';
+        if (!slot.start_time) {
+            errs[`schedules.${index}.start_time`] = 'Please enter a start time.';
+        }
+        if (!slot.end_time) {
+            errs[`schedules.${index}.end_time`] = 'Please enter an end time.';
+        } else if (slot.start_time && slot.end_time <= slot.start_time) {
+            errs[`schedules.${index}.end_time`] = 'End time must be after start time.';
+        }
+        return errs;
+    };
+
     const handleSkip = () => {
         if (!teacherData) {
             return;
@@ -543,9 +584,14 @@ export default function ScheduleModal({
 
         setIsSkipping(true);
         router.post(route('admin.teacher.storeWithAddress'), teacherData as unknown as Record<string, string>, {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
                 onSuccess?.();
                 onClose();
+            },
+            onError: (errs) => {
+                setClientErrors(errs);
             },
             onFinish: () => setIsSkipping(false),
         });
@@ -554,41 +600,77 @@ export default function ScheduleModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const schedulePayload = buildSchedulePayload();
-        const adviserFields = {
-            is_adviser: adviserForm.data.is_adviser,
-            adviser_sect_id: adviserForm.data.is_adviser ? adviserForm.data.adviser_sect_id : '',
-        };
-
         if (teacherData) {
+            const activeSlots = slots.filter((s) => !isSlotEmpty(s));
+
+            // If user touched or partially filled slots, validate each active slot
+            let newErrors: Record<string, string> = {};
+            activeSlots.forEach((slot) => {
+                const originalIndex = slots.indexOf(slot);
+                const slotErrs = validateSlot(slot, originalIndex >= 0 ? originalIndex : 0);
+                newErrors = { ...newErrors, ...slotErrs };
+            });
+
+            if (adviserForm.data.is_adviser && !adviserForm.data.adviser_sect_id) {
+                newErrors.adviser_sect_id = 'Please select an advisory section.';
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setClientErrors(newErrors);
+                return;
+            }
+
+            setClientErrors({});
+
+            const schedulePayload = activeSlots.map(slotToPayload);
+            const adviserFields = {
+                is_adviser: adviserForm.data.is_adviser,
+                adviser_sect_id: adviserForm.data.is_adviser ? adviserForm.data.adviser_sect_id : '',
+            };
+
             submitForm.transform(() => ({
                 ...teacherData,
                 schedules: schedulePayload,
                 ...adviserFields,
             }));
             submitForm.post(route('admin.teacher.storeWithAddress'), {
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => {
                     onSuccess?.();
                     onClose();
+                },
+                onError: (errs) => {
+                    setClientErrors(errs);
                 },
             });
             return;
         }
 
-        if (isEditMode && schedule?.schedule_id) {
-            const slot = schedulePayload[0];
+        const schedulePayload = buildSchedulePayload();
+        const adviserFields = {
+            is_adviser: adviserForm.data.is_adviser,
+            adviser_sect_id: adviserForm.data.is_adviser ? adviserForm.data.adviser_sect_id : '',
+        };
+
+        if (mode === 'edit' && schedule) {
             submitForm.transform(() => ({
-                sect_id: slot.sect_id,
-                room_id: slot.room_id,
-                subj_id: slot.subj_id,
-                day_of_week: slot.days[0] ?? '',
-                start_time: slot.start_time ? slot.start_time.slice(0, 5) : '',
-                end_time: slot.end_time ? slot.end_time.slice(0, 5) : '',
+                sect_id: slots[0]?.sect_id ? Number(slots[0].sect_id) : schedule.sect_id,
+                room_id: slots[0]?.room_id ? Number(slots[0].room_id) : schedule.room_id,
+                subj_id: slots[0]?.subj_id ? Number(slots[0].subj_id) : schedule.subj_id,
+                day_of_week: slots[0]?.days[0] ?? schedule.day_of_week ?? '',
+                start_time: slots[0]?.start_time ? slots[0].start_time.slice(0, 5) : '',
+                end_time: slots[0]?.end_time ? slots[0].end_time.slice(0, 5) : '',
             }));
             submitForm.put(route('admin.schedule.update', schedule.schedule_id), {
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => {
                     onSuccess?.();
                     onClose();
+                },
+                onError: (errs) => {
+                    setClientErrors(errs);
                 },
             });
             return;
@@ -604,14 +686,20 @@ export default function ScheduleModal({
             ...adviserFields,
         }));
         submitForm.post(route('admin.schedule.store'), {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
                 onSuccess?.();
                 onClose();
             },
+            onError: (errs) => {
+                setClientErrors(errs);
+            },
         });
     };
 
-    const errors = submitForm.errors as Record<string, string>;
+    const pageErrors = (usePage<any>().props.errors ?? {}) as Record<string, string>;
+    const errors = { ...pageErrors, ...(submitForm.errors as Record<string, string>), ...clientErrors };
     const isProcessing = submitForm.processing || adviserForm.processing;
 
     return (
@@ -631,6 +719,32 @@ export default function ScheduleModal({
                 />
 
                 <form onSubmit={handleSubmit} className="max-h-[68vh] space-y-5 overflow-y-auto pr-1">
+                    {Object.entries(errors)
+                        .filter(([key]) => !key.startsWith('schedules.') && key !== 'adviser_sect_id')
+                        .map(([key, msg]) => (
+                            <div
+                                key={key}
+                                className="flex items-center justify-between rounded-lg border border-red-500/50 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                role="alert"
+                            >
+                                <div>
+                                    <strong className="capitalize">{key.replace(/^tch_/, '').replace(/_/g, ' ')}:</strong>{' '}
+                                    <span>{msg}</span>
+                                </div>
+                                {onBack && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={onBack}
+                                    >
+                                        Back to edit
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+
                     <div className="space-y-4">
                         {slots.map((slot, index) => (
                             <ScheduleSlotEditor

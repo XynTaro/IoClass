@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
     Check,
@@ -123,23 +123,42 @@ export default function TeacherModal({
 
     const isStep1Active = open && (mode === 'edit' || step === 1);
 
+    const [clearedPageErrors, setClearedPageErrors] = useState<Record<string, boolean>>({});
+    const { errors: pageErrors = {} } = usePage<{ errors: Record<string, string> }>().props;
+
+    const getFieldError = (field: string): string | undefined => {
+        const formErr = (form.errors as Record<string, string | undefined>)[field];
+        if (formErr) return formErr;
+
+        const localErr = (localErrors as Record<string, string | undefined>)[field as keyof TeacherFormData];
+        if (localErr) return localErr;
+
+        if (!clearedPageErrors[field] && (pageErrors as Record<string, string | undefined>)[field]) {
+            return (pageErrors as Record<string, string | undefined>)[field];
+        }
+
+        return undefined;
+    };
+
+    const clearFieldErrors = (field: string) => {
+        form.clearErrors(field as any);
+        setLocalErrors((prev) => {
+            const next = { ...prev };
+            delete next[field as keyof TeacherFormData];
+            return next;
+        });
+        setClearedPageErrors((prev) => ({ ...prev, [field]: true }));
+    };
+
     // Single wireless capture — routes to the active scan target automatically.
     useWirelessRfidCapture(isStep1Active, (uid) => {
         if (scanTarget === 'rfid') {
             form.setData('tch_rfid_uid', uid);
-            form.clearErrors('tch_rfid_uid');
-            setLocalErrors((prev) => {
-                const { tch_rfid_uid, master_card, ...rest } = prev;
-                return rest;
-            });
+            clearFieldErrors('tch_rfid_uid');
             setScanTarget('master');
         } else {
             form.setData('master_card', uid);
-            form.clearErrors('master_card');
-            setLocalErrors((prev) => {
-                const { tch_rfid_uid, master_card, ...rest } = prev;
-                return rest;
-            });
+            clearFieldErrors('master_card');
         }
     });
 
@@ -231,18 +250,12 @@ export default function TeacherModal({
             setPendingTeacherData(null);
             setPendingAddressData(null);
             setLocalErrors({});
+            setClearedPageErrors({});
             setRfidUidConflict(false);
             setMasterCardConflict(false);
             setScanTarget('rfid');
         }
     }, [open]);
-
-    const clearLocalError = (field: keyof TeacherFormData) => {
-        setLocalErrors((prev) => {
-            const { [field]: _removed, ...rest } = prev;
-            return rest;
-        });
-    };
 
     const validateStep1 = (): boolean => {
         const errors: Partial<Record<keyof TeacherFormData, string>> = {};
@@ -325,8 +338,8 @@ export default function TeacherModal({
 
     const showPasswordSection = mode === 'create' || form.data.reset_password;
     const clearPasswordErrors = () => {
-        form.clearErrors('tch_pw');
-        form.clearErrors('tch_pw_confirmation');
+        clearFieldErrors('tch_pw');
+        clearFieldErrors('tch_pw_confirmation');
     };
 
     return (
@@ -370,6 +383,32 @@ export default function TeacherModal({
                         }
                         className="max-h-[70vh] space-y-3 overflow-y-auto pr-1"
                     >
+                        {Object.entries(pageErrors)
+                            .filter(
+                                ([k]) =>
+                                    !clearedPageErrors[k] &&
+                                    ![
+                                        'tch_fname',
+                                        'tch_mname',
+                                        'tch_lname',
+                                        'tch_email',
+                                        'contact_number',
+                                        'tch_rfid_uid',
+                                        'master_card',
+                                        'tch_pw',
+                                        'tch_pw_confirmation',
+                                    ].includes(k)
+                            )
+                            .map(([k, msg]) => (
+                                <div
+                                    key={k}
+                                    className="rounded-lg border border-red-500/50 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                    role="alert"
+                                >
+                                    <strong className="capitalize">{k.replace(/_/g, ' ')}:</strong> {msg}
+                                </div>
+                            ))}
+
                         {/* Name */}
                         <div className="grid gap-3 md:grid-cols-3">
                             <div>
@@ -385,18 +424,14 @@ export default function TeacherModal({
                                     value={form.data.tch_fname}
                                     onChange={(e) => {
                                         form.setData('tch_fname', formatNameInput(e.target.value));
-                                        form.clearErrors('tch_fname');
-                                        setLocalErrors((prev) => {
-                                            const { tch_fname, ...rest } = prev;
-                                            return rest;
-                                        });
+                                        clearFieldErrors('tch_fname');
                                     }}
-                                    aria-invalid={Boolean(form.errors.tch_fname || localErrors.tch_fname)}
-                                    className={inputErrorClass(Boolean(form.errors.tch_fname || localErrors.tch_fname))}
+                                    aria-invalid={Boolean(getFieldError('tch_fname'))}
+                                    className={inputErrorClass(Boolean(getFieldError('tch_fname')))}
                                 />
                                 <FormFieldError
                                     label="First name"
-                                    message={form.errors.tch_fname ?? localErrors.tch_fname}
+                                    message={getFieldError('tch_fname')}
                                 />
                             </div>
 
@@ -413,14 +448,14 @@ export default function TeacherModal({
                                     value={form.data.tch_mname}
                                     onChange={(e) => {
                                         form.setData('tch_mname', formatNameInput(e.target.value));
-                                        form.clearErrors('tch_mname');
+                                        clearFieldErrors('tch_mname');
                                     }}
-                                    aria-invalid={Boolean((form.errors as any).tch_mname)}
-                                    className={inputErrorClass(Boolean((form.errors as any).tch_mname))}
+                                    aria-invalid={Boolean(getFieldError('tch_mname'))}
+                                    className={inputErrorClass(Boolean(getFieldError('tch_mname')))}
                                 />
                                 <FormFieldError
                                     label="Middle name"
-                                    message={(form.errors as any).tch_mname}
+                                    message={getFieldError('tch_mname')}
                                 />
                             </div>
 
@@ -437,18 +472,14 @@ export default function TeacherModal({
                                     value={form.data.tch_lname}
                                     onChange={(e) => {
                                         form.setData('tch_lname', formatNameInput(e.target.value));
-                                        form.clearErrors('tch_lname');
-                                        setLocalErrors((prev) => {
-                                            const { tch_lname, ...rest } = prev;
-                                            return rest;
-                                        });
+                                        clearFieldErrors('tch_lname');
                                     }}
-                                    aria-invalid={Boolean(form.errors.tch_lname || localErrors.tch_lname)}
-                                    className={inputErrorClass(Boolean(form.errors.tch_lname || localErrors.tch_lname))}
+                                    aria-invalid={Boolean(getFieldError('tch_lname'))}
+                                    className={inputErrorClass(Boolean(getFieldError('tch_lname')))}
                                 />
                                 <FormFieldError
                                     label="Last name"
-                                    message={form.errors.tch_lname ?? localErrors.tch_lname}
+                                    message={getFieldError('tch_lname')}
                                 />
                             </div>
                         </div>
@@ -469,18 +500,14 @@ export default function TeacherModal({
                                     value={form.data.tch_email}
                                     onChange={(e) => {
                                         form.setData('tch_email', formatEmailInput(e.target.value));
-                                        form.clearErrors('tch_email');
-                                        setLocalErrors((prev) => {
-                                            const { tch_email, ...rest } = prev;
-                                            return rest;
-                                        });
+                                        clearFieldErrors('tch_email');
                                     }}
-                                    aria-invalid={Boolean(form.errors.tch_email || localErrors.tch_email)}
-                                    className={inputErrorClass(Boolean(form.errors.tch_email || localErrors.tch_email))}
+                                    aria-invalid={Boolean(getFieldError('tch_email'))}
+                                    className={inputErrorClass(Boolean(getFieldError('tch_email')))}
                                 />
                                 <FormFieldError
                                     label="Email"
-                                    message={form.errors.tch_email ?? localErrors.tch_email}
+                                    message={getFieldError('tch_email')}
                                 />
                             </div>
 
@@ -497,15 +524,14 @@ export default function TeacherModal({
                                     value={form.data.contact_number}
                                     onChange={(e) => {
                                         form.setData('contact_number', formatContactNumberInput(e.target.value));
-                                        form.clearErrors('contact_number');
-                                        clearLocalError('contact_number');
+                                        clearFieldErrors('contact_number');
                                     }}
-                                    aria-invalid={Boolean((form.errors as any).contact_number || localErrors.contact_number)}
-                                    className={inputErrorClass(Boolean((form.errors as any).contact_number || localErrors.contact_number))}
+                                    aria-invalid={Boolean(getFieldError('contact_number'))}
+                                    className={inputErrorClass(Boolean(getFieldError('contact_number')))}
                                 />
                                 <FormFieldError
                                     label="Contact number"
-                                    message={(form.errors as any).contact_number ?? localErrors.contact_number}
+                                    message={getFieldError('contact_number')}
                                 />
                             </div>
                         </div>
@@ -551,17 +577,10 @@ export default function TeacherModal({
                                 value={form.data.tch_rfid_uid}
                                 onChange={(value) => {
                                     form.setData('tch_rfid_uid', value);
-                                    form.clearErrors('tch_rfid_uid');
-                                    setLocalErrors((prev) => {
-                                        const { tch_rfid_uid, master_card, ...rest } = prev;
-                                        return rest;
-                                    });
+                                    clearFieldErrors('tch_rfid_uid');
                                     if (value) setScanTarget('master');
                                 }}
-                                error={
-                                    (form.errors as Record<string, string | undefined>).tch_rfid_uid ??
-                                    localErrors.tch_rfid_uid
-                                }
+                                error={getFieldError('tch_rfid_uid')}
                                 excludeUid={
                                     mode === 'edit'
                                         ? (teacher?.tch_rfid_uid as string | null) ?? ''
@@ -579,16 +598,9 @@ export default function TeacherModal({
                                 value={form.data.master_card}
                                 onChange={(value) => {
                                     form.setData('master_card', value);
-                                    form.clearErrors('master_card');
-                                    setLocalErrors((prev) => {
-                                        const { tch_rfid_uid, master_card, ...rest } = prev;
-                                        return rest;
-                                    });
+                                    clearFieldErrors('master_card');
                                 }}
-                                error={
-                                    (form.errors as Record<string, string | undefined>).master_card ??
-                                    localErrors.master_card
-                                }
+                                error={getFieldError('master_card')}
                                 excludeUid={
                                     mode === 'edit'
                                         ? (teacher?.master_card as string | null) ?? ''
@@ -693,16 +705,12 @@ export default function TeacherModal({
                                                     onChange={(e) => {
                                                         form.setData('tch_pw', e.target.value);
                                                         clearPasswordErrors();
-                                                        setLocalErrors((prev) => {
-                                                            const { tch_pw, ...rest } = prev;
-                                                            return rest;
-                                                        });
                                                     }}
                                                     className={cn(
                                                         'pr-16 font-mono text-sm',
-                                                        inputErrorClass(Boolean(form.errors.tch_pw || localErrors.tch_pw)),
+                                                        inputErrorClass(Boolean(getFieldError('tch_pw'))),
                                                     )}
-                                                    aria-invalid={Boolean(form.errors.tch_pw || localErrors.tch_pw)}
+                                                    aria-invalid={Boolean(getFieldError('tch_pw'))}
                                                     readOnly
                                                     required
                                                 />
@@ -731,7 +739,7 @@ export default function TeacherModal({
                                             </div>
                                             <FormFieldError
                                                 label="Password"
-                                                message={form.errors.tch_pw ?? localErrors.tch_pw}
+                                                message={getFieldError('tch_pw')}
                                             />
                                         </div>
 
@@ -755,10 +763,10 @@ export default function TeacherModal({
                                                     className={cn(
                                                         'pr-16 font-mono text-sm',
                                                         inputErrorClass(
-                                                            Boolean(form.errors.tch_pw_confirmation),
+                                                            Boolean(getFieldError('tch_pw_confirmation')),
                                                         ),
                                                     )}
-                                                    aria-invalid={Boolean(form.errors.tch_pw_confirmation)}
+                                                    aria-invalid={Boolean(getFieldError('tch_pw_confirmation'))}
                                                     readOnly
                                                     required
                                                 />
@@ -795,7 +803,7 @@ export default function TeacherModal({
                                             </div>
                                             <FormFieldError
                                                 label="Confirm password"
-                                                message={form.errors.tch_pw_confirmation}
+                                                message={getFieldError('tch_pw_confirmation')}
                                             />
                                         </div>
                                     </div>
