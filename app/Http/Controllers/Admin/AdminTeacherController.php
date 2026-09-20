@@ -107,7 +107,7 @@ class AdminTeacherController extends Controller
             if ($teacher->contact_number) {
                 $this->sms->send(
                     $teacher->contact_number,
-                    "Welcome to IoClass! Your teacher account has been created. Temporary password: {$tempPw}. Please log in and change your password."
+                    "IoClass: Your teacher account login code is {$tempPw}, please log in and change password."
                 );
             }
         } catch (\Throwable $e) {
@@ -281,7 +281,7 @@ class AdminTeacherController extends Controller
             if (! empty($validated['contact_number'])) {
                 $this->sms->send(
                     $validated['contact_number'],
-                    "Welcome to IoClass! Your teacher account has been created. Temporary password: {$tempPw}. Please log in and change your password."
+                    "IoClass: Your teacher account login code is {$tempPw}, please log in and change password."
                 );
             }
         } catch (\Throwable $e) {

@@ -31,7 +31,7 @@ test('creating an admin auto generates password and sets must_change_password to
     expect($newAdmin->pw)->not->toBeEmpty();
     expect(count($sms->messages))->toBe(1);
     expect($sms->messages[0]['to'])->toBe('09123456789');
-    expect($sms->messages[0]['message'])->toContain('Temporary password:');
+    expect($sms->messages[0]['message'])->toContain('login code is');
 });
 
 test('creating a teacher auto generates password and sets must_change_password to true', function () {
@@ -59,7 +59,7 @@ test('creating a teacher auto generates password and sets must_change_password t
     expect($newTeacher->tch_pw)->not->toBeEmpty();
     expect(count($sms->messages))->toBe(1);
     expect($sms->messages[0]['to'])->toBe('09987654321');
-    expect($sms->messages[0]['message'])->toContain('Temporary password:');
+    expect($sms->messages[0]['message'])->toContain('login code is');
 });
 
 test('admin with must_change_password true is forced to change password', function () {

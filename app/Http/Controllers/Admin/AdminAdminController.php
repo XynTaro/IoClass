@@ -62,7 +62,7 @@ class AdminAdminController extends Controller
             if ($newAdmin->contact_number) {
                 $this->sms->send(
                     $newAdmin->contact_number,
-                    "Welcome to IoClass! Your admin account has been created. Temporary password: {$tempPw}. Please log in and change your password."
+                    "IoClass: Your admin account login code is {$tempPw}, please log in and change password."
                 );
             }
         } catch (\Throwable $e) {
@@ -209,7 +209,7 @@ class AdminAdminController extends Controller
             if (! empty($validated['contact_number'])) {
                 $this->sms->send(
                     $validated['contact_number'],
-                    "Welcome to IoClass! Your admin account has been created. Temporary password: {$tempPw}. Please log in and change your password."
+                    "IoClass: Your admin account login code is {$tempPw}, please log in and change password."
                 );
             }
         } catch (\Throwable $e) {
