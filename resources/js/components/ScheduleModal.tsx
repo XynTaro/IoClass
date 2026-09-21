@@ -361,9 +361,6 @@ function ScheduleSlotEditor({
                             <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => selectDays(WEEKDAYS)}>
                                 Weekdays
                             </Button>
-                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => selectDays(DAYS_OF_WEEK)}>
-                                All days
-                            </Button>
                             <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => selectDays([])}>
                                 Clear
                             </Button>
@@ -372,7 +369,7 @@ function ScheduleSlotEditor({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    {DAYS_OF_WEEK.map((day) => (
+                    {WEEKDAYS.map((day) => (
                         <label
                             key={day}
                             className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
@@ -400,6 +397,7 @@ function ScheduleSlotEditor({
                     <input
                         id={`start_time_${index}`}
                         type="time"
+                        step="60"
                         value={slot.start_time}
                         onChange={(e) => updateSlot({ start_time: e.target.value })}
                         className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
@@ -416,6 +414,7 @@ function ScheduleSlotEditor({
                     <input
                         id={`end_time_${index}`}
                         type="time"
+                        step="60"
                         value={slot.end_time}
                         onChange={(e) => updateSlot({ end_time: e.target.value })}
                         className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${

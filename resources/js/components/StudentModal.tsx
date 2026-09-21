@@ -483,6 +483,7 @@ function ParentSection({
                         inputProps={{
                             placeholder: 'Contact number',
                             disabled: isDeceased,
+                            maxLength: 11,
                         }}
                     />
                 </div>

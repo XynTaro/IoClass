@@ -22,9 +22,9 @@ export function formatNameInput(value: string): string {
 export function formatContactNumberInput(value: string): string {
     const noLeadingSpace = value.replace(/^\s+/, '');
     if (noLeadingSpace.startsWith('+')) {
-        return '+' + noLeadingSpace.slice(1).replace(/\D/g, '');
+        return '+' + noLeadingSpace.slice(1).replace(/\D/g, '').slice(0, 11);
     }
-    return noLeadingSpace.replace(/\D/g, '');
+    return noLeadingSpace.replace(/\D/g, '').slice(0, 11);
 }
 
 export function formatEmailInput(value: string): string {

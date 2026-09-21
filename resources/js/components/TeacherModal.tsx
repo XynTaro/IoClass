@@ -522,6 +522,7 @@ export default function TeacherModal({
                                     id="contact_number"
                                     placeholder="e.g. 09xxxxxxxxx"
                                     value={form.data.contact_number}
+                                    maxLength={11}
                                     onChange={(e) => {
                                         form.setData('contact_number', formatContactNumberInput(e.target.value));
                                         clearFieldErrors('contact_number');
