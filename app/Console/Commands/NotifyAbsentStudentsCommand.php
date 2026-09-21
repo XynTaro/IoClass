@@ -78,6 +78,7 @@ class NotifyAbsentStudentsCommand extends Command
             ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
             ->join('section as sec', 'sec.sect_id', '=', 'ss.sect_id')
             ->where('s.is_deleted', false)
+            ->where('s.status', 'active')
             ->where('sec.is_deleted', false)
             ->where('ss.sy_id', $activeSyId)
             ->when($sectionId, fn ($q) => $q->where('ss.sect_id', (int) $sectionId));
