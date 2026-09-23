@@ -65,7 +65,7 @@ class StudentRfidRegistrationNotifier
             $student->stu_lname,
         ])->filter()->join(' '));
 
-        $message = "IoClass: {$name} has been registered in the system with RFID card {$student->rfid_uid}.";
+        $message = "{$name} has been registered in the system with RFID card {$student->rfid_uid}.";
 
         if (filled($student->lrn)) {
             return "{$message} LRN: {$student->lrn}.";
