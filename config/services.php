@@ -35,10 +35,9 @@ return [
         ],
     ],
 
-    'unisms' => [
-        'key' => env('UNISMS_API_KEY'),
-        'sender_id' => env('UNISMS_SENDER_ID', 'UniSMS'),
-        'base_url' => env('UNISMS_BASE_URL', 'https://unismsapi.com/api'),
+    'iprogsms' => [
+        'token' => env('IPROGSMS_API_TOKEN'),
+        'base_url' => env('IPROGSMS_BASE_URL', 'https://www.iprogsms.com'),
     ],
 
 ];

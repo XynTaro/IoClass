@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Contracts\SmsSender;
+use App\Services\Sms\IprogSmsSender;
 use App\Services\Sms\LogSmsSender;
-use App\Services\Sms\UniSmsSender;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +20,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(SmsSender::class, function (): SmsSender {
-            if (filled(config('services.unisms.key'))) {
-                return $this->app->make(UniSmsSender::class);
+            if (filled(config('services.iprogsms.token'))) {
+                return $this->app->make(IprogSmsSender::class);
             }
 
             return $this->app->make(LogSmsSender::class);
