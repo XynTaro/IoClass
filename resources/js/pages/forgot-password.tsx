@@ -29,7 +29,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         <div className="relative">
                             <div className="absolute -inset-1 rounded-full bg-emerald-400/20 blur" />
                             <img
-                                src="/puro.jpg"
+                                src="/puro.png"
                                 alt="logo"
                                 className="relative h-14 w-14 rounded-full object-cover shadow-lg ring-2 ring-emerald-500/40"
                             />

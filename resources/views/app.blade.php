@@ -32,8 +32,8 @@
 
         <title inertia>{{ config('app.name', 'IOCLASS') }}</title>
 
-        <link rel="icon" href="/puro.jpg" type="image/jpeg">
-        <link rel="apple-touch-icon" href="/puro.jpg">
+        <link rel="icon" href="/puro.png" type="image/png">
+        <link rel="apple-touch-icon" href="/puro.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />

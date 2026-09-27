@@ -71,7 +71,7 @@ export default function Login({ status }: { status?: string }) {
                         <div className="relative w-fit">
                             <div className="absolute -inset-1.5 rounded-full bg-emerald-300/30 blur-sm" />
                             <img
-                                src="/puro.jpg"
+                                src="/puro.png"
                                 alt="Puro National High School logo"
                                 className="relative h-20 w-20 rounded-full border-2 border-emerald-300/40 object-cover shadow-xl"
                             />
@@ -118,7 +118,7 @@ export default function Login({ status }: { status?: string }) {
                     <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
                         <div className="flex items-center gap-2.5">
                             <img
-                                src="/puro.jpg"
+                                src="/puro.png"
                                 alt="logo"
                                 className="h-8 w-8 rounded-full object-cover ring-2 ring-emerald-500/30"
                             />
@@ -146,7 +146,7 @@ export default function Login({ status }: { status?: string }) {
                                     <div className="relative">
                                         <div className="absolute -inset-1 rounded-full bg-emerald-400/20 blur" />
                                         <img
-                                            src="/puro.jpg"
+                                            src="/puro.png"
                                             alt="logo"
                                             className="relative h-14 w-14 rounded-full object-cover shadow-lg ring-2 ring-emerald-500/40"
                                         />

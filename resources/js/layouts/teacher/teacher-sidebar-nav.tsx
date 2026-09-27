@@ -131,7 +131,7 @@ export function TeacherSidebarNav({ isCollapsed = false, onExpandSidebar }: Teac
                 )}
             >
                 <img
-                    src="/puro.jpg"
+                    src="/puro.png"
                     alt="Puro National High School"
                     className="size-10 rounded-full object-cover shadow-sm shrink-0"
                 />

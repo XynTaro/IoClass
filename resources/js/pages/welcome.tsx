@@ -162,7 +162,7 @@ export default function Welcome() {
                             <div className="relative flex items-center justify-center">
                                 <div className="absolute -inset-1 rounded-full bg-emerald-500/20 blur-sm dark:bg-emerald-400/30" />
                                 <img
-                                    src="/puro.jpg"
+                                    src="/puro.png"
                                     alt="Puro National High School Logo"
                                     className="relative h-10 w-10 rounded-full border-2 border-emerald-400 object-cover shadow-sm dark:border-emerald-500"
                                 />
@@ -738,7 +738,7 @@ export default function Welcome() {
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
                     <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
                         <img
-                            src="/puro.jpg"
+                            src="/puro.png"
                             alt="Logo"
                             className="mx-auto h-16 w-16 rounded-full border-2 border-white/40 object-cover shadow-xl"
                         />
@@ -770,7 +770,7 @@ export default function Welcome() {
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-center gap-3">
                                     <img
-                                        src="/puro.jpg"
+                                        src="/puro.png"
                                         alt="Logo"
                                         className="h-8 w-8 rounded-full border border-emerald-700 object-cover"
                                     />
