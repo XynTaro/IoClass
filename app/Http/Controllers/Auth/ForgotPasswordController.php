@@ -10,6 +10,7 @@ use App\Services\PasswordResetOtpService;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,36 +40,39 @@ class ForgotPasswordController extends Controller
         $email = $request->validated('email');
         $account = $this->passwordResetOtps->findAccountByEmail($email);
 
+        if ($account === null) {
+            throw ValidationException::withMessages([
+                'email' => __('Invalid email address.'),
+            ]);
+        }
+
+        if (empty($account['phone'])) {
+            throw ValidationException::withMessages([
+                'email' => __('This account does not have a contact number registered for SMS verification. Please contact the administrator.'),
+            ]);
+        }
+
         $request->session()->put(self::SESSION_EMAIL, $email);
         $request->session()->forget([self::SESSION_ACCOUNT, self::SESSION_VERIFIED_AT]);
 
-        // Always continue so callers cannot enumerate registered emails.
-        if ($account !== null) {
-            try {
-                $code = $this->passwordResetOtps->sendOtp($account);
-            } catch (\Throwable $exception) {
-                report($exception);
+        try {
+            $code = $this->passwordResetOtps->sendOtp($account);
+        } catch (\Throwable $exception) {
+            report($exception);
 
-                return back()->withErrors([
-                    'email' => __('We could not send a verification code right now. Please try again later.'),
-                ]);
-            }
-
-            $request->session()->put([
-                self::SESSION_PHONE => $account['phone'],
-                self::SESSION_MASKED_PHONE => PhoneNumber::mask($account['phone']),
+            return back()->withErrors([
+                'email' => __('We could not send a verification code right now. Please try again later.'),
             ]);
-
-            return redirect()
-                ->route('password.otp.show')
-                ->with('status', __('If that email is registered with a contact number, a verification code has been sent by SMS.'));
         }
 
-        $request->session()->forget([self::SESSION_PHONE, self::SESSION_MASKED_PHONE]);
+        $request->session()->put([
+            self::SESSION_PHONE => $account['phone'],
+            self::SESSION_MASKED_PHONE => PhoneNumber::mask($account['phone']),
+        ]);
 
         return redirect()
             ->route('password.otp.show')
-            ->with('status', __('If that email is registered with a contact number, a verification code has been sent by SMS.'));
+            ->with('status', __('A verification code has been sent by SMS to your contact number.'));
     }
 
     public function showVerify(Request $request): Response|RedirectResponse
@@ -118,30 +122,32 @@ class ForgotPasswordController extends Controller
 
         $account = $this->passwordResetOtps->findAccountByEmail($email);
 
-        if ($account !== null) {
-            try {
-                $code = $this->passwordResetOtps->sendOtp($account);
-            } catch (\Throwable $exception) {
-                report($exception);
-
-                return back()->withErrors([
-                    'code' => __('We could not resend a verification code right now. Please try again later.'),
-                ]);
-            }
-
-            $request->session()->put([
-                self::SESSION_PHONE => $account['phone'],
-                self::SESSION_MASKED_PHONE => PhoneNumber::mask($account['phone']),
-            ]);
-
+        if ($account === null || empty($account['phone'])) {
             return redirect()
-                ->route('password.otp.show')
-                ->with('status', __('If that email is registered with a contact number, a new verification code has been sent by SMS.'));
+                ->route('password.request')
+                ->withErrors([
+                    'email' => __('Invalid email address.'),
+                ]);
         }
+
+        try {
+            $code = $this->passwordResetOtps->sendOtp($account);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->withErrors([
+                'code' => __('We could not resend a verification code right now. Please try again later.'),
+            ]);
+        }
+
+        $request->session()->put([
+            self::SESSION_PHONE => $account['phone'],
+            self::SESSION_MASKED_PHONE => PhoneNumber::mask($account['phone']),
+        ]);
 
         return redirect()
             ->route('password.otp.show')
-            ->with('status', __('If that email is registered with a contact number, a new verification code has been sent by SMS.'));
+            ->with('status', __('A new verification code has been sent by SMS to your contact number.'));
     }
 
     public function showReset(Request $request): Response|RedirectResponse

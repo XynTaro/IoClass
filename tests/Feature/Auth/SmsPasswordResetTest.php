@@ -37,17 +37,16 @@ test('otp is sent to the contact number linked to an admin email', function () {
         ->and($this->sms->lastCode())->toHaveLength(6);
 });
 
-test('unknown emails still redirect without revealing account existence', function () {
+test('unknown emails are rejected with validation error', function () {
     $this->post(route('password.otp.send'), [
         'email' => 'missing@test.com',
     ])
-        ->assertRedirect(route('password.otp.show'))
-        ->assertSessionHas('status');
+        ->assertSessionHasErrors('email');
 
     expect($this->sms->messages)->toBeEmpty();
 });
 
-test('emails without a contact number do not send an otp', function () {
+test('emails without a contact number are rejected with validation error', function () {
     $admin = Admin::factory()->create([
         'email' => 'nocontact@test.com',
         'contact_number' => null,
@@ -56,8 +55,7 @@ test('emails without a contact number do not send an otp', function () {
     $this->post(route('password.otp.send'), [
         'email' => $admin->email,
     ])
-        ->assertRedirect(route('password.otp.show'))
-        ->assertSessionHas('status');
+        ->assertSessionHasErrors('email');
 
     expect($this->sms->messages)->toBeEmpty();
 });

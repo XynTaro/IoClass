@@ -27,10 +27,10 @@ class PasswordResetOtpService
     public function __construct(private SmsSender $sms) {}
 
     /**
-     * Find an admin or teacher by login email, then use their stored contact number for SMS.
-     * Admins are checked first. Returns null when the email is unknown or has no contact number.
+     * Find an admin or teacher by login email, then resolve their stored contact number for SMS.
+     * Admins are checked first. Returns null when the email is not registered in the system.
      *
-     * @return array{type: string, id: int, phone: string, email: string}|null
+     * @return array{type: string, id: int, phone: ?string, email: string}|null
      */
     public function findAccountByEmail(string $email): ?array
     {
@@ -50,14 +50,10 @@ class PasswordResetOtpService
         if ($admin !== null) {
             $phone = PhoneNumber::normalize((string) ($admin->contact_number ?? ''));
 
-            if ($phone === '') {
-                return null;
-            }
-
             return [
                 'type' => self::ACCOUNT_ADMIN,
                 'id' => (int) $admin->admin_id,
-                'phone' => $phone,
+                'phone' => $phone !== '' ? $phone : null,
                 'email' => (string) $admin->email,
             ];
         }
@@ -72,14 +68,10 @@ class PasswordResetOtpService
         if ($teacher !== null) {
             $phone = PhoneNumber::normalize((string) ($teacher->contact_number ?? ''));
 
-            if ($phone === '') {
-                return null;
-            }
-
             return [
                 'type' => self::ACCOUNT_TEACHER,
                 'id' => (int) $teacher->tch_id,
-                'phone' => $phone,
+                'phone' => $phone !== '' ? $phone : null,
                 'email' => (string) $teacher->tch_email,
             ];
         }
