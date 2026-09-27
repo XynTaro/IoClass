@@ -13,8 +13,6 @@ test('unauthenticated users cannot upload avatar', function () {
 });
 
 test('administrator can upload profile avatar', function () {
-    Storage::fake('public');
-
     $admin = Admin::factory()->create();
 
     $response = $this->actingAs($admin, 'admin')
@@ -25,13 +23,11 @@ test('administrator can upload profile avatar', function () {
     $response->assertRedirect();
     $admin->refresh();
 
-    expect($admin->avatar)->not->toBeNull();
-    Storage::disk('public')->assertExists($admin->avatar);
+    expect($admin->avatar)->not->toBeNull()
+        ->and($admin->avatar)->toStartWith('data:image/');
 });
 
 test('avatar must be an image and within size limits', function () {
-    Storage::fake('public');
-
     $admin = Admin::factory()->create();
 
     // Test non-image file
@@ -51,31 +47,22 @@ test('avatar must be an image and within size limits', function () {
     $response->assertSessionHasErrors('avatar');
 });
 
-test('uploading new avatar deletes the old one', function () {
+test('uploading new avatar updates to new data uri and removes old disk file if present', function () {
     Storage::fake('public');
+    Storage::disk('public')->put('avatars/old_avatar.jpg', 'bytes');
 
-    $admin = Admin::factory()->create();
+    $admin = Admin::factory()->create([
+        'avatar' => 'avatars/old_avatar.jpg',
+    ]);
 
-    // Upload first avatar
-    $this->actingAs($admin, 'admin')
-        ->post('/admin/profile/avatar', [
-            'avatar' => UploadedFile::fake()->image('avatar1.jpg'),
-        ]);
-
-    $admin->refresh();
-    $firstAvatarPath = $admin->avatar;
-    Storage::disk('public')->assertExists($firstAvatarPath);
-
-    // Upload second avatar
+    // Upload new avatar
     $this->actingAs($admin, 'admin')
         ->post('/admin/profile/avatar', [
             'avatar' => UploadedFile::fake()->image('avatar2.jpg'),
         ]);
 
     $admin->refresh();
-    $secondAvatarPath = $admin->avatar;
 
-    expect($secondAvatarPath)->not->toBe($firstAvatarPath);
-    Storage::disk('public')->assertMissing($firstAvatarPath);
-    Storage::disk('public')->assertExists($secondAvatarPath);
+    expect($admin->avatar)->toStartWith('data:image/');
+    Storage::disk('public')->assertMissing('avatars/old_avatar.jpg');
 });

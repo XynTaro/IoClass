@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditTrail;
 use App\Models\Teacher;
 use App\Models\TeacherAttendance;
+use App\Services\AvatarService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -91,9 +92,7 @@ class AdminTeacherAttendanceController extends Controller
             $row->time_in_formatted = $row->time_in
                 ? Carbon::parse($row->time_in)->format('h:i A')
                 : null;
-            $row->avatar = $row->avatar
-                ? '/storage/'.$row->avatar
-                : null;
+            $row->avatar = app(AvatarService::class)->url($row->avatar);
 
             return $row;
         });

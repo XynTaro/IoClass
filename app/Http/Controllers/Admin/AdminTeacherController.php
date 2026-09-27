@@ -10,6 +10,7 @@ use App\Models\Section;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Rules\UniqueRfidUid;
+use App\Services\AvatarService;
 use App\Services\ClassScheduleService;
 use App\Support\RfidRegistryCache;
 use App\Support\RfidUid;
@@ -47,6 +48,12 @@ class AdminTeacherController extends Controller
             ->when($archived, fn ($q) => $q->where('is_deleted', true), fn ($q) => $q->where('is_deleted', false))
             ->orderBy('tch_id', 'desc')
             ->paginate(8);
+
+        $teachers->through(function ($teacher) {
+            $teacher->avatar = app(AvatarService::class)->url($teacher->avatar);
+
+            return $teacher;
+        });
 
         $sections = Section::where('is_deleted', false)
             ->orderBy('gr_level')

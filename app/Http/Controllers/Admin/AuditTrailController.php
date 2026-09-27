@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AuditTrail;
 use App\Models\Teacher;
+use App\Services\AvatarService;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
@@ -56,7 +57,7 @@ class AuditTrailController extends Controller
                     $avatar = $adminAvatars[$log->actor_id] ?? null;
                 }
             }
-            $log->actor_avatar = $avatar ? '/storage/'.$avatar : null;
+            $log->actor_avatar = app(AvatarService::class)->url($avatar);
 
             return $log;
         });

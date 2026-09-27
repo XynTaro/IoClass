@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Services\AvatarService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -71,7 +72,7 @@ class AdminProfileController extends Controller
         return back()->with('success', 'Your security password has been updated successfully.');
     }
 
-    public function updateAvatar(Request $request): RedirectResponse
+    public function updateAvatar(Request $request, AvatarService $avatarService): RedirectResponse
     {
         /** @var Admin $admin */
         $admin = auth()->guard('admin')->user();
@@ -81,11 +82,13 @@ class AdminProfileController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            if ($admin->avatar) {
-                Storage::disk('public')->delete($admin->avatar);
+            $rawAvatar = $admin->getRawOriginal('avatar');
+            if ($rawAvatar && ! str_starts_with($rawAvatar, 'data:')) {
+                Storage::disk('public')->delete($rawAvatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $admin->update(['avatar' => $path]);
+
+            $dataUri = $avatarService->toDataUri($request->file('avatar'));
+            $admin->update(['avatar' => $dataUri]);
         }
 
         return back()->with('success', 'Your profile picture has been updated successfully.');

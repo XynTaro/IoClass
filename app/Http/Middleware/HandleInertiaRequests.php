@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\AvatarService;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -92,7 +93,7 @@ class HandleInertiaRequests extends Middleware
                 'role' => 'admin',
                 'fname' => $user->fname ?? null,
                 'lname' => $user->lname ?? null,
-                'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
+                'avatar' => app(AvatarService::class)->url($user->getRawOriginal('avatar') ?? $user->avatar),
             ];
         }
 
@@ -111,7 +112,7 @@ class HandleInertiaRequests extends Middleware
                 'fname' => $user->tch_fname ?? null,
                 'lname' => $user->tch_lname ?? null,
                 'must_change_password' => (bool) ($user->must_change_password ?? false),
-                'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
+                'avatar' => app(AvatarService::class)->url($user->getRawOriginal('avatar') ?? $user->avatar),
             ];
         }
 

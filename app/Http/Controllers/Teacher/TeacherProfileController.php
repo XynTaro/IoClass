@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Teacher;
 use App\Http\Controllers\Controller;
 use App\Models\AuditTrail;
 use App\Models\Teacher;
+use App\Services\AvatarService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -80,7 +81,7 @@ class TeacherProfileController extends Controller
         return back()->with('success', 'Your security password has been updated successfully.');
     }
 
-    public function updateAvatar(Request $request): RedirectResponse
+    public function updateAvatar(Request $request, AvatarService $avatarService): RedirectResponse
     {
         /** @var Teacher $teacher */
         $teacher = Auth::guard('teacher')->user();
@@ -90,11 +91,13 @@ class TeacherProfileController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            if ($teacher->avatar) {
-                Storage::disk('public')->delete($teacher->avatar);
+            $rawAvatar = $teacher->getRawOriginal('avatar');
+            if ($rawAvatar && ! str_starts_with($rawAvatar, 'data:')) {
+                Storage::disk('public')->delete($rawAvatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $teacher->update(['avatar' => $path]);
+
+            $dataUri = $avatarService->toDataUri($request->file('avatar'));
+            $teacher->update(['avatar' => $dataUri]);
         }
 
         AuditTrail::record($teacher, 'avatar.update', 'Updated own profile picture');

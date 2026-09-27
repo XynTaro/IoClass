@@ -13,8 +13,6 @@ test('unauthenticated teachers cannot upload avatar', function () {
 });
 
 test('teacher can upload profile avatar', function () {
-    Storage::fake('public');
-
     $teacher = Teacher::create([
         'tch_fname' => 'Dana',
         'tch_lname' => 'Cruz',
@@ -32,13 +30,11 @@ test('teacher can upload profile avatar', function () {
     $response->assertRedirect();
     $teacher->refresh();
 
-    expect($teacher->avatar)->not->toBeNull();
-    Storage::disk('public')->assertExists($teacher->avatar);
+    expect($teacher->avatar)->not->toBeNull()
+        ->and($teacher->avatar)->toStartWith('data:image/');
 });
 
 test('teacher avatar must be an image and within size limits', function () {
-    Storage::fake('public');
-
     $teacher = Teacher::create([
         'tch_fname' => 'Dana',
         'tch_lname' => 'Cruz',
@@ -65,8 +61,9 @@ test('teacher avatar must be an image and within size limits', function () {
     $response->assertSessionHasErrors('avatar');
 });
 
-test('uploading new teacher avatar deletes the old one', function () {
+test('uploading new teacher avatar updates data uri and removes old disk file if present', function () {
     Storage::fake('public');
+    Storage::disk('public')->put('avatars/old_tch_avatar.jpg', 'bytes');
 
     $teacher = Teacher::create([
         'tch_fname' => 'Dana',
@@ -75,28 +72,17 @@ test('uploading new teacher avatar deletes the old one', function () {
         'tch_pw' => 'password123',
         'is_deleted' => false,
         'must_change_password' => false,
+        'avatar' => 'avatars/old_tch_avatar.jpg',
     ]);
 
-    // Upload first avatar
-    $this->actingAs($teacher, 'teacher')
-        ->post('/teacher/profile/avatar', [
-            'avatar' => UploadedFile::fake()->image('avatar1.jpg'),
-        ]);
-
-    $teacher->refresh();
-    $firstAvatarPath = $teacher->avatar;
-    Storage::disk('public')->assertExists($firstAvatarPath);
-
-    // Upload second avatar
+    // Upload new avatar
     $this->actingAs($teacher, 'teacher')
         ->post('/teacher/profile/avatar', [
             'avatar' => UploadedFile::fake()->image('avatar2.jpg'),
         ]);
 
     $teacher->refresh();
-    $secondAvatarPath = $teacher->avatar;
 
-    expect($secondAvatarPath)->not->toBe($firstAvatarPath);
-    Storage::disk('public')->assertMissing($firstAvatarPath);
-    Storage::disk('public')->assertExists($secondAvatarPath);
+    expect($teacher->avatar)->toStartWith('data:image/');
+    Storage::disk('public')->assertMissing('avatars/old_tch_avatar.jpg');
 });

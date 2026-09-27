@@ -6,6 +6,7 @@ use App\Contracts\SmsSender;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Admin;
+use App\Services\AvatarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,12 @@ class AdminAdminController extends Controller
             ->when($archived, fn ($q) => $q->where('is_deleted', true), fn ($q) => $q->where('is_deleted', false))
             ->orderBy('admin_id', 'desc')
             ->paginate(8);
+
+        $admins->through(function ($admin) {
+            $admin->avatar = app(AvatarService::class)->url($admin->avatar);
+
+            return $admin;
+        });
 
         return inertia('Admin/Admin/index', [
             'admins' => $admins,
