@@ -49,7 +49,6 @@ router.on('exception', (event) => {
         triggerConnectionError({
             message:
                 'Unable to connect to the server. Please check your internet connection.',
-            onRetry: () => router.reload(),
         });
     }
 });
@@ -62,7 +61,6 @@ router.on('invalid', (event) => {
         triggerConnectionError({
             message:
                 'Connection was interrupted. Please check your internet connection.',
-            onRetry: () => router.reload(),
         });
     }
 });

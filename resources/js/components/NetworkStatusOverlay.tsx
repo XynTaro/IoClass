@@ -75,8 +75,6 @@ export function NetworkStatusOverlay() {
             if (retryCallback) {
                 retryCallback();
                 setRetryCallback(null);
-            } else {
-                router.reload();
             }
             setModalOpen(false);
             setCustomMessage(null);

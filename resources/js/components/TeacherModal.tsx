@@ -11,6 +11,7 @@ import {
     MapPin,
     RefreshCw,
     UserRound,
+    WifiOff,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
@@ -32,6 +33,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useWirelessRfidCapture } from '@/hooks/use-wireless-rfid-capture';
 import { normalizeRfidUid } from '@/lib/rfid';
 import { cn, formatContactNumberInput, formatEmailInput, formatNameInput } from '@/lib/utils';
@@ -113,6 +115,7 @@ export default function TeacherModal({
     const [copied, setCopied] = useState<'pw' | 'confirm' | null>(null);
 
     // Wizard state (create mode only)
+    const { isOnline } = useOnlineStatus();
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [pendingTeacherData, setPendingTeacherData] = useState<PendingTeacherData | null>(null);
     const [pendingAddressData, setPendingAddressData] = useState<AddressFormData | null>(null);
@@ -120,6 +123,9 @@ export default function TeacherModal({
     const [rfidUidConflict, setRfidUidConflict] = useState(false);
     const [masterCardConflict, setMasterCardConflict] = useState(false);
     const [scanTarget, setScanTarget] = useState<'rfid' | 'master'>('rfid');
+    const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
+    const TEACHER_DRAFT_KEY = 'ioclass_draft_teacher_create';
 
     const isStep1Active = open && (mode === 'edit' || step === 1);
 
@@ -254,8 +260,80 @@ export default function TeacherModal({
             setRfidUidConflict(false);
             setMasterCardConflict(false);
             setScanTarget('rfid');
+            setHasRestoredDraft(false);
         }
     }, [open]);
+
+    // Restore draft if available in create mode
+    useEffect(() => {
+        if (open && mode === 'create') {
+            try {
+                const saved = sessionStorage.getItem(TEACHER_DRAFT_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.formData) {
+                        form.setData({
+                            ...parsed.formData,
+                        });
+                        if (parsed.pendingTeacherData) {
+                            setPendingTeacherData(parsed.pendingTeacherData);
+                        }
+                        if (parsed.pendingAddressData) {
+                            setPendingAddressData(parsed.pendingAddressData);
+                        }
+                        if (parsed.step) {
+                            setStep(parsed.step);
+                        }
+                        setHasRestoredDraft(true);
+                    }
+                }
+            } catch {
+                // ignore storage read error
+            }
+        }
+    }, [open, mode]);
+
+    // Auto-save draft in create mode
+    useEffect(() => {
+        if (!open || mode !== 'create') return;
+
+        const hasContent =
+            Boolean(form.data.tch_fname.trim()) ||
+            Boolean(form.data.tch_lname.trim()) ||
+            Boolean(form.data.tch_email.trim()) ||
+            Boolean(form.data.contact_number.trim()) ||
+            Boolean(form.data.tch_rfid_uid.trim()) ||
+            Boolean(pendingTeacherData) ||
+            Boolean(pendingAddressData);
+
+        if (hasContent) {
+            sessionStorage.setItem(
+                TEACHER_DRAFT_KEY,
+                JSON.stringify({
+                    formData: form.data,
+                    pendingTeacherData,
+                    pendingAddressData,
+                    step,
+                }),
+            );
+        }
+    }, [open, mode, form.data, pendingTeacherData, pendingAddressData, step]);
+
+    const handleClearDraft = () => {
+        sessionStorage.removeItem(TEACHER_DRAFT_KEY);
+        form.reset();
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setStep(1);
+        setPendingTeacherData(null);
+        setPendingAddressData(null);
+        setLocalErrors({});
+        setClearedPageErrors({});
+        setRfidUidConflict(false);
+        setMasterCardConflict(false);
+        setScanTarget('rfid');
+        setHasRestoredDraft(false);
+    };
 
     const validateStep1 = (): boolean => {
         const errors: Partial<Record<keyof TeacherFormData, string>> = {};
@@ -311,6 +389,13 @@ export default function TeacherModal({
         const teacherId = form.data.tch_id;
         if (!teacherId) return;
 
+        if (!isOnline) {
+            setLocalErrors({
+                tch_fname: 'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
+            });
+            return;
+        }
+
         if (!validateStep1()) {
             return;
         }
@@ -328,6 +413,8 @@ export default function TeacherModal({
         }
 
         form.put(route('admin.teacher.update', { teacher: teacherId }), {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
                 onSuccess?.();
                 onClose();
@@ -370,6 +457,29 @@ export default function TeacherModal({
 
                     {mode === 'create' && (
                         <ModalStepIndicator steps={CREATE_STEPS} current={1} />
+                    )}
+
+                    {!isOnline && (
+                        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                            <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                        </div>
+                    )}
+
+                    {mode === 'create' && hasRestoredDraft && (
+                        <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                            <span className="flex items-center gap-1.5">
+                                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                Restored unsaved draft from your previous session.
+                            </span>
+                            <button
+                                type="button"
+                                onClick={handleClearDraft}
+                                className="font-medium underline hover:text-emerald-950 dark:hover:text-emerald-100 cursor-pointer"
+                            >
+                                Clear draft
+                            </button>
+                        </div>
                     )}
 
                     <form
@@ -892,6 +1002,7 @@ export default function TeacherModal({
                     setPendingAddressData(null);
                 }}
                 onSuccess={() => {
+                    sessionStorage.removeItem(TEACHER_DRAFT_KEY);
                     onSuccess?.();
                     onClose();
                     setStep(1);

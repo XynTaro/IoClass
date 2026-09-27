@@ -474,11 +474,19 @@ export default function AddressModal({
             return;
         }
 
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            form.setError('perm_region', 'No internet connection. Your entered data has been kept safe. Please check your connection and try again.');
+            return;
+        }
+
         if (teacherData) {
             // Wizard mode — save teacher + address in one atomic request
             form.transform((data) => ({ ...teacherData, ...data }));
             form.post(route('admin.teacher.storeWithAddress'), {
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => {
+                    sessionStorage.removeItem('ioclass_draft_teacher_create');
                     onSuccess?.();
                     onClose();
                 },
@@ -488,6 +496,8 @@ export default function AddressModal({
             // Wizard mode — save admin + address in one atomic request
             form.transform((data) => ({ ...adminData, ...data }));
             form.post(route('admin.admin.storeWithAddress'), {
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => {
                     onSuccess?.();
                     onClose();
@@ -497,6 +507,8 @@ export default function AddressModal({
         } else {
             // Standalone address creation
             form.post(route('admin.address.store'), {
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => {
                     onSuccess?.();
                     onClose();

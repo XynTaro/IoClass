@@ -1,9 +1,10 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { CalendarDays, Check, ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, Plus, Trash2, WifiOff } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import type { AddressFormData, PendingTeacherData } from '@/components/Address';
 import { ModalAccentBar, ModalHeader } from '@/components/modal-header';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -512,6 +513,7 @@ export default function ScheduleModal({
         }
     }, [schedule, mode, open]);
 
+    const { isOnline } = useOnlineStatus();
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -581,11 +583,20 @@ export default function ScheduleModal({
             return;
         }
 
+        if (!isOnline) {
+            setClientErrors({
+                general: 'No internet connection. Your entered teacher details are safe in this form. Please reconnect to the internet and click Skip again.',
+            });
+            setIsSkipping(false);
+            return;
+        }
+
         setIsSkipping(true);
         router.post(route('admin.teacher.storeWithAddress'), teacherData as unknown as Record<string, string>, {
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
+                sessionStorage.removeItem('ioclass_draft_teacher_create');
                 onSuccess?.();
                 onClose();
             },
@@ -600,6 +611,13 @@ export default function ScheduleModal({
         e.preventDefault();
 
         if (teacherData) {
+            if (!isOnline) {
+                setClientErrors({
+                    general: 'No internet connection. Your entered teacher and schedule details are safe in this form. Please reconnect to the internet and click Save again.',
+                });
+                return;
+            }
+
             const activeSlots = slots.filter((s) => !isSlotEmpty(s));
 
             // If user touched or partially filled slots, validate each active slot
@@ -636,6 +654,7 @@ export default function ScheduleModal({
                 preserveState: true,
                 preserveScroll: true,
                 onSuccess: () => {
+                    sessionStorage.removeItem('ioclass_draft_teacher_create');
                     onSuccess?.();
                     onClose();
                 },
@@ -717,6 +736,13 @@ export default function ScheduleModal({
                     }
                 />
 
+                {!isOnline && (
+                    <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                        <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="max-h-[68vh] space-y-5 overflow-y-auto pr-1">
                     {Object.entries(errors)
                         .filter(([key]) => !key.startsWith('schedules.') && key !== 'adviser_sect_id')
@@ -727,7 +753,9 @@ export default function ScheduleModal({
                                 role="alert"
                             >
                                 <div>
-                                    <strong className="capitalize">{key.replace(/^tch_/, '').replace(/_/g, ' ')}:</strong>{' '}
+                                    {key !== 'general' && (
+                                        <strong className="capitalize">{key.replace(/^tch_/, '').replace(/_/g, ' ')}: </strong>
+                                    )}
                                     <span>{msg}</span>
                                 </div>
                                 {onBack && (

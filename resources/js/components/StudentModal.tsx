@@ -14,6 +14,7 @@ import {
     User,
     UserRound,
     UsersRound,
+    WifiOff,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { route } from 'ziggy-js';
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 import {
     cn,
     formatContactNumberInput,
@@ -503,13 +505,17 @@ export default function StudentModal({
     mode,
     sections = [],
 }: StudentModalProps) {
+    const { isOnline } = useOnlineStatus();
     const form = useForm<StudentFormData>(emptyForm);
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [localErrors, setLocalErrors] = useState<LocalErrors>({});
     const [rfidRegistryConflict, setRfidRegistryConflict] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const STUDENT_DRAFT_KEY = 'ioclass_draft_student_create';
 
     // ---- Address state (step 2) ----
     const permCascade = useCascade();
@@ -587,8 +593,96 @@ export default function StudentModal({
             setSameAsPermanent(true);
             setRfidRegistryConflict(false);
             setSubmitError(null);
+            setHasRestoredDraft(false);
         }
     }, [open]);
+
+    // Restore draft if available in create mode
+    useEffect(() => {
+        if (open && mode === 'create') {
+            try {
+                const saved = sessionStorage.getItem(STUDENT_DRAFT_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.data) {
+                        form.setData({
+                            ...emptyForm,
+                            ...parsed.data,
+                            photo: null,
+                        });
+                        if (parsed.permAddress) setPermAddress(parsed.permAddress);
+                        if (parsed.currAddress) setCurrAddress(parsed.currAddress);
+                        if (typeof parsed.sameAsPermanent === 'boolean') {
+                            setSameAsPermanent(parsed.sameAsPermanent);
+                        }
+                        if (parsed.step) setStep(parsed.step);
+                        setHasRestoredDraft(true);
+                    }
+                }
+            } catch {
+                // ignore storage error
+            }
+        }
+    }, [open, mode]);
+
+    // Auto-save draft in create mode
+    useEffect(() => {
+        if (!open || mode !== 'create') return;
+
+        const hasContent =
+            Boolean(form.data.lrn.trim()) ||
+            Boolean(form.data.stu_fname.trim()) ||
+            Boolean(form.data.stu_lname.trim()) ||
+            Boolean(form.data.rfid_uid.trim()) ||
+            Boolean(form.data.gr_level.trim()) ||
+            Boolean(permAddress.region) ||
+            Boolean(form.data.father_name.trim()) ||
+            Boolean(form.data.mother_name.trim()) ||
+            Boolean(form.data.guardian_name.trim());
+
+        if (hasContent) {
+            const { photo, ...dataWithoutPhoto } = form.data;
+            sessionStorage.setItem(
+                STUDENT_DRAFT_KEY,
+                JSON.stringify({
+                    data: dataWithoutPhoto,
+                    permAddress,
+                    currAddress,
+                    sameAsPermanent,
+                    step,
+                }),
+            );
+        }
+    }, [open, mode, form.data, permAddress, currAddress, sameAsPermanent, step]);
+
+    const handleClearDraft = () => {
+        sessionStorage.removeItem(STUDENT_DRAFT_KEY);
+        form.reset();
+        setStep(1);
+        setLocalErrors({});
+        setPhotoPreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+        permCascade.reset();
+        currCascade.reset();
+        setPermAddress({
+            region: '',
+            province: '',
+            municipality: '',
+            barangay: '',
+        });
+        setCurrAddress({
+            region: '',
+            province: '',
+            municipality: '',
+            barangay: '',
+        });
+        setSameAsPermanent(true);
+        setRfidRegistryConflict(false);
+        setSubmitError(null);
+        setHasRestoredDraft(false);
+    };
 
     const setField = (key: keyof StudentFormData, val: string) => {
         form.setData(key, val as never);
@@ -667,6 +761,12 @@ export default function StudentModal({
             });
             return;
         }
+
+        if (!isOnline) {
+            setSubmitError('Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.');
+            return;
+        }
+
         setSubmitError(null);
 
         // Submit via POST with method spoofing for file uploads
@@ -676,6 +776,8 @@ export default function StudentModal({
         }));
         form.post(route('admin.student.update', { id: form.data.stu_id }), {
             forceFormData: true,
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
                 onSuccess?.();
                 onClose();
@@ -696,6 +798,11 @@ export default function StudentModal({
                     'This RFID card is already registered to another person.',
             });
             setStep(1);
+            return;
+        }
+
+        if (!isOnline) {
+            setSubmitError('Cannot add student while offline. Your entered data has been preserved. Please check your internet connection and try again.');
             return;
         }
 
@@ -728,7 +835,10 @@ export default function StudentModal({
         setSubmitError(null);
         form.post(route('admin.student.store'), {
             forceFormData: true,
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
+                sessionStorage.removeItem(STUDENT_DRAFT_KEY);
                 onSuccess?.();
                 onClose();
             },
@@ -793,6 +903,29 @@ export default function StudentModal({
                                 </div>
                             </div>
                         </DialogHeader>
+
+                        {!isOnline && (
+                            <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                                <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                            </div>
+                        )}
+
+                        {mode === 'create' && hasRestoredDraft && (
+                            <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                <span className="flex items-center gap-1.5">
+                                    <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    Restored unsaved draft from your previous session.
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleClearDraft}
+                                    className="font-medium underline hover:text-emerald-950 dark:hover:text-emerald-100 cursor-pointer"
+                                >
+                                    Clear draft
+                                </button>
+                            </div>
+                        )}
 
                         {mode === 'create' && <StepIndicator current={1} />}
 
@@ -1214,6 +1347,13 @@ export default function StudentModal({
                             </div>
                         </DialogHeader>
 
+                        {!isOnline && (
+                            <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                                <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                            </div>
+                        )}
+
                         <StepIndicator current={2} />
 
                         <div className="max-h-[68vh] space-y-5 overflow-y-auto pr-1">
@@ -1377,6 +1517,13 @@ export default function StudentModal({
                                 </div>
                             </div>
                         </DialogHeader>
+
+                        {!isOnline && (
+                            <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                                <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                            </div>
+                        )}
 
                         <StepIndicator current={3} />
 
