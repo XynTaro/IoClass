@@ -59,15 +59,9 @@ class ForgotPasswordController extends Controller
                 self::SESSION_MASKED_PHONE => PhoneNumber::mask($account['phone']),
             ]);
 
-            $redirect = redirect()
+            return redirect()
                 ->route('password.otp.show')
                 ->with('status', __('If that email is registered with a contact number, a verification code has been sent by SMS.'));
-
-            if ($this->shouldExposeDebugOtp()) {
-                $redirect->with('debug_otp', $code);
-            }
-
-            return $redirect;
         }
 
         $request->session()->forget([self::SESSION_PHONE, self::SESSION_MASKED_PHONE]);
@@ -86,9 +80,6 @@ class ForgotPasswordController extends Controller
         return Inertia::render('forgot-password-verify', [
             'maskedPhone' => $request->session()->get(self::SESSION_MASKED_PHONE),
             'status' => session('status'),
-            'debugOtp' => $this->shouldExposeDebugOtp()
-                ? session('debug_otp')
-                : null,
         ]);
     }
 
@@ -113,7 +104,6 @@ class ForgotPasswordController extends Controller
             ],
             self::SESSION_VERIFIED_AT => now()->timestamp,
         ]);
-        $request->session()->forget('debug_otp');
 
         return redirect()->route('password.reset.show');
     }
@@ -144,15 +134,9 @@ class ForgotPasswordController extends Controller
                 self::SESSION_MASKED_PHONE => PhoneNumber::mask($account['phone']),
             ]);
 
-            $redirect = redirect()
+            return redirect()
                 ->route('password.otp.show')
                 ->with('status', __('If that email is registered with a contact number, a new verification code has been sent by SMS.'));
-
-            if ($this->shouldExposeDebugOtp()) {
-                $redirect->with('debug_otp', $code);
-            }
-
-            return $redirect;
         }
 
         return redirect()
@@ -188,7 +172,6 @@ class ForgotPasswordController extends Controller
             self::SESSION_MASKED_PHONE,
             self::SESSION_ACCOUNT,
             self::SESSION_VERIFIED_AT,
-            'debug_otp',
         ]);
 
         return redirect()
@@ -206,13 +189,5 @@ class ForgotPasswordController extends Controller
         }
 
         return now()->timestamp - $verifiedAt <= 900;
-    }
-
-    /**
-     * Only expose OTPs on-screen when SMS is stubbed (no UniSMS key) or in tests.
-     */
-    private function shouldExposeDebugOtp(): bool
-    {
-        return app()->runningUnitTests() || blank(config('services.unisms.key'));
     }
 }

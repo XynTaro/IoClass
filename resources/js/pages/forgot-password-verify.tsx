@@ -16,11 +16,9 @@ import { Label } from '@/components/ui/label';
 export default function ForgotPasswordVerify({
     maskedPhone,
     status,
-    debugOtp,
 }: {
     maskedPhone?: string;
     status?: string;
-    debugOtp?: string | null;
 }) {
     const { data, setData, post, processing, errors, clearErrors } = useForm({
         code: '',
@@ -65,12 +63,6 @@ export default function ForgotPasswordVerify({
                     {status && (
                         <p className="mb-4 text-center text-sm font-medium text-emerald-600">
                             {status}
-                        </p>
-                    )}
-
-                    {debugOtp && (
-                        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                            Local/dev code: <strong>{debugOtp}</strong>
                         </p>
                     )}
 
