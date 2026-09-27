@@ -61,7 +61,7 @@ export default function Login({ status }: { status?: string }) {
                             className="gap-1.5 text-emerald-200/80 hover:bg-white/10 hover:text-white"
                             asChild
                         >
-                            <Link href={home.url()}>← Home</Link>
+                            <Link href={home.url({ query: { landing: 1 } })}>← Home</Link>
                         </Button>
                     </div>
 
@@ -127,7 +127,7 @@ export default function Login({ status }: { status?: string }) {
                             </span>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href={home.url()}>← Home</Link>
+                            <Link href={home.url({ query: { landing: 1 } })}>← Home</Link>
                         </Button>
                     </div>
 

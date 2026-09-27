@@ -306,7 +306,7 @@ test('audit logs include actor avatar path', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Admin/Audit trail/Index')
             ->has('logs.data', 2)
-            ->where('logs.data.0.actor_avatar', asset('storage/avatars/teacher_avatar.png'))
-            ->where('logs.data.1.actor_avatar', asset('storage/avatars/admin_avatar.png'))
+            ->where('logs.data.0.actor_avatar', '/storage/avatars/teacher_avatar.png')
+            ->where('logs.data.1.actor_avatar', '/storage/avatars/admin_avatar.png')
         );
 });

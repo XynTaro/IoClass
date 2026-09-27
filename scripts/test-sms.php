@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Sms\IprogSmsSender;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Http;
 
@@ -11,28 +12,22 @@ $app->make(Kernel::class)->bootstrap();
 $apiToken = config('services.iprogsms.token');
 $baseUrl = config('services.iprogsms.base_url');
 
-// Check SMS credit balance
-echo "=== Checking SMS Credits ===\n";
-$creditResponse = Http::get("{$baseUrl}/api/v1/account/sms_credits", [
-    'api_token' => $apiToken,
-]);
-echo 'Status: '.$creditResponse->status()."\n";
-echo 'Response: '.$creditResponse->body()."\n\n";
+// Check credits first
+$creditResponse = Http::get("{$baseUrl}/api/v1/account/sms_credits", ['api_token' => $apiToken]);
+$balance = $creditResponse->json('data.load_balance');
+echo "Credits remaining: {$balance}\n\n";
 
-// Check delivery status of last message
-echo "=== Checking Delivery Status (iSms-07tHCs) ===\n";
-$statusResponse = Http::get("{$baseUrl}/api/v1/sms_messages/status", [
-    'api_token' => $apiToken,
-    'message_id' => 'iSms-07tHCs',
-]);
-echo 'Status: '.$statusResponse->status()."\n";
-echo 'Response: '.$statusResponse->body()."\n\n";
+if ((float) $balance < 1) {
+    echo "ERROR: Insufficient credits. Please top up at iprogsms.com\n";
+    exit(1);
+}
 
-// Check recent SMS activity
-echo "=== Recent SMS Activity ===\n";
-$recentResponse = Http::get("{$baseUrl}/api/v1/account/recent_sms", [
-    'api_token' => $apiToken,
-    'limit' => 5,
-]);
-echo 'Status: '.$recentResponse->status()."\n";
-echo 'Response: '.$recentResponse->body()."\n";
+// Send the teacher credential SMS (fixed message — no 'IoClass: ' prefix)
+try {
+    $sender = app(IprogSmsSender::class);
+    $sender->send('09345730859', 'Your teacher account login code is TestPass12, please log in and change your password.');
+    echo "SUCCESS: SMS sent to 09345730859\n";
+} catch (Throwable $e) {
+    echo 'ERROR: '.$e->getMessage()."\n";
+    echo get_class($e)."\n";
+}

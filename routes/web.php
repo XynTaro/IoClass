@@ -29,12 +29,29 @@ use App\Http\Controllers\Teacher\TeacherSF2Controller;
 use App\Http\Controllers\Teacher\TeacherStudentController;
 use App\Http\Controllers\Teacher\TeacherStudentRecordController;
 use App\Http\Controllers\Teacher\TeacherVerificationController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
+    if (Auth::guard('admin')->check()) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    if (Auth::guard('teacher')->check()) {
+        return redirect()->route('teacher.dashboard');
+    }
+
+    $userAgent = (string) $request->userAgent();
+    $isMobile = (bool) preg_match('/(android|iphone|ipod|blackberry|windows phone|opera mini|mobile)/i', $userAgent);
+
+    if ($isMobile && ! $request->boolean('landing')) {
+        return redirect()->route('login');
+    }
+
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
     ]);
@@ -205,8 +222,6 @@ Route::middleware(['auth:teacher', 'teacher.password.changed'])->prefix('teacher
     Route::get('sf2-reports', [TeacherSF2Controller::class, 'index'])->name('sf2-reports.index');
     Route::get('sf2-reports/export', [TeacherSF2Controller::class, 'export'])->name('sf2-reports.export');
 });
-
-require __DIR__.'/settings.php';
 
 Route::get('/storage/{path}', function (string $path) {
     try {
