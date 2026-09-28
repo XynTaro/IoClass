@@ -32,27 +32,12 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { FormFieldError, inputErrorClass } from '@/components/form-field-error';
 import { Label } from '@/components/ui/label';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useWirelessRfidCapture } from '@/hooks/use-wireless-rfid-capture';
 import { normalizeRfidUid } from '@/lib/rfid';
 import { cn, formatContactNumberInput, formatEmailInput, formatNameInput } from '@/lib/utils';
-
-function inputErrorClass(hasError: boolean): string {
-    return hasError
-        ? 'border-red-500 bg-neutral-50 text-foreground focus-visible:border-red-500 focus-visible:ring-red-500/25 dark:bg-neutral-950/40'
-        : '';
-}
-
-function FormFieldError({ label, message }: { label: string; message?: string }) {
-    if (!message) return null;
-    return (
-        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400" role="alert">
-            <strong className="font-semibold">{label}</strong>{' '}
-            <span className="font-normal">{message}</span>
-        </p>
-    );
-}
 
 const CREATE_STEPS = [
     { label: 'Teacher', icon: UserRound },

@@ -1,34 +1,66 @@
 import React from 'react';
 
-/** Strip Laravel-style prefixes so we can show "**Label** rest…" in red below the field. */
-export function getErrorRest(message: string): string {
-    const msg = message.trim();
-    const afterField = msg.replace(/^The\s.+?\s+field\s+/i, '').trim();
-    let rest = afterField;
-    if (afterField === msg) {
-        rest = msg.replace(/^The\s+\S+(?:\s+\S+)?\s+/, '').trim();
+/**
+ * Format and clean field error messages.
+ * Strips accidental duplicate labels (e.g., "First name First name is required." -> "First name is required.")
+ * and turns raw backend messages ("The fname field is required.") into clean sentences.
+ */
+export function formatFieldError(message?: string, label?: string): string {
+    if (!message) {
+        return '';
     }
-    if (!rest) {
-        return msg;
+
+    let text = message.trim();
+
+    // 1. Convert raw Laravel-style messages: "The <field> field is required."
+    if (label) {
+        text = text.replace(/^The\s+[a-zA-Z0-9_.]+\s+field\s+/i, `${label} `);
+        text = text.replace(/^The\s+[a-zA-Z0-9_.]+\s+/i, `${label} `);
     }
-    return rest.charAt(0).toLowerCase() + rest.slice(1);
+
+    // 2. Strip duplicated label at the start:
+    // e.g. "First name First name is required." -> "First name is required."
+    // e.g. "Email Email is required." -> "Email is required."
+    if (label) {
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        text = text.replace(new RegExp(`^${escaped}\\s+${escaped}\\b`, 'i'), label);
+    }
+
+    // Handle generic word duplication at start, e.g. "Section Section ..."
+    text = text.replace(/^([A-Za-z0-9\s]+?)\s+\1\b/i, '$1');
+
+    return text;
+}
+
+/** Legacy helper preserved for backwards compatibility */
+export function getErrorRest(message: string, label?: string): string {
+    return formatFieldError(message, label);
 }
 
 export function FormFieldError({
     label,
     message,
+    className = '',
 }: {
-    label: string;
+    label?: string;
     message?: string;
+    className?: string;
 }): React.JSX.Element | null {
     if (!message) {
         return null;
     }
-    const rest = getErrorRest(message);
+
+    const text = formatFieldError(message, label);
+    if (!text) {
+        return null;
+    }
+
     return (
-        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400" role="alert">
-            <strong className="font-semibold">{label}</strong>{' '}
-            <span className="font-normal">{rest}</span>
+        <p
+            className={`mt-1.5 text-xs text-red-600 dark:text-red-400 ${className}`.trim()}
+            role="alert"
+        >
+            {text}
         </p>
     );
 }

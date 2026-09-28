@@ -18,6 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { FormFieldError } from '@/components/form-field-error';
 import { cn } from '@/lib/utils';
 
 const DAYS_OF_WEEK = [
@@ -58,18 +59,6 @@ const timeToAmPm = (timeStr: string): string => {
     const padMin = String(m).padStart(2, '0');
     return `${padHour}:${padMin} ${period}`;
 };
-
-function FormFieldError({ label, message }: { label: string; message?: string }) {
-    if (!message) {
-        return null;
-    }
-    return (
-        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400" role="alert">
-            <strong className="font-semibold">{label}</strong>{' '}
-            <span className="font-normal">{message}</span>
-        </p>
-    );
-}
 
 export interface SlotTeacher {
     tch_id: number;

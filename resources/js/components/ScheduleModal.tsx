@@ -21,20 +21,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 
+import { FormFieldError } from '@/components/form-field-error';
+
 export type PendingTeacherWithAddressData = PendingTeacherData & AddressFormData;
-
-function FormFieldError({ label, message }: { label: string; message?: string }) {
-    if (!message) {
-        return null;
-    }
-
-    return (
-        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400" role="alert">
-            <strong className="font-semibold">{label}</strong>{' '}
-            <span className="font-normal">{message}</span>
-        </p>
-    );
-}
 
 export const DAYS_OF_WEEK = [
     'Monday',
