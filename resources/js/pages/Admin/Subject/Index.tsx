@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Archive, BookOpen, Eye, RotateCcw, Trash2 } from 'lucide-react';
+import { Archive, BookOpen, Eye, Filter, RotateCcw, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { IoMdAdd, IoMdCreate, IoMdSearch } from 'react-icons/io';
 import { route } from 'ziggy-js';
@@ -10,6 +10,13 @@ import SubjectModal from '@/components/SubjectModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AdminLayout from '@/layouts/admin/admin-layout';
 import { archiveRowButtonClassName, archiveModalConfirmClassName } from '@/lib/archive-ui';
 import { cn } from '@/lib/utils';
@@ -22,13 +29,22 @@ interface Subject {
 }
 
 export default function Index() {
-    const { subjects, archived = false, gradeLevels = [] } = usePage<any>().props as {
+    const {
+        subjects,
+        archived = false,
+        gradeLevels = [],
+        filters = {},
+    } = usePage<any>().props as {
         subjects: any;
         archived: boolean;
         gradeLevels: string[];
+        filters?: {
+            gradeLevel?: string;
+        };
     };
 
     const [subjectList, setSubjectList] = useState<Subject[]>(subjects?.data ?? []);
+    const [selectedGrade, setSelectedGrade] = useState<string>(filters?.gradeLevel ?? 'all');
     const [search, setSearch] = useState('');
     const [addOpen, setAddOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
@@ -44,13 +60,55 @@ export default function Index() {
         setSubjectList(subjects?.data ?? []);
     }, [subjects]);
 
+    useEffect(() => {
+        if (filters?.gradeLevel !== undefined) {
+            setSelectedGrade(filters.gradeLevel);
+        }
+    }, [filters?.gradeLevel]);
+
+    const sortedGradeLevels = useMemo(() => {
+        const unique = new Set([
+            ...gradeLevels,
+            ...(subjectList.map((s) => s.gr_level).filter(Boolean) as string[]),
+            'Grade 7',
+            'Grade 8',
+            'Grade 9',
+            'Grade 10',
+            'Grade 11',
+            'Grade 12',
+        ]);
+        return Array.from(unique).sort((a, b) =>
+            a.localeCompare(b, undefined, { numeric: true }),
+        );
+    }, [gradeLevels, subjectList]);
+
     const filteredSubjects = useMemo(() => {
+        let list = subjectList;
+        if (selectedGrade && selectedGrade !== 'all') {
+            list = list.filter((s) => s.gr_level === selectedGrade);
+        }
         const q = search.trim().toLowerCase();
-        if (!q) return subjectList;
-        return subjectList.filter((s) =>
+        if (!q) return list;
+        return list.filter((s) =>
             [s.subj_code ?? '', s.subj_name ?? '', s.gr_level ?? ''].join(' ').toLowerCase().includes(q),
         );
-    }, [search, subjectList]);
+    }, [search, selectedGrade, subjectList]);
+
+    const handleGradeChange = (value: string) => {
+        setSelectedGrade(value);
+        router.get(
+            route('admin.subject.index'),
+            {
+                ...(archived ? { archived: 1 } : {}),
+                ...(value && value !== 'all' ? { gradeLevel: value } : {}),
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
 
     const handleSaveSuccess = () => {
         router.reload();
@@ -204,8 +262,21 @@ export default function Index() {
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs backdrop-blur-sm">
                                 <BookOpen className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                {subjectList.length} {archived ? 'Archived' : 'Subjects'}
+                                {subjects?.total ?? subjectList.length} {archived ? 'Archived' : 'Subjects'}
                             </span>
+                            {selectedGrade && selectedGrade !== 'all' && (
+                                <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                    {selectedGrade}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGradeChange('all')}
+                                        className="ml-1 rounded p-0.5 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 cursor-pointer"
+                                        title="Clear filter"
+                                    >
+                                        <X className="size-3" />
+                                    </button>
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -214,21 +285,61 @@ export default function Index() {
                 <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
                     <CardHeader className="border-b border-border/50 pb-4 pt-5">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="relative w-full sm:w-72">
-                                <IoMdSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search by code or name..."
-                                    className="h-9 rounded-xl border-border/60 bg-muted/30 pl-9 text-xs placeholder:text-muted-foreground focus:ring-1 focus:ring-emerald-500"
-                                />
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                                <div className="relative w-full sm:w-64">
+                                    <IoMdSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Search by code or name..."
+                                        className="h-9 rounded-xl border-border/60 bg-muted/30 pl-9 text-xs placeholder:text-muted-foreground focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                </div>
+                                <div className="w-full sm:w-48">
+                                    <Select value={selectedGrade} onValueChange={handleGradeChange}>
+                                        <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-muted/30 text-xs font-medium focus:ring-1 focus:ring-emerald-500">
+                                            <div className="flex items-center gap-1.5 truncate">
+                                                <Filter className="size-3.5 text-muted-foreground shrink-0" />
+                                                <SelectValue placeholder="All Grade Levels" />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="all" className="text-xs">
+                                                All Grade Levels
+                                            </SelectItem>
+                                            {sortedGradeLevels.map((grade) => (
+                                                <SelectItem key={grade} value={grade} className="text-xs">
+                                                    {grade}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {selectedGrade && selectedGrade !== 'all' && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleGradeChange('all')}
+                                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                        title="Clear grade filter"
+                                    >
+                                        <X className="mr-1 size-3.5" />
+                                        Clear filter
+                                    </Button>
+                                )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 <Link
                                     href={
                                         archived
-                                            ? route('admin.subject.index')
-                                            : route('admin.subject.index', { archived: 1 })
+                                            ? route('admin.subject.index', {
+                                                  ...(selectedGrade && selectedGrade !== 'all' ? { gradeLevel: selectedGrade } : {}),
+                                              })
+                                            : route('admin.subject.index', {
+                                                  archived: 1,
+                                                  ...(selectedGrade && selectedGrade !== 'all' ? { gradeLevel: selectedGrade } : {}),
+                                              })
                                     }
                                     className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                                 >
@@ -238,7 +349,7 @@ export default function Index() {
                                 {!archived && (
                                     <Button
                                         onClick={() => setAddOpen(true)}
-                                        className="gap-1.5 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                                        className="gap-1.5 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
                                     >
                                         <IoMdAdd className="size-4" />
                                         ADD SUBJECT
@@ -279,7 +390,7 @@ export default function Index() {
                 mode="create"
                 storeRoute="admin.subject.store"
                 updateRoute="admin.subject.update"
-                gradeLevels={gradeLevels}
+                gradeLevels={sortedGradeLevels}
             />
             <SubjectModal
                 open={editOpen}
@@ -289,7 +400,7 @@ export default function Index() {
                 mode="edit"
                 storeRoute="admin.subject.store"
                 updateRoute="admin.subject.update"
-                gradeLevels={gradeLevels}
+                gradeLevels={sortedGradeLevels}
             />
 
             <ConfirmationModal

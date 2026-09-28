@@ -14,24 +14,25 @@ class SubjectController extends Controller
     public function index(Request $request)
     {
         $archived = $request->boolean('archived');
+        $gradeLevel = $request->query('gradeLevel');
 
-        $subjects = Subject::select('subj_id', 'subj_code', 'subj_name', 'gr_level', 'is_deleted')
+        $query = Subject::select('subj_id', 'subj_code', 'subj_name', 'gr_level', 'is_deleted')
             ->where('is_deleted', $archived)
+            ->when($gradeLevel && $gradeLevel !== 'all', function ($q) use ($gradeLevel) {
+                $q->where('gr_level', $gradeLevel);
+            })
             ->orderBy('gr_level')
-            ->orderBy('subj_code')
-            ->paginate(8);
+            ->orderBy('subj_code');
 
-        $gradeLevels = Section::query()
-            ->whereNotNull('gr_level')
-            ->where('gr_level', '!=', '')
-            ->distinct()
-            ->orderBy('gr_level')
-            ->pluck('gr_level');
+        $subjects = $query->paginate(8)->withQueryString();
 
         return inertia('Admin/Subject/Index', [
             'subjects' => $subjects,
             'archived' => $archived,
-            'gradeLevels' => $gradeLevels,
+            'gradeLevels' => $this->getAvailableGradeLevels(),
+            'filters' => [
+                'gradeLevel' => $gradeLevel && $gradeLevel !== 'all' ? $gradeLevel : 'all',
+            ],
         ]);
     }
 
@@ -82,20 +83,40 @@ class SubjectController extends Controller
             ])
             ->values();
 
-        $gradeLevels = Section::query()
-            ->whereNotNull('gr_level')
-            ->where('gr_level', '!=', '')
-            ->distinct()
-            ->orderBy('gr_level')
-            ->pluck('gr_level');
-
         return inertia('Admin/Subject/Show', [
             'subject' => $subject,
             'teachers' => $teachers,
             'enrolledStudents' => $enrolledStudents,
             'sections' => $sections,
-            'gradeLevels' => $gradeLevels,
+            'gradeLevels' => $this->getAvailableGradeLevels(),
         ]);
+    }
+
+    /**
+     * Get unique, naturally sorted grade levels from sections, subjects, and defaults.
+     *
+     * @return array<int, string>
+     */
+    private function getAvailableGradeLevels(): array
+    {
+        return Section::query()
+            ->whereNotNull('gr_level')
+            ->where('gr_level', '!=', '')
+            ->distinct()
+            ->pluck('gr_level')
+            ->merge(
+                Subject::query()
+                    ->whereNotNull('gr_level')
+                    ->where('gr_level', '!=', '')
+                    ->distinct()
+                    ->pluck('gr_level')
+            )
+            ->merge(['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'])
+            ->unique()
+            ->values()
+            ->sort(fn ($a, $b) => strnatcasecmp($a, $b))
+            ->values()
+            ->all();
     }
 
     public function attachStudents(Request $request, int $id)
