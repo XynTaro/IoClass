@@ -6,6 +6,7 @@ use App\Contracts\SmsSender;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Admin;
+use App\Rules\UniqueFullName;
 use App\Services\AvatarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,7 @@ class AdminAdminController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('admin')],
             'mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email',
@@ -85,7 +86,7 @@ class AdminAdminController extends Controller
         $adminModel = Admin::findOrFail($admin);
 
         $validated = $request->validate([
-            'fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('admin', ignoreId: $adminModel->admin_id)],
             'mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email,'.$adminModel->admin_id.',admin_id',
@@ -148,7 +149,7 @@ class AdminAdminController extends Controller
     {
         $validated = $request->validate([
             // Admin fields
-            'fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('admin')],
             'mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email',

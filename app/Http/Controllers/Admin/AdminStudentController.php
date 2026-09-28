@@ -9,6 +9,7 @@ use App\Models\Mother;
 use App\Models\ParentGuardian;
 use App\Models\Section;
 use App\Models\Student;
+use App\Rules\UniqueFullName;
 use App\Rules\UniqueRfidUid;
 use App\Services\StudentRfidRegistrationNotifier;
 use App\Support\RfidRegistryCache;
@@ -117,7 +118,7 @@ class AdminStudentController extends Controller
     {
         $validated = $request->validate([
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn'],
-            'stu_fname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'stu_fname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('student')],
             'stu_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'stu_lname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'gender' => ['nullable', 'string', 'in:male,female,Male,Female'],
@@ -358,7 +359,7 @@ class AdminStudentController extends Controller
 
         $validated = $request->validate([
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn,'.$student->stu_id.',stu_id'],
-            'stu_fname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'stu_fname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('student', ignoreId: $student->stu_id)],
             'stu_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'stu_lname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'gender' => ['nullable', 'string', 'in:male,female,Male,Female'],

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Section;
+use Closure;
 use Illuminate\Http\Request;
 
 class SectionController extends Controller
@@ -26,7 +27,31 @@ class SectionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'sect_name' => 'required|string|max:100',
+            'sect_name' => [
+                'required',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, Closure $fail) use ($request): void {
+                    $sectName = trim((string) preg_replace('/\s+/', ' ', (string) $value));
+                    $grLevel = trim((string) $request->input('gr_level', ''));
+
+                    if ($sectName === '') {
+                        return;
+                    }
+
+                    $exists = Section::query()
+                        ->where('is_deleted', false)
+                        ->whereRaw('LOWER(TRIM(sect_name)) = LOWER(?)', [$sectName])
+                        ->when($grLevel !== '', function ($q) use ($grLevel): void {
+                            $q->whereRaw('LOWER(TRIM(gr_level)) = LOWER(?)', [$grLevel]);
+                        })
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This section is already registered.');
+                    }
+                },
+            ],
             'gr_level' => 'required|string|max:20',
         ]);
 
@@ -41,7 +66,32 @@ class SectionController extends Controller
         $section = Section::findOrFail($id);
 
         $validated = $request->validate([
-            'sect_name' => 'required|string|max:100',
+            'sect_name' => [
+                'required',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, Closure $fail) use ($request, $section): void {
+                    $sectName = trim((string) preg_replace('/\s+/', ' ', (string) $value));
+                    $grLevel = trim((string) $request->input('gr_level', $section->gr_level));
+
+                    if ($sectName === '') {
+                        return;
+                    }
+
+                    $exists = Section::query()
+                        ->where('sect_id', '!=', $section->sect_id)
+                        ->where('is_deleted', false)
+                        ->whereRaw('LOWER(TRIM(sect_name)) = LOWER(?)', [$sectName])
+                        ->when($grLevel !== '', function ($q) use ($grLevel): void {
+                            $q->whereRaw('LOWER(TRIM(gr_level)) = LOWER(?)', [$grLevel]);
+                        })
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This section is already registered.');
+                    }
+                },
+            ],
             'gr_level' => 'required|string|max:20',
         ]);
 

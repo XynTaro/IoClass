@@ -9,6 +9,7 @@ use App\Models\Room;
 use App\Models\Section;
 use App\Models\Subject;
 use App\Models\Teacher;
+use App\Rules\UniqueFullName;
 use App\Rules\UniqueRfidUid;
 use App\Services\AvatarService;
 use App\Services\ClassScheduleService;
@@ -83,7 +84,7 @@ class AdminTeacherController extends Controller
         $validated = $request->validate([
             'tch_rfid_uid' => ['nullable', 'string', 'max:100', 'different:master_card', new UniqueRfidUid],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid],
-            'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher')],
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email',
@@ -132,7 +133,7 @@ class AdminTeacherController extends Controller
         $validated = $request->validate([
             'tch_rfid_uid' => ['nullable', 'string', 'max:100', 'different:master_card', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
-            'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher', ignoreId: $teacherModel->tch_id)],
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email,'.$teacherModel->tch_id.',tch_id',
@@ -201,7 +202,7 @@ class AdminTeacherController extends Controller
             // Teacher fields
             'tch_rfid_uid' => ['nullable', 'string', 'max:100', 'different:master_card', new UniqueRfidUid],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid],
-            'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher')],
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email',

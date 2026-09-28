@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Section;
 use App\Models\Subject;
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -139,9 +140,35 @@ class SubjectController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'subj_code' => 'required|string|max:20|unique:subject,subj_code',
-            'subj_name' => 'required|string|max:100',
+            'subj_code' => ['required', 'string', 'max:20', 'unique:subject,subj_code'],
+            'subj_name' => [
+                'required',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, Closure $fail) use ($request): void {
+                    $subjName = trim((string) preg_replace('/\s+/', ' ', (string) $value));
+                    $grLevel = trim((string) $request->input('gr_level', ''));
+
+                    if ($subjName === '') {
+                        return;
+                    }
+
+                    $exists = Subject::query()
+                        ->where('is_deleted', false)
+                        ->whereRaw('LOWER(TRIM(subj_name)) = LOWER(?)', [$subjName])
+                        ->when($grLevel !== '', function ($q) use ($grLevel): void {
+                            $q->whereRaw('LOWER(TRIM(gr_level)) = LOWER(?)', [$grLevel]);
+                        })
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This subject is already registered.');
+                    }
+                },
+            ],
             'gr_level' => 'required|string|max:20',
+        ], [
+            'subj_code.unique' => 'This subject code is already registered.',
         ]);
 
         Subject::create($validated);
@@ -155,9 +182,36 @@ class SubjectController extends Controller
         $subject = Subject::findOrFail($id);
 
         $validated = $request->validate([
-            'subj_code' => 'required|string|max:20|unique:subject,subj_code,'.$subject->subj_id.',subj_id',
-            'subj_name' => 'required|string|max:100',
+            'subj_code' => ['required', 'string', 'max:20', 'unique:subject,subj_code,'.$subject->subj_id.',subj_id'],
+            'subj_name' => [
+                'required',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, Closure $fail) use ($request, $subject): void {
+                    $subjName = trim((string) preg_replace('/\s+/', ' ', (string) $value));
+                    $grLevel = trim((string) $request->input('gr_level', $subject->gr_level));
+
+                    if ($subjName === '') {
+                        return;
+                    }
+
+                    $exists = Subject::query()
+                        ->where('subj_id', '!=', $subject->subj_id)
+                        ->where('is_deleted', false)
+                        ->whereRaw('LOWER(TRIM(subj_name)) = LOWER(?)', [$subjName])
+                        ->when($grLevel !== '', function ($q) use ($grLevel): void {
+                            $q->whereRaw('LOWER(TRIM(gr_level)) = LOWER(?)', [$grLevel]);
+                        })
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This subject is already registered.');
+                    }
+                },
+            ],
             'gr_level' => 'required|string|max:20',
+        ], [
+            'subj_code.unique' => 'This subject code is already registered.',
         ]);
 
         $subject->update($validated);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -29,7 +30,26 @@ class BuildingController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'building_name' => 'required|string|max:100|unique:building,building_name',
+            'building_name' => [
+                'required',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $name = trim((string) preg_replace('/\s+/', ' ', (string) $value));
+                    if ($name === '') {
+                        return;
+                    }
+
+                    $exists = Building::query()
+                        ->where('is_deleted', false)
+                        ->whereRaw('LOWER(TRIM(building_name)) = LOWER(?)', [$name])
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This building is already registered.');
+                    }
+                },
+            ],
         ]);
 
         Building::create($validated);
@@ -43,7 +63,27 @@ class BuildingController extends Controller
         $building = Building::findOrFail($id);
 
         $validated = $request->validate([
-            'building_name' => 'required|string|max:100|unique:building,building_name,'.$building->building_id.',building_id',
+            'building_name' => [
+                'required',
+                'string',
+                'max:100',
+                function (string $attribute, mixed $value, Closure $fail) use ($building): void {
+                    $name = trim((string) preg_replace('/\s+/', ' ', (string) $value));
+                    if ($name === '') {
+                        return;
+                    }
+
+                    $exists = Building::query()
+                        ->where('building_id', '!=', $building->building_id)
+                        ->where('is_deleted', false)
+                        ->whereRaw('LOWER(TRIM(building_name)) = LOWER(?)', [$name])
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This building is already registered.');
+                    }
+                },
+            ],
         ]);
 
         $building->update($validated);
