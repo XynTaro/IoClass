@@ -24,15 +24,23 @@ export default function Index() {
 
     const [search, setSearch] = useState('');
 
+    const sortedSections = useMemo(() => {
+        return [...sections].sort((a, b) => {
+            const gr = (a.gr_level ?? '').localeCompare(b.gr_level ?? '', undefined, { numeric: true });
+            if (gr !== 0) return gr;
+            return (a.sect_name ?? '').localeCompare(b.sect_name ?? '', undefined, { numeric: true });
+        });
+    }, [sections]);
+
     const filteredSections = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) {
-            return sections;
+            return sortedSections;
         }
-        return sections.filter((s) =>
+        return sortedSections.filter((s) =>
             `${s.gr_level} ${s.sect_name}`.toLowerCase().includes(q),
         );
-    }, [sections, search]);
+    }, [sortedSections, search]);
 
     const columns: ColumnDef<SectionRow>[] = [
         {

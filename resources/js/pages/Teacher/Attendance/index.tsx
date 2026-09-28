@@ -292,13 +292,23 @@ export default function TeacherAttendanceIndex() {
     // Fallback to an empty array when attendance data hasn't loaded yet.
     const list = attendance?.data ?? [];
 
-    // Alphabetically sorted options for the filter dropdowns (memoised).
+    // Naturally sorted options for the filter dropdowns (memoised).
     const sectionOptions = useMemo(
-        () => (sections ?? []).slice().sort((a, b) => a.localeCompare(b)),
+        () =>
+            (sections ?? [])
+                .slice()
+                .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true }),
+                ),
         [sections],
     );
     const gradeOptions = useMemo(
-        () => (gradeLevels ?? []).slice().sort((a, b) => a.localeCompare(b)),
+        () =>
+            (gradeLevels ?? [])
+                .slice()
+                .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true }),
+                ),
         [gradeLevels],
     );
 

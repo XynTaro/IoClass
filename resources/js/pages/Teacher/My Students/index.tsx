@@ -135,11 +135,21 @@ export default function TeacherStudentsIndex() {
     const list = students?.data ?? [];
 
     const sectionOptions = useMemo(
-        () => (sections ?? []).slice().sort((a, b) => a.localeCompare(b)),
+        () =>
+            (sections ?? [])
+                .slice()
+                .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true }),
+                ),
         [sections],
     );
     const gradeOptions = useMemo(
-        () => (gradeLevels ?? []).slice().sort((a, b) => a.localeCompare(b)),
+        () =>
+            (gradeLevels ?? [])
+                .slice()
+                .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true }),
+                ),
         [gradeLevels],
     );
 

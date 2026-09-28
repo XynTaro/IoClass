@@ -545,10 +545,15 @@ export default function StudentModal({
     });
     const [sameAsPermanent, setSameAsPermanent] = useState(true);
 
-    // Derived grade levels (unique, sorted)
+    // Derived grade levels (unique, sorted consecutively by number)
     const gradeOptions = Array.from(
-        new Set(sections.map((s) => s.gr_level)),
-    ).sort();
+        new Set(
+            [
+                ...sections.map((s) => s.gr_level),
+                ...(form.data.gr_level ? [form.data.gr_level] : []),
+            ].filter((g): g is string => Boolean(g && g.trim())),
+        ),
+    ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     // Sections filtered by the currently selected grade level
     const sectionOptions = sections.filter(

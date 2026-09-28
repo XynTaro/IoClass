@@ -446,7 +446,10 @@ export default function ScheduleModal({
     const showAdviser = !!teacherData;
 
     const gradeLevels = useMemo(
-        () => [...new Set(sections.map((s) => s.gr_level).filter(Boolean))].sort(),
+        () =>
+            [...new Set(sections.map((s) => s.gr_level).filter(Boolean))].sort(
+                (a, b) => a.localeCompare(b, undefined, { numeric: true }),
+            ),
         [sections],
     );
 

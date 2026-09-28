@@ -76,7 +76,9 @@ export default function SubjectModal({
             ...(gradeLevels && gradeLevels.length > 0 ? gradeLevels : DEFAULT_GRADE_LEVELS),
             ...(form.data.gr_level ? [form.data.gr_level] : []),
         ]),
-    ).filter(Boolean);
+    )
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     useEffect(() => {
         if (subject && mode === 'edit') {
