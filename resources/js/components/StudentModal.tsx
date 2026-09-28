@@ -186,19 +186,16 @@ interface StudentFormData {
     father_name: string;
     father_mname: string;
     father_lname: string;
-    father_email: string;
     father_contact_number: string;
     father_is_deceased: boolean;
     mother_name: string;
     mother_mname: string;
     mother_lname: string;
-    mother_email: string;
     mother_contact_number: string;
     mother_is_deceased: boolean;
     guardian_name: string;
     guardian_mname: string;
     guardian_lname: string;
-    guardian_email: string;
     guardian_contact_number: string;
 }
 
@@ -232,19 +229,16 @@ const emptyForm: StudentFormData = {
     father_name: '',
     father_mname: '',
     father_lname: '',
-    father_email: '',
     father_contact_number: '',
     father_is_deceased: false,
     mother_name: '',
     mother_mname: '',
     mother_lname: '',
-    mother_email: '',
     mother_contact_number: '',
     mother_is_deceased: false,
     guardian_name: '',
     guardian_mname: '',
     guardian_lname: '',
-    guardian_email: '',
     guardian_contact_number: '',
 };
 
@@ -388,7 +382,6 @@ function ParentSection({
     const fnameKey = FIRST_NAME_KEY[prefix];
     const mnameKey = `${prefix}_mname` as keyof StudentFormData;
     const lnameKey = `${prefix}_lname` as keyof StudentFormData;
-    const emailKey = `${prefix}_email` as keyof StudentFormData;
     const phoneKey = `${prefix}_contact_number` as keyof StudentFormData;
     const deceasedKey = DECEASED_KEY[prefix];
     const isDeceased = deceasedKey ? Boolean(data[deceasedKey]) : false;
@@ -491,26 +484,7 @@ function ParentSection({
                         }}
                     />
                 </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <Field
-                        id={emailKey}
-                        label="Email"
-                        value={data[emailKey] as string}
-                        onChange={(v) =>
-                            onChange(emailKey, formatEmailInput(v))
-                        }
-                        error={errors[emailKey]}
-                        inputProps={{
-                            placeholder: 'Email address',
-                            type: 'email',
-                            disabled: isDeceased,
-                            onKeyDown: (e) => {
-                                if (e.key === ' ') {
-                                    e.preventDefault();
-                                }
-                            },
-                        }}
-                    />
+                <div className="mt-3 sm:max-w-sm">
                     <Field
                         id={phoneKey}
                         label="Contact number"
@@ -922,9 +896,6 @@ export default function StudentModal({
                     errors.father_contact_number = 'Contact number must be exactly 11 digits.';
                 }
             }
-            if (form.data.father_email && /\s/.test(form.data.father_email)) {
-                errors.father_email = 'Father email cannot contain spaces.';
-            }
         }
 
         // Mother validation (required unless marked deceased)
@@ -942,9 +913,6 @@ export default function StudentModal({
                 if (cleanNum.length !== 11) {
                     errors.mother_contact_number = 'Contact number must be exactly 11 digits.';
                 }
-            }
-            if (form.data.mother_email && /\s/.test(form.data.mother_email)) {
-                errors.mother_email = 'Mother email cannot contain spaces.';
             }
         }
 
@@ -965,18 +933,12 @@ export default function StudentModal({
                     errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
                 }
             }
-            if (form.data.guardian_email && /\s/.test(form.data.guardian_email)) {
-                errors.guardian_email = 'Guardian email cannot contain spaces.';
-            }
         } else {
             if (form.data.guardian_contact_number.trim()) {
                 const cleanNum = form.data.guardian_contact_number.replace(/\D/g, '');
                 if (cleanNum.length !== 11) {
                     errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
                 }
-            }
-            if (form.data.guardian_email && /\s/.test(form.data.guardian_email)) {
-                errors.guardian_email = 'Guardian email cannot contain spaces.';
             }
         }
 
@@ -1774,10 +1736,9 @@ export default function StudentModal({
                                             father_name: '',
                                             father_mname: '',
                                             father_lname: '',
-                                            father_email: '',
                                             father_contact_number: '',
                                         });
-                                        form.clearErrors('father_name', 'father_mname', 'father_lname', 'father_email', 'father_contact_number');
+                                        form.clearErrors('father_name', 'father_mname', 'father_lname', 'father_contact_number');
                                     } else {
                                         form.setData('father_is_deceased', false);
                                     }
@@ -1798,10 +1759,9 @@ export default function StudentModal({
                                             mother_name: '',
                                             mother_mname: '',
                                             mother_lname: '',
-                                            mother_email: '',
                                             mother_contact_number: '',
                                         });
-                                        form.clearErrors('mother_name', 'mother_mname', 'mother_lname', 'mother_email', 'mother_contact_number');
+                                        form.clearErrors('mother_name', 'mother_mname', 'mother_lname', 'mother_contact_number');
                                     } else {
                                         form.setData('mother_is_deceased', false);
                                     }

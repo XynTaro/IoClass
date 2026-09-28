@@ -152,7 +152,6 @@ class AdminStudentController extends Controller
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
-            'father_email' => 'nullable|email|max:255|regex:/^\S+$/',
             'father_contact_number' => [
                 $fatherIsDeceased ? 'nullable' : 'required',
                 'string',
@@ -173,7 +172,6 @@ class AdminStudentController extends Controller
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
-            'mother_email' => 'nullable|email|max:255|regex:/^\S+$/',
             'mother_contact_number' => [
                 $motherIsDeceased ? 'nullable' : 'required',
                 'string',
@@ -194,7 +192,6 @@ class AdminStudentController extends Controller
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
-            'guardian_email' => 'nullable|email|max:255|regex:/^\S+$/',
             'guardian_contact_number' => [
                 $bothParentsDeceased ? 'required' : 'nullable',
                 'string',
@@ -220,8 +217,6 @@ class AdminStudentController extends Controller
             'father_mname.regex' => 'Father middle name must contain only letters and cannot start with a space.',
             'father_lname.required' => 'Father last name is required.',
             'father_lname.regex' => 'Father last name must contain only letters and cannot start with a space.',
-            'father_email.email' => 'Father email must be a valid email address.',
-            'father_email.regex' => 'Father email cannot contain spaces.',
             'father_contact_number.required' => 'Father contact number is required.',
             'father_contact_number.regex' => 'Father contact number must contain only numbers.',
             'mother_name.required' => 'Mother first name is required.',
@@ -229,8 +224,6 @@ class AdminStudentController extends Controller
             'mother_mname.regex' => 'Mother middle name must contain only letters and cannot start with a space.',
             'mother_lname.required' => 'Mother last name is required.',
             'mother_lname.regex' => 'Mother last name must contain only letters and cannot start with a space.',
-            'mother_email.email' => 'Mother email must be a valid email address.',
-            'mother_email.regex' => 'Mother email cannot contain spaces.',
             'mother_contact_number.required' => 'Mother contact number is required.',
             'mother_contact_number.regex' => 'Mother contact number must contain only numbers.',
             'guardian_name.required' => 'Guardian first name is required when both parents are deceased.',
@@ -238,8 +231,6 @@ class AdminStudentController extends Controller
             'guardian_mname.regex' => 'Guardian middle name must contain only letters and cannot start with a space.',
             'guardian_lname.required' => 'Guardian last name is required when both parents are deceased.',
             'guardian_lname.regex' => 'Guardian last name must contain only letters and cannot start with a space.',
-            'guardian_email.email' => 'Guardian email must be a valid email address.',
-            'guardian_email.regex' => 'Guardian email cannot contain spaces.',
             'guardian_contact_number.required' => 'Guardian contact number is required when both parents are deceased.',
             'guardian_contact_number.regex' => 'Guardian contact number must contain only numbers.',
         ]);
@@ -306,7 +297,6 @@ class AdminStudentController extends Controller
                 'father_name' => $this->formatName($validated['father_name']),
                 'father_mname' => $this->formatName($validated['father_mname'] ?? null),
                 'father_lname' => $this->formatName($validated['father_lname'] ?? null),
-                'email' => $validated['father_email'] ?? null,
                 'contact_number' => $validated['father_contact_number'] ?? null,
                 'is_deleted' => false,
             ]);
@@ -318,7 +308,6 @@ class AdminStudentController extends Controller
                 'mother_name' => $this->formatName($validated['mother_name']),
                 'mother_mname' => $this->formatName($validated['mother_mname'] ?? null),
                 'mother_lname' => $this->formatName($validated['mother_lname'] ?? null),
-                'email' => $validated['mother_email'] ?? null,
                 'contact_number' => $validated['mother_contact_number'] ?? null,
                 'is_deleted' => false,
             ]);
@@ -330,7 +319,6 @@ class AdminStudentController extends Controller
                 'name' => $this->formatName($validated['guardian_name']),
                 'guardian_mname' => $this->formatName($validated['guardian_mname'] ?? null),
                 'guardian_lname' => $this->formatName($validated['guardian_lname'] ?? null),
-                'email' => $validated['guardian_email'] ?? null,
                 'contact_number' => $validated['guardian_contact_number'] ?? null,
                 'is_deleted' => false,
             ]);

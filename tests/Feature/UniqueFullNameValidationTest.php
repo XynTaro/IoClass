@@ -404,7 +404,7 @@ test('updating building allows keeping own name but blocks duplicate', function 
     ]);
 });
 
-test('email cannot contain spaces when adding admin, teacher, or student parent', function () {
+test('email cannot contain spaces when adding admin or teacher', function () {
     $admin = Admin::factory()->create();
 
     // Admin email with space fails
@@ -428,26 +428,6 @@ test('email cannot contain spaces when adding admin, teacher, or student parent'
     ]);
     $teacherEmailResponse->assertSessionHasErrors([
         'tch_email' => 'Email cannot contain spaces.',
-    ]);
-
-    // Student parent email with space fails
-    $section = Section::create([
-        'sect_name' => 'Grade 7 - Diamond',
-        'gr_level' => 'Grade 7',
-        'is_deleted' => false,
-    ]);
-
-    $studentParentEmailResponse = $this->actingAs($admin, 'admin')->post(route('admin.student.store'), [
-        'stu_fname' => 'Mark',
-        'stu_lname' => 'Johnson',
-        'sect_id' => $section->sect_id,
-        'rfid_uid' => '8888888888',
-        'father_name' => 'Paul',
-        'father_lname' => 'Johnson',
-        'father_email' => 'paul johnson@example.com',
-    ]);
-    $studentParentEmailResponse->assertSessionHasErrors([
-        'father_email' => 'Father email cannot contain spaces.',
     ]);
 });
 
