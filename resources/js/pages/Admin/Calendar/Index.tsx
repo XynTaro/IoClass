@@ -135,7 +135,7 @@ function EventModal({ open, onClose, event, syId }: EventModalProps) {
     const [form, setForm] = useState({
         title: '',
         description: '',
-        type: 'holiday' as string,
+        type: '',
         start_date: '',
         end_date: '',
         is_school_day: false,
@@ -155,13 +155,12 @@ function EventModal({ open, onClose, event, syId }: EventModalProps) {
                     is_school_day: event.is_school_day,
                 });
             } else {
-                const today = new Date().toISOString().split('T')[0];
                 setForm({
                     title: '',
                     description: '',
-                    type: 'holiday',
-                    start_date: today,
-                    end_date: today,
+                    type: '',
+                    start_date: '',
+                    end_date: '',
                     is_school_day: false,
                 });
             }
@@ -171,6 +170,28 @@ function EventModal({ open, onClose, event, syId }: EventModalProps) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        const newErrors: Record<string, string> = {};
+        if (!form.title.trim()) {
+            newErrors.title = 'Event title is required.';
+        }
+        if (!form.type) {
+            newErrors.type = 'Event type is required.';
+        }
+        if (!form.start_date) {
+            newErrors.start_date = 'Start date is required.';
+        }
+        if (!form.end_date) {
+            newErrors.end_date = 'End date is required.';
+        } else if (form.start_date && form.end_date < form.start_date) {
+            newErrors.end_date = 'End date must be on or after the start date.';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
         setSaving(true);
         setErrors({});
 
@@ -213,30 +234,52 @@ function EventModal({ open, onClose, event, syId }: EventModalProps) {
                         {isEdit ? 'Edit Event' : 'Add Event'}
                     </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form noValidate onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="event-title">Title</Label>
+                        <Label htmlFor="event-title">
+                            Title <span className="text-red-500">*</span>
+                        </Label>
                         <Input
                             id="event-title"
                             value={form.title}
-                            onChange={(e) => setForm({ ...form, title: e.target.value })}
+                            onChange={(e) => {
+                                setForm({ ...form, title: e.target.value });
+                                if (errors.title) {
+                                    setErrors((prev) => ({ ...prev, title: '' }));
+                                }
+                            }}
                             placeholder="e.g. National Heroes Day"
+                            className={cn(errors.title && 'border-red-500 focus-visible:ring-red-500')}
                             required
                         />
                         {errors.title && <p className="text-xs text-red-500">{errors.title}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="event-type">Type</Label>
-                        <Select value={form.type} onValueChange={(val) => {
-                            setForm({
-                                ...form,
-                                type: val,
-                                is_school_day: val === 'special_event',
-                            });
-                        }}>
-                            <SelectTrigger id="event-type">
-                                <SelectValue />
+                        <Label htmlFor="event-type">
+                            Type <span className="text-red-500">*</span>
+                        </Label>
+                        <Select
+                            value={form.type}
+                            onValueChange={(val) => {
+                                setForm({
+                                    ...form,
+                                    type: val,
+                                    is_school_day: val === 'special_event',
+                                });
+                                if (errors.type) {
+                                    setErrors((prev) => ({ ...prev, type: '' }));
+                                }
+                            }}
+                        >
+                            <SelectTrigger
+                                id="event-type"
+                                className={cn(
+                                    'w-full',
+                                    errors.type && 'border-red-500 focus-visible:ring-red-500'
+                                )}
+                            >
+                                <SelectValue placeholder="Select event type" />
                             </SelectTrigger>
                             <SelectContent>
                                 {EVENT_TYPES.map((t) => (
@@ -254,23 +297,48 @@ function EventModal({ open, onClose, event, syId }: EventModalProps) {
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
-                            <Label htmlFor="event-start">Start Date</Label>
+                            <Label htmlFor="event-start">
+                                Start Date <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 id="event-start"
                                 type="date"
                                 value={form.start_date}
-                                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setForm((prev) => ({
+                                        ...prev,
+                                        start_date: val,
+                                        end_date: !prev.end_date || prev.end_date < val ? val : prev.end_date,
+                                    }));
+                                    if (errors.start_date) {
+                                        setErrors((prev) => ({ ...prev, start_date: '' }));
+                                    }
+                                    if (errors.end_date) {
+                                        setErrors((prev) => ({ ...prev, end_date: '' }));
+                                    }
+                                }}
+                                className={cn(errors.start_date && 'border-red-500 focus-visible:ring-red-500')}
                                 required
                             />
                             {errors.start_date && <p className="text-xs text-red-500">{errors.start_date}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="event-end">End Date</Label>
+                            <Label htmlFor="event-end">
+                                End Date <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 id="event-end"
                                 type="date"
                                 value={form.end_date}
-                                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                                min={form.start_date || undefined}
+                                onChange={(e) => {
+                                    setForm({ ...form, end_date: e.target.value });
+                                    if (errors.end_date) {
+                                        setErrors((prev) => ({ ...prev, end_date: '' }));
+                                    }
+                                }}
+                                className={cn(errors.end_date && 'border-red-500 focus-visible:ring-red-500')}
                                 required
                             />
                             {errors.end_date && <p className="text-xs text-red-500">{errors.end_date}</p>}

@@ -173,4 +173,54 @@ class CalendarEventTest extends TestCase
         $notified = $notifier->notify($student, '2026-12-25');
         $this->assertFalse($notified);
     }
+
+    public function test_calendar_event_creation_requires_title_type_start_date_and_end_date(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.calendar.store'), [
+                'sy_id' => $this->schoolYear->sy_id,
+                'title' => '',
+                'type' => '',
+                'start_date' => '',
+                'end_date' => '',
+            ]);
+
+        $response->assertSessionHasErrors(['title', 'type', 'start_date', 'end_date']);
+    }
+
+    public function test_calendar_event_creation_requires_end_date_after_or_equal_start_date(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.calendar.store'), [
+                'sy_id' => $this->schoolYear->sy_id,
+                'title' => 'Intramurals',
+                'type' => 'special_event',
+                'start_date' => '2026-10-15',
+                'end_date' => '2026-10-10',
+            ]);
+
+        $response->assertSessionHasErrors(['end_date']);
+    }
+
+    public function test_calendar_event_update_requires_title_type_start_date_and_end_date(): void
+    {
+        $event = CalendarEvent::create([
+            'sy_id' => $this->schoolYear->sy_id,
+            'title' => 'Sportsfest',
+            'type' => 'special_event',
+            'start_date' => '2026-10-20',
+            'end_date' => '2026-10-22',
+            'is_school_day' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->put(route('admin.calendar.update', $event->id), [
+                'title' => '',
+                'type' => '',
+                'start_date' => '',
+                'end_date' => '',
+            ]);
+
+        $response->assertSessionHasErrors(['title', 'type', 'start_date', 'end_date']);
+    }
 }
