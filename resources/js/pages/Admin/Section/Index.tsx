@@ -41,6 +41,13 @@ export default function Index() {
         );
     }, [search, sectionList]);
 
+    const gradeLevels = useMemo(() => {
+        const unique = new Set([
+            ...(sectionList.map((s) => s.gr_level).filter(Boolean) as string[]),
+        ]);
+        return Array.from(unique);
+    }, [sectionList]);
+
     const handleSaveSuccess = () => {
         router.reload();
         setAddOpen(false);
@@ -242,6 +249,7 @@ export default function Index() {
                 onClose={() => setAddOpen(false)}
                 onSuccess={handleSaveSuccess}
                 mode="create"
+                gradeLevels={gradeLevels}
             />
             <SectionModal
                 open={editOpen}
@@ -249,6 +257,7 @@ export default function Index() {
                 onSuccess={handleSaveSuccess}
                 section={selectedSection ?? undefined}
                 mode="edit"
+                gradeLevels={gradeLevels}
             />
 
             <ConfirmationModal

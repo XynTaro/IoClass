@@ -12,6 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 export interface Section {
     sect_id?: number;
@@ -25,12 +32,22 @@ interface SectionFormData {
     gr_level: string | null;
 }
 
+const DEFAULT_GRADE_LEVELS = [
+    'Grade 7',
+    'Grade 8',
+    'Grade 9',
+    'Grade 10',
+    'Grade 11',
+    'Grade 12',
+];
+
 interface SectionModalProps {
     open: boolean;
     onClose: () => void;
     onSuccess?: () => void;
     section?: Section;
     mode: 'edit' | 'create';
+    gradeLevels?: string[];
 }
 
 export default function SectionModal({
@@ -39,12 +56,22 @@ export default function SectionModal({
     onSuccess,
     section,
     mode,
+    gradeLevels = [],
 }: SectionModalProps) {
     const form = useForm<SectionFormData>({
         sect_id: '',
         sect_name: '',
         gr_level: '',
     });
+
+    const availableGradeLevels = Array.from(
+        new Set([
+            ...(gradeLevels && gradeLevels.length > 0 ? gradeLevels : DEFAULT_GRADE_LEVELS),
+            ...(form.data.gr_level ? [form.data.gr_level] : []),
+        ]),
+    )
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     useEffect(() => {
         if (section && mode === 'edit') {
@@ -59,6 +86,7 @@ export default function SectionModal({
     useEffect(() => {
         if (!open) {
             form.reset();
+            form.clearErrors();
         }
     }, [open]);
 
@@ -125,24 +153,30 @@ export default function SectionModal({
                     </div>
 
                     <div>
-                        <Label
-                            htmlFor="gr_level"
-                            className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                        >
+                        <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
                             Grade level <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                            id="gr_level"
-                            placeholder="e.g. Grade 7"
+                        <Select
                             value={form.data.gr_level ?? ''}
-                            onChange={(e) => {
-                                form.setData('gr_level', e.target.value);
+                            onValueChange={(v) => {
+                                form.setData('gr_level', v);
                                 form.clearErrors('gr_level');
                             }}
-                            required
-                            aria-invalid={Boolean(form.errors.gr_level)}
-                            className={inputErrorClass(Boolean(form.errors.gr_level))}
-                        />
+                        >
+                            <SelectTrigger
+                                id="gr_level"
+                                className={inputErrorClass(Boolean(form.errors.gr_level))}
+                            >
+                                <SelectValue placeholder="Select grade level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableGradeLevels.map((level) => (
+                                    <SelectItem key={level} value={level}>
+                                        {level}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <FormFieldError
                             label="Grade level"
                             message={form.errors.gr_level}
