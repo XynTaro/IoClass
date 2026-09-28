@@ -105,6 +105,10 @@ class SubjectController extends Controller
         $validated = $request->validate([
             'student_ids' => 'required|array|min:1',
             'student_ids.*' => 'integer|exists:student,stu_id',
+        ], [
+            'student_ids.required' => 'Please select at least one student to enroll.',
+            'student_ids.min' => 'Please select at least one student to enroll.',
+            'student_ids.*.exists' => 'One or more selected students do not exist.',
         ]);
 
         $activeSyId = DB::table('school_year')
@@ -168,7 +172,10 @@ class SubjectController extends Controller
             ],
             'gr_level' => 'required|string|max:20',
         ], [
+            'subj_code.required' => 'Subject code is required.',
             'subj_code.unique' => 'This subject code is already registered.',
+            'subj_name.required' => 'Subject name is required.',
+            'gr_level.required' => 'Grade level is required.',
         ]);
 
         Subject::create($validated);
@@ -211,7 +218,10 @@ class SubjectController extends Controller
             ],
             'gr_level' => 'required|string|max:20',
         ], [
+            'subj_code.required' => 'Subject code is required.',
             'subj_code.unique' => 'This subject code is already registered.',
+            'subj_name.required' => 'Subject name is required.',
+            'gr_level.required' => 'Grade level is required.',
         ]);
 
         $subject->update($validated);

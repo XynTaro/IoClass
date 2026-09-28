@@ -48,9 +48,14 @@ class AdminAdminController extends Controller
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
         ], [
+            'fname.required' => 'First name is required.',
             'fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
+            'lname.required' => 'Last name is required.',
             'lname.regex' => 'Last name must contain only letters and cannot start with a space.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email must be a valid email address.',
+            'email.unique' => 'This email is already taken.',
             'email.regex' => 'Email cannot contain spaces.',
             'contact_number.regex' => 'Contact number must contain only numbers.',
         ]);
@@ -94,10 +99,17 @@ class AdminAdminController extends Controller
             'add_id' => 'nullable|integer|exists:address,add_id',
             'pw' => 'nullable|string|min:8|max:255|confirmed',
         ], [
+            'fname.required' => 'First name is required.',
             'fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
+            'lname.required' => 'Last name is required.',
             'lname.regex' => 'Last name must contain only letters and cannot start with a space.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email must be a valid email address.',
+            'email.unique' => 'This email is already taken.',
             'email.regex' => 'Email cannot contain spaces.',
+            'pw.min' => 'Password must be at least 8 characters.',
+            'pw.confirmed' => 'Password confirmation does not match.',
             'contact_number.regex' => 'Contact number must contain only numbers.',
         ]);
 
@@ -167,9 +179,14 @@ class AdminAdminController extends Controller
             'curr_municipality' => 'nullable|string|max:100',
             'curr_barangay' => 'nullable|string|max:100',
         ], [
+            'fname.required' => 'First name is required.',
             'fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
+            'lname.required' => 'Last name is required.',
             'lname.regex' => 'Last name must contain only letters and cannot start with a space.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email must be a valid email address.',
+            'email.unique' => 'This email is already taken.',
             'email.regex' => 'Email cannot contain spaces.',
             'contact_number.required' => 'Contact number is required for temporary password SMS delivery.',
             'contact_number.regex' => 'Contact number must contain only numbers.',

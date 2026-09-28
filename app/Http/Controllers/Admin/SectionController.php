@@ -53,6 +53,9 @@ class SectionController extends Controller
                 },
             ],
             'gr_level' => 'required|string|max:20',
+        ], [
+            'sect_name.required' => 'Section name is required.',
+            'gr_level.required' => 'Grade level is required.',
         ]);
 
         Section::create($validated);
@@ -93,6 +96,9 @@ class SectionController extends Controller
                 },
             ],
             'gr_level' => 'required|string|max:20',
+        ], [
+            'sect_name.required' => 'Section name is required.',
+            'gr_level.required' => 'Grade level is required.',
         ]);
 
         $section->update($validated);

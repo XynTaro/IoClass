@@ -151,22 +151,34 @@ class AdminStudentController extends Controller
             'guardian_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
         ], [
             'rfid_uid.required' => 'RFID UID is required.',
+            'lrn.regex' => 'LRN must contain only numbers.',
+            'lrn.unique' => 'This LRN is already taken.',
+            'stu_fname.required' => 'First name is required.',
             'stu_fname.regex' => 'Student first name must contain only letters and cannot start with a space.',
             'stu_mname.regex' => 'Student middle name must contain only letters and cannot start with a space.',
+            'stu_lname.required' => 'Last name is required.',
             'stu_lname.regex' => 'Student last name must contain only letters and cannot start with a space.',
+            'sect_id.required' => 'Section is required.',
+            'sect_id.exists' => 'The selected section does not exist.',
+            'photo.image' => 'Photo must be an image file.',
+            'photo.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
+            'photo.max' => 'Photo must not exceed 2MB.',
             'father_name.regex' => 'Father first name must contain only letters and cannot start with a space.',
             'father_mname.regex' => 'Father middle name must contain only letters and cannot start with a space.',
             'father_lname.regex' => 'Father last name must contain only letters and cannot start with a space.',
+            'father_email.email' => 'Father email must be a valid email address.',
             'father_email.regex' => 'Father email cannot contain spaces.',
             'father_contact_number.regex' => 'Father contact number must contain only numbers.',
             'mother_name.regex' => 'Mother first name must contain only letters and cannot start with a space.',
             'mother_mname.regex' => 'Mother middle name must contain only letters and cannot start with a space.',
             'mother_lname.regex' => 'Mother last name must contain only letters and cannot start with a space.',
+            'mother_email.email' => 'Mother email must be a valid email address.',
             'mother_email.regex' => 'Mother email cannot contain spaces.',
             'mother_contact_number.regex' => 'Mother contact number must contain only numbers.',
             'guardian_name.regex' => 'Guardian first name must contain only letters and cannot start with a space.',
             'guardian_mname.regex' => 'Guardian middle name must contain only letters and cannot start with a space.',
             'guardian_lname.regex' => 'Guardian last name must contain only letters and cannot start with a space.',
+            'guardian_email.email' => 'Guardian email must be a valid email address.',
             'guardian_email.regex' => 'Guardian email cannot contain spaces.',
             'guardian_contact_number.regex' => 'Guardian contact number must contain only numbers.',
         ]);
@@ -288,6 +300,12 @@ class AdminStudentController extends Controller
         $validated = $request->validate([
             'from_sect_id' => 'required|integer|exists:section,sect_id',
             'to_sect_id' => 'required|integer|exists:section,sect_id|different:from_sect_id',
+        ], [
+            'from_sect_id.required' => 'Source section is required.',
+            'from_sect_id.exists' => 'The selected source section does not exist.',
+            'to_sect_id.required' => 'Destination section is required.',
+            'to_sect_id.exists' => 'The selected destination section does not exist.',
+            'to_sect_id.different' => 'Destination section must be different from the source section.',
         ]);
 
         $activeSyId = DB::table('school_year')->where('is_active', true)->value('sy_id');
@@ -369,9 +387,16 @@ class AdminStudentController extends Controller
             'status' => 'nullable|string|max:50',
         ], [
             'rfid_uid.required' => 'RFID UID is required.',
+            'lrn.regex' => 'LRN must contain only numbers.',
+            'lrn.unique' => 'This LRN is already taken.',
+            'stu_fname.required' => 'First name is required.',
             'stu_fname.regex' => 'Student first name must contain only letters and cannot start with a space.',
             'stu_mname.regex' => 'Student middle name must contain only letters and cannot start with a space.',
+            'stu_lname.required' => 'Last name is required.',
             'stu_lname.regex' => 'Student last name must contain only letters and cannot start with a space.',
+            'photo.image' => 'Photo must be an image file.',
+            'photo.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
+            'photo.max' => 'Photo must not exceed 2MB.',
         ]);
 
         $validated['stu_fname'] = $this->formatName($validated['stu_fname']);

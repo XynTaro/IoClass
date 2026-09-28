@@ -22,6 +22,10 @@ class TeacherPasswordChangeController extends Controller
     {
         $request->validate([
             'password' => ['required', 'confirmed', Password::min(8)],
+        ], [
+            'password.required' => 'New password is required.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'password.min' => 'Password must be at least 8 characters.',
         ]);
 
         /** @var Teacher $teacher */

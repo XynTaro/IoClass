@@ -44,6 +44,11 @@ class AdminProfileController extends Controller
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email,'.$admin->admin_id.',admin_id',
             'contact_number' => 'nullable|string|max:20',
         ], [
+            'fname.required' => 'First name is required.',
+            'lname.required' => 'Last name is required.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email must be a valid email address.',
+            'email.unique' => 'This email is already taken.',
             'email.regex' => 'Email cannot contain spaces.',
         ]);
 
@@ -60,6 +65,10 @@ class AdminProfileController extends Controller
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
+        ], [
+            'current_password.required' => 'Current password is required.',
+            'password.required' => 'New password is required.',
+            'password.confirmed' => 'Password confirmation does not match.',
         ]);
 
         if (! Hash::check($validated['current_password'], $admin->getAuthPassword())) {
@@ -81,6 +90,11 @@ class AdminProfileController extends Controller
 
         $request->validate([
             'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+        ], [
+            'avatar.required' => 'Please select a photo to upload.',
+            'avatar.image' => 'The file must be an image.',
+            'avatar.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
+            'avatar.max' => 'Photo must not exceed 2MB.',
         ]);
 
         if ($request->hasFile('avatar')) {

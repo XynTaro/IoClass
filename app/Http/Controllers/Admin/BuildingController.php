@@ -50,6 +50,8 @@ class BuildingController extends Controller
                     }
                 },
             ],
+        ], [
+            'building_name.required' => 'Building name is required.',
         ]);
 
         Building::create($validated);
@@ -84,6 +86,8 @@ class BuildingController extends Controller
                     }
                 },
             ],
+        ], [
+            'building_name.required' => 'Building name is required.',
         ]);
 
         $building->update($validated);

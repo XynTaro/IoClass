@@ -30,6 +30,14 @@ class School_YearController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'is_active' => 'boolean',
+        ], [
+            'sy_label.required' => 'School year label is required.',
+            'sy_label.unique' => 'This school year label is already taken.',
+            'start_date.required' => 'Start date is required.',
+            'start_date.date' => 'Start date must be a valid date.',
+            'end_date.required' => 'End date is required.',
+            'end_date.date' => 'End date must be a valid date.',
+            'end_date.after_or_equal' => 'End date must be on or after the start date.',
         ]);
 
         if ($validated['is_active'] ?? false) {
@@ -51,6 +59,14 @@ class School_YearController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'is_active' => 'boolean',
+        ], [
+            'sy_label.required' => 'School year label is required.',
+            'sy_label.unique' => 'This school year label is already taken.',
+            'start_date.required' => 'Start date is required.',
+            'start_date.date' => 'Start date must be a valid date.',
+            'end_date.required' => 'End date is required.',
+            'end_date.date' => 'End date must be a valid date.',
+            'end_date.after_or_equal' => 'End date must be on or after the start date.',
         ]);
 
         if ($validated['is_active'] ?? false) {

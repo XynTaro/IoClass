@@ -53,6 +53,15 @@ class CalendarEventController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'is_school_day' => 'boolean',
+        ], [
+            'sy_id.required' => 'School year is required.',
+            'sy_id.exists' => 'The selected school year does not exist.',
+            'title.required' => 'Event title is required.',
+            'type.required' => 'Event type is required.',
+            'type.in' => 'Event type must be one of: holiday, break, suspension, or special event.',
+            'start_date.required' => 'Start date is required.',
+            'end_date.required' => 'End date is required.',
+            'end_date.after_or_equal' => 'End date must be on or after the start date.',
         ]);
 
         $validated['is_school_day'] = $validated['is_school_day'] ?? false;
@@ -74,6 +83,13 @@ class CalendarEventController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'is_school_day' => 'boolean',
+        ], [
+            'title.required' => 'Event title is required.',
+            'type.required' => 'Event type is required.',
+            'type.in' => 'Event type must be one of: holiday, break, suspension, or special event.',
+            'start_date.required' => 'Start date is required.',
+            'end_date.required' => 'End date is required.',
+            'end_date.after_or_equal' => 'End date must be on or after the start date.',
         ]);
 
         $validated['is_school_day'] = $validated['is_school_day'] ?? false;

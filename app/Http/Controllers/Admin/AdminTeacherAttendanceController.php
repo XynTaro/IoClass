@@ -126,6 +126,12 @@ class AdminTeacherAttendanceController extends Controller
             'status' => ['required', 'in:present,late,absent,excused'],
             'time_in' => ['nullable', 'string'],
             'remarks' => ['nullable', 'string', 'max:255'],
+        ], [
+            'date.required' => 'Date is required.',
+            'date.date' => 'Date must be a valid date.',
+            'status.required' => 'Attendance status is required.',
+            'status.in' => 'Attendance status must be one of: present, late, absent, or excused.',
+            'remarks.max' => 'Remarks must not exceed 255 characters.',
         ]);
 
         $teacher = Teacher::query()->where('tch_id', $teacherId)->firstOrFail();

@@ -46,6 +46,11 @@ class TeacherProfileController extends Controller
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email,'.$teacher->tch_id.',tch_id',
             'contact_number' => 'nullable|string|max:20',
         ], [
+            'fname.required' => 'First name is required.',
+            'lname.required' => 'Last name is required.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email must be a valid email address.',
+            'email.unique' => 'This email is already taken.',
             'email.regex' => 'Email cannot contain spaces.',
         ]);
 
@@ -70,6 +75,10 @@ class TeacherProfileController extends Controller
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
+        ], [
+            'current_password.required' => 'Current password is required.',
+            'password.required' => 'New password is required.',
+            'password.confirmed' => 'Password confirmation does not match.',
         ]);
 
         if (! Hash::check($validated['current_password'], $teacher->getAuthPassword())) {
@@ -90,6 +99,11 @@ class TeacherProfileController extends Controller
 
         $request->validate([
             'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+        ], [
+            'avatar.required' => 'Please select an image file.',
+            'avatar.image' => 'The file must be an image.',
+            'avatar.mimes' => 'The image must be a JPEG, PNG, JPG, or WebP file.',
+            'avatar.max' => 'The image must not exceed 2MB.',
         ]);
 
         if ($request->hasFile('avatar')) {

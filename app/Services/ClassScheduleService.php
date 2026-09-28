@@ -57,6 +57,40 @@ class ClassScheduleService
     }
 
     /**
+     * @return array<string, string>
+     */
+    public static function slotValidationMessages(string $prefix = 'schedules'): array
+    {
+        return [
+            "{$prefix}.*.sect_id.required" => 'Section is required for each schedule slot.',
+            "{$prefix}.*.sect_id.exists" => 'The selected section does not exist.',
+            "{$prefix}.*.room_id.required" => 'Room is required for each schedule slot.',
+            "{$prefix}.*.room_id.exists" => 'The selected room does not exist.',
+            "{$prefix}.*.subj_id.required" => 'Subject is required for each schedule slot.',
+            "{$prefix}.*.subj_id.exists" => 'The selected subject does not exist.',
+            "{$prefix}.*.days.required" => 'At least one day must be selected for each schedule slot.',
+            "{$prefix}.*.days.min" => 'At least one day must be selected for each schedule slot.',
+            "{$prefix}.*.days.*.required" => 'Day of the week is required.',
+            "{$prefix}.*.days.*.in" => 'Invalid day of the week selected.',
+            "{$prefix}.*.start_time.required" => 'Start time is required for each schedule slot.',
+            "{$prefix}.*.start_time.date_format" => 'Start time must be in HH:MM format.',
+            "{$prefix}.*.end_time.required" => 'End time is required for each schedule slot.',
+            "{$prefix}.*.end_time.date_format" => 'End time must be in HH:MM format.',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function adviserValidationMessages(): array
+    {
+        return [
+            'adviser_sect_id.required_if' => 'Please select an advisory section when assigning as class adviser.',
+            'adviser_sect_id.exists' => 'The selected advisory section does not exist.',
+        ];
+    }
+
+    /**
      * @param  list<array{sect_id: int, room_id: int, subj_id: int, days: list<string>, start_time: string, end_time: string}>  $slots
      */
     public function createFromSlots(int $teacherId, array $slots): int

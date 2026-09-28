@@ -37,6 +37,11 @@ class RoomController extends Controller
         $validated = $request->validate([
             'room_no' => 'required|string|max:20|unique:room,room_no',
             'building_id' => 'required|integer|exists:building,building_id',
+        ], [
+            'room_no.required' => 'Room number is required.',
+            'room_no.unique' => 'This room number is already taken.',
+            'building_id.required' => 'Building is required.',
+            'building_id.exists' => 'The selected building does not exist.',
         ]);
 
         Room::create([
@@ -56,6 +61,11 @@ class RoomController extends Controller
         $validated = $request->validate([
             'room_no' => 'required|string|max:20|unique:room,room_no,'.$room->room_id.',room_id',
             'building_id' => 'required|integer|exists:building,building_id',
+        ], [
+            'room_no.required' => 'Room number is required.',
+            'room_no.unique' => 'This room number is already taken.',
+            'building_id.required' => 'Building is required.',
+            'building_id.exists' => 'The selected building does not exist.',
         ]);
 
         $room->update($validated);

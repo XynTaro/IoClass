@@ -92,9 +92,18 @@ class AdminTeacherController extends Controller
             'add_id' => 'nullable|integer|exists:address,add_id',
         ], [
             'tch_rfid_uid.required' => 'RFID UID is required.',
+            'tch_rfid_uid.string' => 'RFID UID must be a valid string.',
+            'tch_rfid_uid.max' => 'RFID UID must not exceed 100 characters.',
+            'tch_rfid_uid.different' => 'RFID UID and master card must be different.',
+            'master_card.different' => 'Master card and RFID UID must be different.',
+            'tch_fname.required' => 'First name is required.',
             'tch_fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'tch_mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
+            'tch_lname.required' => 'Last name is required.',
             'tch_lname.regex' => 'Last name must contain only letters and cannot start with a space.',
+            'tch_email.required' => 'Email is required.',
+            'tch_email.email' => 'Email must be a valid email address.',
+            'tch_email.unique' => 'This email is already taken.',
             'tch_email.regex' => 'Email cannot contain spaces.',
             'contact_number.regex' => 'Contact number must contain only numbers.',
         ]);
@@ -143,10 +152,21 @@ class AdminTeacherController extends Controller
             'tch_pw' => 'nullable|string|min:8|max:255|confirmed',
         ], [
             'tch_rfid_uid.required' => 'RFID UID is required.',
+            'tch_rfid_uid.string' => 'RFID UID must be a valid string.',
+            'tch_rfid_uid.max' => 'RFID UID must not exceed 100 characters.',
+            'tch_rfid_uid.different' => 'RFID UID and master card must be different.',
+            'master_card.different' => 'Master card and RFID UID must be different.',
+            'tch_fname.required' => 'First name is required.',
             'tch_fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'tch_mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
+            'tch_lname.required' => 'Last name is required.',
             'tch_lname.regex' => 'Last name must contain only letters and cannot start with a space.',
+            'tch_email.required' => 'Email is required.',
+            'tch_email.email' => 'Email must be a valid email address.',
+            'tch_email.unique' => 'This email is already taken.',
             'tch_email.regex' => 'Email cannot contain spaces.',
+            'tch_pw.min' => 'Password must be at least 8 characters.',
+            'tch_pw.confirmed' => 'Password confirmation does not match.',
             'contact_number.regex' => 'Contact number must contain only numbers.',
         ]);
 
@@ -221,15 +241,24 @@ class AdminTeacherController extends Controller
             'curr_province' => 'nullable|string|max:100',
             'curr_municipality' => 'nullable|string|max:100',
             'curr_barangay' => 'nullable|string|max:100',
-        ], ClassScheduleService::slotValidationRules(), ClassScheduleService::adviserValidationRules()), [
+        ], ClassScheduleService::slotValidationRules(), ClassScheduleService::adviserValidationRules()), array_merge([
             'tch_rfid_uid.required' => 'RFID UID is required.',
+            'tch_rfid_uid.string' => 'RFID UID must be a valid string.',
+            'tch_rfid_uid.max' => 'RFID UID must not exceed 100 characters.',
+            'tch_rfid_uid.different' => 'RFID UID and master card must be different.',
+            'master_card.different' => 'Master card and RFID UID must be different.',
+            'tch_fname.required' => 'First name is required.',
             'tch_fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'tch_mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
+            'tch_lname.required' => 'Last name is required.',
             'tch_lname.regex' => 'Last name must contain only letters and cannot start with a space.',
+            'tch_email.required' => 'Email is required.',
+            'tch_email.email' => 'Email must be a valid email address.',
+            'tch_email.unique' => 'This email is already taken.',
             'tch_email.regex' => 'Email cannot contain spaces.',
             'contact_number.required' => 'Contact number is required for temporary password SMS delivery.',
             'contact_number.regex' => 'Contact number must contain only numbers.',
-        ]);
+        ], ClassScheduleService::slotValidationMessages(), ClassScheduleService::adviserValidationMessages()));
 
         $validated['tch_fname'] = $this->formatName($validated['tch_fname']);
         $validated['tch_mname'] = $this->formatName($validated['tch_mname'] ?? null);

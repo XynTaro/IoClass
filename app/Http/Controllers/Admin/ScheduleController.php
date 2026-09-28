@@ -80,6 +80,13 @@ class ScheduleController extends Controller
             ],
             ClassScheduleService::slotValidationRules(),
             ClassScheduleService::adviserValidationRules(),
+        ), array_merge(
+            [
+                'tch_id.required' => 'Teacher is required.',
+                'tch_id.exists' => 'The selected teacher does not exist.',
+            ],
+            ClassScheduleService::slotValidationMessages(),
+            ClassScheduleService::adviserValidationMessages(),
         ));
 
         $slots = $validated['schedules'] ?? [];
@@ -116,6 +123,18 @@ class ScheduleController extends Controller
             'day_of_week' => "required|string|in:{$days}",
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
+        ], [
+            'sect_id.required' => 'Section is required.',
+            'sect_id.exists' => 'The selected section does not exist.',
+            'room_id.required' => 'Room is required.',
+            'room_id.exists' => 'The selected room does not exist.',
+            'subj_id.required' => 'Subject is required.',
+            'subj_id.exists' => 'The selected subject does not exist.',
+            'day_of_week.required' => 'Day of the week is required.',
+            'start_time.required' => 'Start time is required.',
+            'start_time.date_format' => 'Start time must be in HH:MM format.',
+            'end_time.required' => 'End time is required.',
+            'end_time.date_format' => 'End time must be in HH:MM format.',
         ]);
 
         $this->classScheduleService->updateSchedule($scheduleModel, $validated);
