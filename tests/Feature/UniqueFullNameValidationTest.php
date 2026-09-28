@@ -184,6 +184,7 @@ test('adding teacher with duplicate full name fails validation', function () {
 
     // Same name fails
     $response = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_rfid_uid' => 'TEACH-DUP-001',
         'tch_fname' => 'maria',
         'tch_mname' => 'santos',
         'tch_lname' => 'cruz',
@@ -197,6 +198,7 @@ test('adding teacher with duplicate full name fails validation', function () {
 
     // Different first name succeeds
     $differentFnameResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_rfid_uid' => 'TEACH-DUP-002',
         'tch_fname' => 'Ana',
         'tch_mname' => 'Santos',
         'tch_lname' => 'Cruz',
@@ -406,6 +408,7 @@ test('email cannot contain spaces when adding admin, teacher, or student parent'
 
     // Teacher email with space fails
     $teacherEmailResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_rfid_uid' => 'TEACH-EMAIL-001',
         'tch_fname' => 'Jane',
         'tch_lname' => 'Smith',
         'tch_email' => 'jane smith@example.com',
@@ -433,5 +436,38 @@ test('email cannot contain spaces when adding admin, teacher, or student parent'
     ]);
     $studentParentEmailResponse->assertSessionHasErrors([
         'father_email' => 'Father email cannot contain spaces.',
+    ]);
+});
+
+test('adding teacher or student without rfid uid fails with required validation error', function () {
+    $admin = Admin::factory()->create();
+
+    // Teacher store without tch_rfid_uid fails
+    $teacherResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_fname' => 'Teacher',
+        'tch_lname' => 'WithoutRfid',
+        'tch_email' => 'norfid.teacher@school.test',
+        'contact_number' => '09123456781',
+    ]);
+
+    $teacherResponse->assertSessionHasErrors([
+        'tch_rfid_uid' => 'RFID UID is required.',
+    ]);
+
+    // Student store without rfid_uid fails
+    $section = Section::create([
+        'sect_name' => 'Grade 8 - Gold',
+        'gr_level' => 'Grade 8',
+        'is_deleted' => false,
+    ]);
+
+    $studentResponse = $this->actingAs($admin, 'admin')->post(route('admin.student.store'), [
+        'stu_fname' => 'Student',
+        'stu_lname' => 'WithoutRfid',
+        'sect_id' => $section->sect_id,
+    ]);
+
+    $studentResponse->assertSessionHasErrors([
+        'rfid_uid' => 'RFID UID is required.',
     ]);
 });

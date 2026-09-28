@@ -67,6 +67,7 @@ function seedTeacherScheduleFixtures(): array
 function validTeacherPayload(): array
 {
     return [
+        'tch_rfid_uid' => 'TCH-PAYLOAD-001',
         'tch_fname' => 'Jane',
         'tch_mname' => null,
         'tch_lname' => 'Doe',

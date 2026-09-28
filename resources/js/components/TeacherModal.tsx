@@ -357,6 +357,10 @@ export default function TeacherModal({
         const rfidUid = normalizeRfidUid(form.data.tch_rfid_uid);
         const masterCard = normalizeRfidUid(form.data.master_card);
 
+        if (!form.data.tch_rfid_uid.trim()) {
+            errors.tch_rfid_uid = 'RFID UID is required.';
+        }
+
         if (rfidUid !== '' && masterCard !== '' && rfidUid === masterCard) {
             errors.tch_rfid_uid = 'RFID UID and master card must be different.';
             errors.master_card = 'RFID UID and master card must be different.';
@@ -706,6 +710,7 @@ export default function TeacherModal({
                                         ? (teacher?.tch_rfid_uid as string | null) ?? ''
                                         : ''
                                 }
+                                required
                                 enabled={isStep1Active}
                                 captureGlobalScan={isStep1Active && scanTarget === 'rfid'}
                                 wirelessCapture={false}

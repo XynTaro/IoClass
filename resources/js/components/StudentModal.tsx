@@ -767,6 +767,13 @@ export default function StudentModal({
             return;
         }
 
+        if (!form.data.rfid_uid.trim()) {
+            setLocalErrors({
+                rfid_uid: 'RFID UID is required.',
+            });
+            return;
+        }
+
         if (!isOnline) {
             setSubmitError('Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.');
             return;
@@ -801,6 +808,14 @@ export default function StudentModal({
             setLocalErrors({
                 rfid_uid:
                     'This RFID card is already registered to another person.',
+            });
+            setStep(1);
+            return;
+        }
+
+        if (!form.data.rfid_uid.trim()) {
+            setLocalErrors({
+                rfid_uid: 'RFID UID is required.',
             });
             setStep(1);
             return;

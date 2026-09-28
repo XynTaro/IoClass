@@ -53,6 +53,7 @@ test('teacher name cannot contain numbers or special symbols and auto capitalize
     $admin = Admin::factory()->create();
 
     $invalidResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_rfid_uid' => 'TEACH-INVALID-001',
         'tch_fname' => 'Jane2',
         'tch_lname' => 'Doe',
         'tch_email' => 'jane@example.com',
@@ -62,6 +63,7 @@ test('teacher name cannot contain numbers or special symbols and auto capitalize
     $invalidResponse->assertSessionHasErrors(['tch_fname']);
 
     $symbolResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_rfid_uid' => 'TEACH-SYMBOL-001',
         'tch_fname' => 'Jane#',
         'tch_lname' => 'Doe',
         'tch_email' => 'jane@example.com',
@@ -71,6 +73,7 @@ test('teacher name cannot contain numbers or special symbols and auto capitalize
     $symbolResponse->assertSessionHasErrors(['tch_fname']);
 
     $validResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_rfid_uid' => 'TEACH-NAME-001',
         'tch_fname' => 'mary jane',
         'tch_mname' => 'delos santos',
         'tch_lname' => 'watson',

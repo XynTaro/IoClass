@@ -82,7 +82,7 @@ class AdminTeacherController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'tch_rfid_uid' => ['nullable', 'string', 'max:100', 'different:master_card', new UniqueRfidUid],
+            'tch_rfid_uid' => ['required', 'string', 'max:100', 'different:master_card', new UniqueRfidUid],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid],
             'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher')],
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
@@ -91,6 +91,7 @@ class AdminTeacherController extends Controller
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
         ], [
+            'tch_rfid_uid.required' => 'RFID UID is required.',
             'tch_fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'tch_mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
             'tch_lname.regex' => 'Last name must contain only letters and cannot start with a space.',
@@ -131,7 +132,7 @@ class AdminTeacherController extends Controller
         $teacherModel = Teacher::findOrFail($teacher);
 
         $validated = $request->validate([
-            'tch_rfid_uid' => ['nullable', 'string', 'max:100', 'different:master_card', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
+            'tch_rfid_uid' => ['required', 'string', 'max:100', 'different:master_card', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
             'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher', ignoreId: $teacherModel->tch_id)],
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
@@ -141,6 +142,7 @@ class AdminTeacherController extends Controller
             'add_id' => 'nullable|integer|exists:address,add_id',
             'tch_pw' => 'nullable|string|min:8|max:255|confirmed',
         ], [
+            'tch_rfid_uid.required' => 'RFID UID is required.',
             'tch_fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'tch_mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
             'tch_lname.regex' => 'Last name must contain only letters and cannot start with a space.',
@@ -200,7 +202,7 @@ class AdminTeacherController extends Controller
     {
         $validated = $request->validate(array_merge([
             // Teacher fields
-            'tch_rfid_uid' => ['nullable', 'string', 'max:100', 'different:master_card', new UniqueRfidUid],
+            'tch_rfid_uid' => ['required', 'string', 'max:100', 'different:master_card', new UniqueRfidUid],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid],
             'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher')],
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
@@ -220,6 +222,7 @@ class AdminTeacherController extends Controller
             'curr_municipality' => 'nullable|string|max:100',
             'curr_barangay' => 'nullable|string|max:100',
         ], ClassScheduleService::slotValidationRules(), ClassScheduleService::adviserValidationRules()), [
+            'tch_rfid_uid.required' => 'RFID UID is required.',
             'tch_fname.regex' => 'First name must contain only letters and cannot start with a space.',
             'tch_mname.regex' => 'Middle name must contain only letters and cannot start with a space.',
             'tch_lname.regex' => 'Last name must contain only letters and cannot start with a space.',

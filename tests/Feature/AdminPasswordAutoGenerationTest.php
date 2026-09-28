@@ -44,6 +44,7 @@ test('creating a teacher auto generates password and sets must_change_password t
 
     $response = $this->actingAs($admin, 'admin')
         ->post(route('admin.teacher.store'), [
+            'tch_rfid_uid' => 'TEACH-PW-001',
             'tch_fname' => 'New',
             'tch_lname' => 'Teacher',
             'tch_email' => 'newteacher.sms@example.com',

@@ -150,6 +150,7 @@ class AdminStudentController extends Controller
             'guardian_email' => 'nullable|email|max:255|regex:/^\S+$/',
             'guardian_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
         ], [
+            'rfid_uid.required' => 'RFID UID is required.',
             'stu_fname.regex' => 'Student first name must contain only letters and cannot start with a space.',
             'stu_mname.regex' => 'Student middle name must contain only letters and cannot start with a space.',
             'stu_lname.regex' => 'Student last name must contain only letters and cannot start with a space.',
@@ -367,6 +368,7 @@ class AdminStudentController extends Controller
             'rfid_uid' => ['required', 'string', 'max:50', new UniqueRfidUid(ignoreStudentId: $student->stu_id)],
             'status' => 'nullable|string|max:50',
         ], [
+            'rfid_uid.required' => 'RFID UID is required.',
             'stu_fname.regex' => 'Student first name must contain only letters and cannot start with a space.',
             'stu_mname.regex' => 'Student middle name must contain only letters and cannot start with a space.',
             'stu_lname.regex' => 'Student last name must contain only letters and cannot start with a space.',
