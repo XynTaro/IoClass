@@ -339,7 +339,11 @@ export default function TeacherModal({
         const errors: Partial<Record<keyof TeacherFormData, string>> = {};
         if (!form.data.tch_fname.trim()) errors.tch_fname = 'First name is required.';
         if (!form.data.tch_lname.trim()) errors.tch_lname = 'Last name is required.';
-        if (!form.data.tch_email.trim()) errors.tch_email = 'Email is required.';
+        if (!form.data.tch_email.trim()) {
+            errors.tch_email = 'Email is required.';
+        } else if (/\s/.test(form.data.tch_email)) {
+            errors.tch_email = 'Email cannot contain spaces.';
+        }
 
         if (!form.data.contact_number.trim()) {
             errors.contact_number = 'Contact number is required for SMS delivery.';
@@ -608,6 +612,11 @@ export default function TeacherModal({
                                     type="email"
                                     placeholder="name@example.com"
                                     value={form.data.tch_email}
+                                    onKeyDown={(e) => {
+                                        if (e.key === ' ') {
+                                            e.preventDefault();
+                                        }
+                                    }}
                                     onChange={(e) => {
                                         form.setData('tch_email', formatEmailInput(e.target.value));
                                         clearFieldErrors('tch_email');

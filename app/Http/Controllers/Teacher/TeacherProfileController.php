@@ -43,8 +43,10 @@ class TeacherProfileController extends Controller
             'fname' => 'required|string|max:100',
             'mname' => 'nullable|string|max:100',
             'lname' => 'required|string|max:100',
-            'email' => 'required|email|max:150|unique:teacher,tch_email,'.$teacher->tch_id.',tch_id',
+            'email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email,'.$teacher->tch_id.',tch_id',
             'contact_number' => 'nullable|string|max:20',
+        ], [
+            'email.regex' => 'Email cannot contain spaces.',
         ]);
 
         $teacher->update([

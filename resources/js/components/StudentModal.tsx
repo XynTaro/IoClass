@@ -472,6 +472,11 @@ function ParentSection({
                             placeholder: 'Email address',
                             type: 'email',
                             disabled: isDeceased,
+                            onKeyDown: (e) => {
+                                if (e.key === ' ') {
+                                    e.preventDefault();
+                                }
+                            },
                         }}
                     />
                     <Field
@@ -825,6 +830,15 @@ export default function StudentModal({
             if (cleanNum.length !== 11) {
                 errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
             }
+        }
+        if (form.data.father_email && !form.data.father_is_deceased && /\s/.test(form.data.father_email)) {
+            errors.father_email = 'Father email cannot contain spaces.';
+        }
+        if (form.data.mother_email && !form.data.mother_is_deceased && /\s/.test(form.data.mother_email)) {
+            errors.mother_email = 'Mother email cannot contain spaces.';
+        }
+        if (form.data.guardian_email && /\s/.test(form.data.guardian_email)) {
+            errors.guardian_email = 'Guardian email cannot contain spaces.';
         }
 
         if (Object.keys(errors).length > 0) {

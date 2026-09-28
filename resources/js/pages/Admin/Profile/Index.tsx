@@ -558,6 +558,11 @@ export default function AdminProfileIndex() {
                                                     value={
                                                         profileForm.data.email
                                                     }
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === ' ') {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
                                                     onChange={(e) => {
                                                         profileForm.setData(
                                                             'email',

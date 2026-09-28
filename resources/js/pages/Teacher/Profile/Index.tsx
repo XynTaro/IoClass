@@ -465,6 +465,11 @@ export default function TeacherProfileIndex() {
                                                 <Input
                                                     type="email"
                                                     value={profileForm.data.email}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === ' ') {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
                                                     onChange={(e) => {
                                                         profileForm.setData('email', formatEmailInput(e.target.value));
                                                         profileForm.clearErrors('email');

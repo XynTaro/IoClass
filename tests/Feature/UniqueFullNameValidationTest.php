@@ -389,3 +389,49 @@ test('updating building allows keeping own name but blocks duplicate', function 
         'building_name' => 'This building is already registered.',
     ]);
 });
+
+test('email cannot contain spaces when adding admin, teacher, or student parent', function () {
+    $admin = Admin::factory()->create();
+
+    // Admin email with space fails
+    $adminEmailResponse = $this->actingAs($admin, 'admin')->post(route('admin.admin.store'), [
+        'fname' => 'John',
+        'lname' => 'Doe',
+        'email' => 'john doe@example.com',
+        'contact_number' => '09123456789',
+    ]);
+    $adminEmailResponse->assertSessionHasErrors([
+        'email' => 'Email cannot contain spaces.',
+    ]);
+
+    // Teacher email with space fails
+    $teacherEmailResponse = $this->actingAs($admin, 'admin')->post(route('admin.teacher.store'), [
+        'tch_fname' => 'Jane',
+        'tch_lname' => 'Smith',
+        'tch_email' => 'jane smith@example.com',
+        'contact_number' => '09123456788',
+    ]);
+    $teacherEmailResponse->assertSessionHasErrors([
+        'tch_email' => 'Email cannot contain spaces.',
+    ]);
+
+    // Student parent email with space fails
+    $section = Section::create([
+        'sect_name' => 'Grade 7 - Diamond',
+        'gr_level' => 'Grade 7',
+        'is_deleted' => false,
+    ]);
+
+    $studentParentEmailResponse = $this->actingAs($admin, 'admin')->post(route('admin.student.store'), [
+        'stu_fname' => 'Mark',
+        'stu_lname' => 'Johnson',
+        'sect_id' => $section->sect_id,
+        'rfid_uid' => '8888888888',
+        'father_name' => 'Paul',
+        'father_lname' => 'Johnson',
+        'father_email' => 'paul johnson@example.com',
+    ]);
+    $studentParentEmailResponse->assertSessionHasErrors([
+        'father_email' => 'Father email cannot contain spaces.',
+    ]);
+});

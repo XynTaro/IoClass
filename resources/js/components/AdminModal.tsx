@@ -210,7 +210,11 @@ export default function AdminModal({
         const errors: Partial<Record<keyof AdminFormData, string>> = {};
         if (!form.data.fname.trim()) errors.fname = 'First name is required.';
         if (!form.data.lname.trim()) errors.lname = 'Last name is required.';
-        if (!form.data.email.trim()) errors.email = 'Email is required.';
+        if (!form.data.email.trim()) {
+            errors.email = 'Email is required.';
+        } else if (/\s/.test(form.data.email)) {
+            errors.email = 'Email cannot contain spaces.';
+        }
 
         if (!form.data.contact_number.trim()) {
             errors.contact_number = 'Contact number is required for SMS delivery.';
@@ -241,6 +245,8 @@ export default function AdminModal({
         e.preventDefault();
         const adminId = form.data.admin_id;
         if (!adminId) return;
+
+        if (!validateStep1()) return;
 
         if (!form.data.reset_password) {
             form.transform(({ admin_id, auto_password, reset_password, pw, pw_confirmation, ...data }) => data);
@@ -381,6 +387,11 @@ export default function AdminModal({
                                 type="email"
                                 placeholder="name@example.com"
                                 value={form.data.email}
+                                onKeyDown={(e) => {
+                                    if (e.key === ' ') {
+                                        e.preventDefault();
+                                    }
+                                }}
                                 onChange={(e) => {
                                     form.setData('email', formatEmailInput(e.target.value));
                                     form.clearErrors('email');
