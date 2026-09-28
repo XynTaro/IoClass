@@ -252,7 +252,7 @@ function validateStep1(data: StudentFormData): LocalErrors {
     const errors: LocalErrors = {};
     if (!data.lrn.trim()) errors.lrn = 'LRN is required.';
     if (!data.stu_fname.trim()) errors.stu_fname = 'First name is required.';
-    if (!data.stu_mname.trim()) errors.stu_mname = 'Middle name is required.';
+    // Middle name is optional
     if (!data.stu_lname.trim()) errors.stu_lname = 'Last name is required.';
     if (!data.gender) errors.gender = 'Gender is required.';
     if (!data.gr_level.trim()) errors.gr_level = 'Grade level is required.';
@@ -271,6 +271,7 @@ interface FieldProps {
     onChange: (val: string) => void;
     error?: string;
     localError?: string;
+    required?: boolean;
     inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
 }
 
@@ -281,16 +282,21 @@ function Field({
     onChange,
     error,
     localError,
+    required = false,
     inputProps,
 }: FieldProps) {
     const hasError = Boolean(error || localError);
+    const isRequired = required || label.trim().endsWith('*');
+    const cleanLabel = label.replace(/\s*\*$/, '').trim();
+
     return (
         <div>
             <Label
                 htmlFor={id}
                 className="mb-1 inline-block text-xs font-medium text-muted-foreground"
             >
-                {label}
+                {cleanLabel}
+                {isRequired && <span className="text-destructive"> *</span>}
             </Label>
             <Input
                 id={id}
@@ -1052,7 +1058,7 @@ export default function StudentModal({
                             {/* Gender / Sex */}
                             <div>
                                 <Label className="mb-1.5 inline-block text-xs font-medium text-muted-foreground">
-                                    Gender / Sex *
+                                    Gender / Sex <span className="text-destructive">*</span>
                                 </Label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
@@ -1124,7 +1130,7 @@ export default function StudentModal({
                                 />
                                 <Field
                                     id="stu_mname"
-                                    label="Middle name *"
+                                    label="Middle name"
                                     value={form.data.stu_mname}
                                     onChange={(v) =>
                                         setField(
@@ -1135,8 +1141,7 @@ export default function StudentModal({
                                     error={form.errors.stu_mname}
                                     localError={localErrors.stu_mname}
                                     inputProps={{
-                                        placeholder: 'Middle name',
-                                        required: true,
+                                        placeholder: 'Middle name (optional)',
                                     }}
                                 />
                                 <Field
@@ -1165,7 +1170,7 @@ export default function StudentModal({
                                         htmlFor="gr_level"
                                         className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                                     >
-                                        Grade level *
+                                        Grade level <span className="text-destructive">*</span>
                                     </Label>
                                     <select
                                         id="gr_level"
@@ -1202,7 +1207,7 @@ export default function StudentModal({
                                         htmlFor="sect"
                                         className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                                     >
-                                        Section *
+                                        Section <span className="text-destructive">*</span>
                                     </Label>
                                     <select
                                         id="sect"

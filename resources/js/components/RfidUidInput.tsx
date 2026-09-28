@@ -120,7 +120,7 @@ export default function RfidUidInput({
             >
                 <span>
                     {label}
-                    {required ? ' *' : ''}
+                    {required && <span className="text-destructive"> *</span>}
                 </span>
                 {wirelessCapture && enabled && (
                     <Button
