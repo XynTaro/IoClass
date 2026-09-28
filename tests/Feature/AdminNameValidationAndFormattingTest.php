@@ -39,6 +39,12 @@ test('student name cannot contain numbers or special symbols and auto capitalize
         'stu_lname' => 'smith',
         'sect_id' => $section->sect_id,
         'rfid_uid' => '1122334455',
+        'father_name' => 'John',
+        'father_lname' => 'Smith',
+        'father_contact_number' => '09123456789',
+        'mother_name' => 'Jane',
+        'mother_lname' => 'Smith',
+        'mother_contact_number' => '09123456788',
     ]);
 
     $validResponse->assertSessionHasNoErrors();

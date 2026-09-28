@@ -326,6 +326,8 @@ interface ParentSectionProps {
     errors: Partial<Record<keyof StudentFormData, string>>;
     onChange: (field: keyof StudentFormData, val: string) => void;
     onDeceasedChange?: (deceased: boolean) => void;
+    required?: boolean;
+    badgeNote?: string;
 }
 
 const FIRST_NAME_KEY: Record<
@@ -380,6 +382,8 @@ function ParentSection({
     errors,
     onChange,
     onDeceasedChange,
+    required = false,
+    badgeNote,
 }: ParentSectionProps) {
     const fnameKey = FIRST_NAME_KEY[prefix];
     const mnameKey = `${prefix}_mname` as keyof StudentFormData;
@@ -407,9 +411,24 @@ function ParentSection({
                     >
                         <Icon className={cn('size-4', iconColor)} />
                     </div>
-                    <p className="text-sm font-semibold text-foreground">
-                        {title}
-                    </p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">
+                            {title}
+                        </p>
+                        {isDeceased ? (
+                            <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                Deceased
+                            </span>
+                        ) : required ? (
+                            <span className="rounded-md bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/60 dark:text-red-400">
+                                Required {badgeNote ? `(${badgeNote})` : ''}
+                            </span>
+                        ) : (
+                            <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                Optional
+                            </span>
+                        )}
+                    </div>
                 </div>
                 {deceasedKey && onDeceasedChange && (
                     <div
@@ -442,6 +461,7 @@ function ParentSection({
                         value={data[fnameKey] as string}
                         onChange={(v) => onChange(fnameKey, formatNameInput(v))}
                         error={errors[fnameKey]}
+                        required={required && !isDeceased}
                         inputProps={{
                             placeholder: 'First name',
                             disabled: isDeceased,
@@ -464,6 +484,7 @@ function ParentSection({
                         value={data[lnameKey] as string}
                         onChange={(v) => onChange(lnameKey, formatNameInput(v))}
                         error={errors[lnameKey]}
+                        required={required && !isDeceased}
                         inputProps={{
                             placeholder: 'Last name',
                             disabled: isDeceased,
@@ -498,6 +519,7 @@ function ParentSection({
                             onChange(phoneKey, formatContactNumberInput(v))
                         }
                         error={errors[phoneKey]}
+                        required={required && !isDeceased}
                         inputProps={{
                             placeholder: '09xx xxx xxxx',
                             disabled: isDeceased,
@@ -665,7 +687,9 @@ export default function StudentModal({
             Boolean(permAddress.region) ||
             Boolean(form.data.father_name.trim()) ||
             Boolean(form.data.mother_name.trim()) ||
-            Boolean(form.data.guardian_name.trim());
+            Boolean(form.data.guardian_name.trim()) ||
+            form.data.father_is_deceased ||
+            form.data.mother_is_deceased;
 
         if (hasContent) {
             const { photo, ...dataWithoutPhoto } = form.data;
@@ -881,32 +905,79 @@ export default function StudentModal({
 
         form.clearErrors();
         const errors: Record<string, string> = {};
-        if (form.data.father_contact_number && !form.data.father_is_deceased) {
-            const cleanNum = form.data.father_contact_number.replace(/\D/g, '');
-            if (cleanNum.length !== 11) {
-                errors.father_contact_number = 'Contact number must be exactly 11 digits.';
+
+        // Father validation (required unless marked deceased)
+        if (!form.data.father_is_deceased) {
+            if (!form.data.father_name.trim()) {
+                errors.father_name = 'Father first name is required.';
+            }
+            if (!form.data.father_lname.trim()) {
+                errors.father_lname = 'Father last name is required.';
+            }
+            if (!form.data.father_contact_number.trim()) {
+                errors.father_contact_number = 'Father contact number is required.';
+            } else {
+                const cleanNum = form.data.father_contact_number.replace(/\D/g, '');
+                if (cleanNum.length !== 11) {
+                    errors.father_contact_number = 'Contact number must be exactly 11 digits.';
+                }
+            }
+            if (form.data.father_email && /\s/.test(form.data.father_email)) {
+                errors.father_email = 'Father email cannot contain spaces.';
             }
         }
-        if (form.data.mother_contact_number && !form.data.mother_is_deceased) {
-            const cleanNum = form.data.mother_contact_number.replace(/\D/g, '');
-            if (cleanNum.length !== 11) {
-                errors.mother_contact_number = 'Contact number must be exactly 11 digits.';
+
+        // Mother validation (required unless marked deceased)
+        if (!form.data.mother_is_deceased) {
+            if (!form.data.mother_name.trim()) {
+                errors.mother_name = 'Mother first name is required.';
+            }
+            if (!form.data.mother_lname.trim()) {
+                errors.mother_lname = 'Mother last name is required.';
+            }
+            if (!form.data.mother_contact_number.trim()) {
+                errors.mother_contact_number = 'Mother contact number is required.';
+            } else {
+                const cleanNum = form.data.mother_contact_number.replace(/\D/g, '');
+                if (cleanNum.length !== 11) {
+                    errors.mother_contact_number = 'Contact number must be exactly 11 digits.';
+                }
+            }
+            if (form.data.mother_email && /\s/.test(form.data.mother_email)) {
+                errors.mother_email = 'Mother email cannot contain spaces.';
             }
         }
-        if (form.data.guardian_contact_number) {
-            const cleanNum = form.data.guardian_contact_number.replace(/\D/g, '');
-            if (cleanNum.length !== 11) {
-                errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
+
+        // Guardian validation (required only if both parents are deceased)
+        const bothParentsDeceased = Boolean(form.data.father_is_deceased && form.data.mother_is_deceased);
+        if (bothParentsDeceased) {
+            if (!form.data.guardian_name.trim()) {
+                errors.guardian_name = 'Guardian first name is required when both parents are deceased.';
             }
-        }
-        if (form.data.father_email && !form.data.father_is_deceased && /\s/.test(form.data.father_email)) {
-            errors.father_email = 'Father email cannot contain spaces.';
-        }
-        if (form.data.mother_email && !form.data.mother_is_deceased && /\s/.test(form.data.mother_email)) {
-            errors.mother_email = 'Mother email cannot contain spaces.';
-        }
-        if (form.data.guardian_email && /\s/.test(form.data.guardian_email)) {
-            errors.guardian_email = 'Guardian email cannot contain spaces.';
+            if (!form.data.guardian_lname.trim()) {
+                errors.guardian_lname = 'Guardian last name is required when both parents are deceased.';
+            }
+            if (!form.data.guardian_contact_number.trim()) {
+                errors.guardian_contact_number = 'Guardian contact number is required when both parents are deceased.';
+            } else {
+                const cleanNum = form.data.guardian_contact_number.replace(/\D/g, '');
+                if (cleanNum.length !== 11) {
+                    errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
+                }
+            }
+            if (form.data.guardian_email && /\s/.test(form.data.guardian_email)) {
+                errors.guardian_email = 'Guardian email cannot contain spaces.';
+            }
+        } else {
+            if (form.data.guardian_contact_number.trim()) {
+                const cleanNum = form.data.guardian_contact_number.replace(/\D/g, '');
+                if (cleanNum.length !== 11) {
+                    errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
+                }
+            }
+            if (form.data.guardian_email && /\s/.test(form.data.guardian_email)) {
+                errors.guardian_email = 'Guardian email cannot contain spaces.';
+            }
         }
 
         if (Object.keys(errors).length > 0) {
@@ -1657,8 +1728,7 @@ export default function StudentModal({
                                         Parent / Guardian
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
-                                        Family contact details — all fields
-                                        optional
+                                        Parents are required unless deceased. Guardian is required if both parents are deceased.
                                     </p>
                                 </div>
                             </div>
@@ -1677,15 +1747,41 @@ export default function StudentModal({
                             onSubmit={handleCreateSubmit}
                             className="max-h-[68vh] space-y-4 overflow-y-auto pr-1"
                         >
+                            {form.data.father_is_deceased && form.data.mother_is_deceased && (
+                                <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                    <div>
+                                        <p className="font-semibold">Both parents are marked deceased</p>
+                                        <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                                            Guardian first name, last name, and contact number are required.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <ParentSection
                                 title="Father"
                                 prefix="father"
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
-                                onDeceasedChange={(deceased) =>
-                                    form.setData('father_is_deceased', deceased)
-                                }
+                                required={!form.data.father_is_deceased}
+                                onDeceasedChange={(deceased) => {
+                                    if (deceased) {
+                                        form.setData({
+                                            ...form.data,
+                                            father_is_deceased: true,
+                                            father_name: '',
+                                            father_mname: '',
+                                            father_lname: '',
+                                            father_email: '',
+                                            father_contact_number: '',
+                                        });
+                                        form.clearErrors('father_name', 'father_mname', 'father_lname', 'father_email', 'father_contact_number');
+                                    } else {
+                                        form.setData('father_is_deceased', false);
+                                    }
+                                }}
                             />
                             <ParentSection
                                 title="Mother"
@@ -1693,9 +1789,23 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
-                                onDeceasedChange={(deceased) =>
-                                    form.setData('mother_is_deceased', deceased)
-                                }
+                                required={!form.data.mother_is_deceased}
+                                onDeceasedChange={(deceased) => {
+                                    if (deceased) {
+                                        form.setData({
+                                            ...form.data,
+                                            mother_is_deceased: true,
+                                            mother_name: '',
+                                            mother_mname: '',
+                                            mother_lname: '',
+                                            mother_email: '',
+                                            mother_contact_number: '',
+                                        });
+                                        form.clearErrors('mother_name', 'mother_mname', 'mother_lname', 'mother_email', 'mother_contact_number');
+                                    } else {
+                                        form.setData('mother_is_deceased', false);
+                                    }
+                                }}
                             />
                             <ParentSection
                                 title="Guardian"
@@ -1703,6 +1813,8 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
+                                required={Boolean(form.data.father_is_deceased && form.data.mother_is_deceased)}
+                                badgeNote={form.data.father_is_deceased && form.data.mother_is_deceased ? 'Parents deceased' : undefined}
                             />
                         </form>
 

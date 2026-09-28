@@ -35,6 +35,12 @@ test('admin can create a student with gender and optional photo', function () {
         'sect_id' => $sectionId,
         'rfid_uid' => 'RFIDFEMALE01',
         'photo' => $photoFile,
+        'father_name' => 'Santiago',
+        'father_lname' => 'Delos Santos',
+        'father_contact_number' => '09123456789',
+        'mother_name' => 'Pia',
+        'mother_lname' => 'Alba',
+        'mother_contact_number' => '09123456788',
     ]);
 
     $response->assertRedirect();

@@ -116,6 +116,10 @@ class AdminStudentController extends Controller
      */
     public function store(Request $request)
     {
+        $fatherIsDeceased = $request->boolean('father_is_deceased');
+        $motherIsDeceased = $request->boolean('mother_is_deceased');
+        $bothParentsDeceased = $fatherIsDeceased && $motherIsDeceased;
+
         $validated = $request->validate([
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn'],
             'stu_fname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('student')],
@@ -131,24 +135,72 @@ class AdminStudentController extends Controller
             'province' => 'nullable|string|max:100',
             'municipality' => 'nullable|string|max:100',
             'barangay' => 'nullable|string|max:100',
-            // Father
-            'father_name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            // Parent Deceased Flags
+            'father_is_deceased' => 'nullable|boolean',
+            'mother_is_deceased' => 'nullable|boolean',
+            // Father (required unless marked deceased)
+            'father_name' => [
+                $fatherIsDeceased ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ],
             'father_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
-            'father_lname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'father_lname' => [
+                $fatherIsDeceased ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ],
             'father_email' => 'nullable|email|max:255|regex:/^\S+$/',
-            'father_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
-            // Mother
-            'mother_name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'father_contact_number' => [
+                $fatherIsDeceased ? 'nullable' : 'required',
+                'string',
+                'max:20',
+                'regex:/^\+?[\d\s]+$/',
+            ],
+            // Mother (required unless marked deceased)
+            'mother_name' => [
+                $motherIsDeceased ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ],
             'mother_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
-            'mother_lname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'mother_lname' => [
+                $motherIsDeceased ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ],
             'mother_email' => 'nullable|email|max:255|regex:/^\S+$/',
-            'mother_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
-            // Guardian
-            'guardian_name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'mother_contact_number' => [
+                $motherIsDeceased ? 'nullable' : 'required',
+                'string',
+                'max:20',
+                'regex:/^\+?[\d\s]+$/',
+            ],
+            // Guardian (required if both parents are deceased, optional otherwise)
+            'guardian_name' => [
+                $bothParentsDeceased ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ],
             'guardian_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
-            'guardian_lname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
+            'guardian_lname' => [
+                $bothParentsDeceased ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ],
             'guardian_email' => 'nullable|email|max:255|regex:/^\S+$/',
-            'guardian_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
+            'guardian_contact_number' => [
+                $bothParentsDeceased ? 'required' : 'nullable',
+                'string',
+                'max:20',
+                'regex:/^\+?[\d\s]+$/',
+            ],
         ], [
             'rfid_uid.required' => 'RFID UID is required.',
             'lrn.regex' => 'LRN must contain only numbers.',
@@ -163,23 +215,32 @@ class AdminStudentController extends Controller
             'photo.image' => 'Photo must be an image file.',
             'photo.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
             'photo.max' => 'Photo must not exceed 2MB.',
+            'father_name.required' => 'Father first name is required.',
             'father_name.regex' => 'Father first name must contain only letters and cannot start with a space.',
             'father_mname.regex' => 'Father middle name must contain only letters and cannot start with a space.',
+            'father_lname.required' => 'Father last name is required.',
             'father_lname.regex' => 'Father last name must contain only letters and cannot start with a space.',
             'father_email.email' => 'Father email must be a valid email address.',
             'father_email.regex' => 'Father email cannot contain spaces.',
+            'father_contact_number.required' => 'Father contact number is required.',
             'father_contact_number.regex' => 'Father contact number must contain only numbers.',
+            'mother_name.required' => 'Mother first name is required.',
             'mother_name.regex' => 'Mother first name must contain only letters and cannot start with a space.',
             'mother_mname.regex' => 'Mother middle name must contain only letters and cannot start with a space.',
+            'mother_lname.required' => 'Mother last name is required.',
             'mother_lname.regex' => 'Mother last name must contain only letters and cannot start with a space.',
             'mother_email.email' => 'Mother email must be a valid email address.',
             'mother_email.regex' => 'Mother email cannot contain spaces.',
+            'mother_contact_number.required' => 'Mother contact number is required.',
             'mother_contact_number.regex' => 'Mother contact number must contain only numbers.',
+            'guardian_name.required' => 'Guardian first name is required when both parents are deceased.',
             'guardian_name.regex' => 'Guardian first name must contain only letters and cannot start with a space.',
             'guardian_mname.regex' => 'Guardian middle name must contain only letters and cannot start with a space.',
+            'guardian_lname.required' => 'Guardian last name is required when both parents are deceased.',
             'guardian_lname.regex' => 'Guardian last name must contain only letters and cannot start with a space.',
             'guardian_email.email' => 'Guardian email must be a valid email address.',
             'guardian_email.regex' => 'Guardian email cannot contain spaces.',
+            'guardian_contact_number.required' => 'Guardian contact number is required when both parents are deceased.',
             'guardian_contact_number.regex' => 'Guardian contact number must contain only numbers.',
         ]);
 
@@ -240,7 +301,7 @@ class AdminStudentController extends Controller
         $motherId = null;
         $guardianId = null;
 
-        if (! empty($validated['father_name'])) {
+        if (! $fatherIsDeceased && ! empty($validated['father_name'])) {
             $father = Father::create([
                 'father_name' => $this->formatName($validated['father_name']),
                 'father_mname' => $this->formatName($validated['father_mname'] ?? null),
@@ -252,7 +313,7 @@ class AdminStudentController extends Controller
             $fatherId = $father->f_id;
         }
 
-        if (! empty($validated['mother_name'])) {
+        if (! $motherIsDeceased && ! empty($validated['mother_name'])) {
             $mother = Mother::create([
                 'mother_name' => $this->formatName($validated['mother_name']),
                 'mother_mname' => $this->formatName($validated['mother_mname'] ?? null),
