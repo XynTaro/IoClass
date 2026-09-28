@@ -499,7 +499,7 @@ function ParentSection({
                         }
                         error={errors[phoneKey]}
                         inputProps={{
-                            placeholder: '0991 669 1255',
+                            placeholder: '09xx xxx xxxx',
                             disabled: isDeceased,
                             maxLength: 13,
                         }}

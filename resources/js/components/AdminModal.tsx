@@ -388,7 +388,7 @@ export default function AdminModal({
                             </Label>
                             <Input
                                 id="contact_number"
-                                placeholder="0991 669 1255"
+                                placeholder="09xx xxx xxxx"
                                 value={form.data.contact_number}
                                 maxLength={13}
                                 onChange={(e) => {

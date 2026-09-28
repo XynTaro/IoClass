@@ -608,7 +608,7 @@ export default function AdminProfileIndex() {
                                                         );
                                                     }}
                                                     className="rounded-xl pl-8"
-                                                    placeholder="0991 669 1255"
+                                                    placeholder="09xx xxx xxxx"
                                                     maxLength={13}
                                                 />
                                             </div>
