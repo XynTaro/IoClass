@@ -43,6 +43,28 @@ interface SchoolYearModalProps {
     mode: 'edit' | 'create';
 }
 
+const deriveSchoolYearLabel = (
+    startDate: string | null | undefined,
+    endDate: string | null | undefined,
+): string => {
+    if (!startDate) return '';
+    const startMatch = startDate.match(/^(\d{4})/);
+    if (!startMatch) return '';
+    const startYear = parseInt(startMatch[1], 10);
+    if (isNaN(startYear)) return '';
+
+    if (endDate) {
+        const endMatch = endDate.match(/^(\d{4})/);
+        if (endMatch) {
+            const endYear = parseInt(endMatch[1], 10);
+            if (!isNaN(endYear) && endYear > startYear) {
+                return `${startYear}-${endYear}`;
+            }
+        }
+    }
+    return `${startYear}-${startYear + 1}`;
+};
+
 export default function SchoolYearModal({
     open,
     onClose,
@@ -76,6 +98,32 @@ export default function SchoolYearModal({
         }
     }, [open]);
 
+    const handleStartDateChange = (val: string) => {
+        const newLabel = deriveSchoolYearLabel(val, form.data.end_date);
+        form.setData((prev) => ({
+            ...prev,
+            start_date: val,
+            sy_label: newLabel || prev.sy_label,
+        }));
+        form.clearErrors('start_date');
+        if (newLabel) {
+            form.clearErrors('sy_label');
+        }
+    };
+
+    const handleEndDateChange = (val: string) => {
+        const newLabel = deriveSchoolYearLabel(form.data.start_date, val);
+        form.setData((prev) => ({
+            ...prev,
+            end_date: val,
+            sy_label: newLabel || prev.sy_label,
+        }));
+        form.clearErrors('end_date');
+        if (newLabel) {
+            form.clearErrors('sy_label');
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (mode === 'edit') {
@@ -106,36 +154,14 @@ export default function SchoolYearModal({
                     icon={CalendarRange}
                     tone="emerald"
                     title={mode === 'edit' ? 'Edit School Year' : 'Add School Year'}
-                    description="Label, date range, and active status"
+                    description="Date range, label, and active status"
                 />
 
                 <form
                     onSubmit={handleSubmit}
                     className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
                 >
-                    <div>
-                        <Label
-                            htmlFor="sy_label"
-                            className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                        >
-                            Label <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                            id="sy_label"
-                            placeholder="e.g. 2025-2026"
-                            value={form.data.sy_label ?? ''}
-                            onChange={(e) => {
-                                form.setData('sy_label', e.target.value);
-                                form.clearErrors('sy_label');
-                            }}
-                            required
-                            aria-invalid={Boolean(form.errors.sy_label)}
-                            className={inputErrorClass(Boolean(form.errors.sy_label))}
-                        />
-                        <FormFieldError label="Label" message={form.errors.sy_label} />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <Label
                                 htmlFor="start_date"
@@ -147,10 +173,7 @@ export default function SchoolYearModal({
                                 id="start_date"
                                 type="date"
                                 value={form.data.start_date ?? ''}
-                                onChange={(e) => {
-                                    form.setData('start_date', e.target.value);
-                                    form.clearErrors('start_date');
-                                }}
+                                onChange={(e) => handleStartDateChange(e.target.value)}
                                 required
                                 aria-invalid={Boolean(form.errors.start_date)}
                                 className={inputErrorClass(Boolean(form.errors.start_date))}
@@ -171,11 +194,9 @@ export default function SchoolYearModal({
                             <Input
                                 id="end_date"
                                 type="date"
+                                min={form.data.start_date ?? undefined}
                                 value={form.data.end_date ?? ''}
-                                onChange={(e) => {
-                                    form.setData('end_date', e.target.value);
-                                    form.clearErrors('end_date');
-                                }}
+                                onChange={(e) => handleEndDateChange(e.target.value)}
                                 required
                                 aria-invalid={Boolean(form.errors.end_date)}
                                 className={inputErrorClass(Boolean(form.errors.end_date))}
@@ -185,6 +206,33 @@ export default function SchoolYearModal({
                                 message={form.errors.end_date}
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <div className="mb-1 flex items-center justify-between">
+                            <Label
+                                htmlFor="sy_label"
+                                className="inline-block text-xs font-medium text-muted-foreground"
+                            >
+                                School Year <span className="text-destructive">*</span>
+                            </Label>
+                            <span className="text-[11px] text-muted-foreground">
+                                Auto-set from dates
+                            </span>
+                        </div>
+                        <Input
+                            id="sy_label"
+                            placeholder="e.g. 2026-2027"
+                            value={form.data.sy_label ?? ''}
+                            onChange={(e) => {
+                                form.setData('sy_label', e.target.value);
+                                form.clearErrors('sy_label');
+                            }}
+                            required
+                            aria-invalid={Boolean(form.errors.sy_label)}
+                            className={inputErrorClass(Boolean(form.errors.sy_label))}
+                        />
+                        <FormFieldError label="Label" message={form.errors.sy_label} />
                     </div>
 
                     <div
