@@ -499,9 +499,9 @@ function ParentSection({
                         }
                         error={errors[phoneKey]}
                         inputProps={{
-                            placeholder: 'Contact number',
+                            placeholder: '0991 669 1255',
                             disabled: isDeceased,
-                            maxLength: 11,
+                            maxLength: 13,
                         }}
                     />
                 </div>

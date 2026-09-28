@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { route } from 'ziggy-js';
 import SubjectModal from '@/components/SubjectModal';
 import { Button } from '@/components/ui/button';
+import { formatContactNumberInput } from '@/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -245,7 +246,7 @@ export default function Show() {
                                             {teacher.contact_number && (
                                                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                                     <Phone className="h-3 w-3" />
-                                                    {teacher.contact_number}
+                                                    {formatContactNumberInput(teacher.contact_number)}
                                                 </span>
                                             )}
                                         </div>

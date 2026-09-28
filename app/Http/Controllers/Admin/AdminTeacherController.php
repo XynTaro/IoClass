@@ -88,7 +88,7 @@ class AdminTeacherController extends Controller
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email',
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
         ], [
             'tch_rfid_uid.required' => 'RFID UID is required.',
@@ -147,7 +147,7 @@ class AdminTeacherController extends Controller
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email,'.$teacherModel->tch_id.',tch_id',
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
             'tch_pw' => 'nullable|string|min:8|max:255|confirmed',
         ], [
@@ -228,7 +228,7 @@ class AdminTeacherController extends Controller
             'tch_mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'tch_email' => 'required|email|max:150|regex:/^\S+$/|unique:teacher,tch_email',
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             // Permanent address
             'perm_region' => 'nullable|string|max:100',
             'perm_province' => 'nullable|string|max:100',

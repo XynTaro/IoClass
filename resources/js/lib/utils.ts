@@ -20,11 +20,23 @@ export function formatNameInput(value: string): string {
 }
 
 export function formatContactNumberInput(value: string): string {
-    const noLeadingSpace = value.replace(/^\s+/, '');
-    if (noLeadingSpace.startsWith('+')) {
-        return '+' + noLeadingSpace.slice(1).replace(/\D/g, '').slice(0, 11);
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('63') && digits.length >= 12) {
+        digits = '0' + digits.slice(2);
     }
-    return noLeadingSpace.replace(/\D/g, '').slice(0, 11);
+    digits = digits.slice(0, 11);
+    if (digits.length <= 4) {
+        return digits;
+    }
+    if (digits.length <= 7) {
+        return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+    }
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+}
+
+export function formatContactNumber(value?: string | null): string {
+    if (!value) return '';
+    return formatContactNumberInput(value);
 }
 
 export function formatEmailInput(value: string): string {

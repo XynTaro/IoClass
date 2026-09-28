@@ -435,7 +435,9 @@ export default function AdminProfileIndex() {
                                             <Phone className="size-3.5 text-muted-foreground" />
                                         </div>
                                         <span className="text-muted-foreground">
-                                            {adminData.contact_number || (
+                                            {adminData.contact_number ? (
+                                                formatContactNumberInput(adminData.contact_number)
+                                            ) : (
                                                 <span className="italic opacity-60">
                                                     No number
                                                 </span>
@@ -606,7 +608,8 @@ export default function AdminProfileIndex() {
                                                         );
                                                     }}
                                                     className="rounded-xl pl-8"
-                                                    placeholder="09XXXXXXXXX"
+                                                    placeholder="0991 669 1255"
+                                                    maxLength={13}
                                                 />
                                             </div>
                                         </Field>

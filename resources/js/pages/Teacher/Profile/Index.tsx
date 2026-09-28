@@ -368,7 +368,9 @@ export default function TeacherProfileIndex() {
                                             <Phone className="size-3.5 text-muted-foreground" />
                                         </div>
                                         <span className="text-muted-foreground">
-                                            {teacherData.contact_number || (
+                                            {teacherData.contact_number ? (
+                                                formatContactNumberInput(teacherData.contact_number)
+                                            ) : (
                                                 <span className="italic opacity-60">No number</span>
                                             )}
                                         </span>
@@ -493,7 +495,8 @@ export default function TeacherProfileIndex() {
                                                         profileForm.clearErrors('contact_number');
                                                     }}
                                                     className="rounded-xl pl-8"
-                                                    placeholder="09XXXXXXXXX"
+                                                    placeholder="0991 669 1255"
+                                                    maxLength={13}
                                                 />
                                             </div>
                                         </Field>

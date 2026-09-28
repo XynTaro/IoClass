@@ -45,7 +45,7 @@ class AdminAdminController extends Controller
             'mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email',
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
         ], [
             'fname.required' => 'First name is required.',
@@ -95,7 +95,7 @@ class AdminAdminController extends Controller
             'mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email,'.$adminModel->admin_id.',admin_id',
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
             'pw' => 'nullable|string|min:8|max:255|confirmed',
         ], [
@@ -165,7 +165,7 @@ class AdminAdminController extends Controller
             'mname' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'lname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'email' => 'required|email|max:150|regex:/^\S+$/|unique:admin,email',
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             // Permanent address
             'perm_region' => 'nullable|string|max:100',
             'perm_province' => 'nullable|string|max:100',

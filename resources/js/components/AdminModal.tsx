@@ -388,8 +388,9 @@ export default function AdminModal({
                             </Label>
                             <Input
                                 id="contact_number"
-                                placeholder="e.g. 09xxxxxxxxx"
+                                placeholder="0991 669 1255"
                                 value={form.data.contact_number}
+                                maxLength={13}
                                 onChange={(e) => {
                                     form.setData('contact_number', formatContactNumberInput(e.target.value));
                                     form.clearErrors('contact_number');

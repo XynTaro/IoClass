@@ -136,19 +136,19 @@ class AdminStudentController extends Controller
             'father_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'father_lname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'father_email' => 'nullable|email|max:255|regex:/^\S+$/',
-            'father_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'father_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             // Mother
             'mother_name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'mother_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'mother_lname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'mother_email' => 'nullable|email|max:255|regex:/^\S+$/',
-            'mother_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'mother_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             // Guardian
             'guardian_name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'guardian_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'guardian_lname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'guardian_email' => 'nullable|email|max:255|regex:/^\S+$/',
-            'guardian_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?\d+$/'],
+            'guardian_contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
         ], [
             'rfid_uid.required' => 'RFID UID is required.',
             'lrn.regex' => 'LRN must contain only numbers.',
