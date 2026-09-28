@@ -18,7 +18,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { route } from 'ziggy-js';
-import { AddressSection, useCascade } from '@/components/Address';
+import {
+    AddressErrors,
+    AddressSection,
+    useCascade,
+    validateAddress,
+} from '@/components/Address';
 import RfidUidInput from '@/components/RfidUidInput';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -544,6 +549,9 @@ export default function StudentModal({
         barangay: '',
     });
     const [sameAsPermanent, setSameAsPermanent] = useState(true);
+    const [permAddressErrors, setPermAddressErrors] = useState<AddressErrors>({});
+    const [currAddressErrors, setCurrAddressErrors] = useState<AddressErrors>({});
+    const [addressStepError, setAddressStepError] = useState<string | null>(null);
 
     // Derived grade levels (unique, sorted consecutively by number)
     const gradeOptions = Array.from(
@@ -610,6 +618,9 @@ export default function StudentModal({
             setRfidRegistryConflict(false);
             setSubmitError(null);
             setHasRestoredDraft(false);
+            setPermAddressErrors({});
+            setCurrAddressErrors({});
+            setAddressStepError(null);
         }
     }, [open]);
 
@@ -698,6 +709,9 @@ export default function StudentModal({
         setRfidRegistryConflict(false);
         setSubmitError(null);
         setHasRestoredDraft(false);
+        setPermAddressErrors({});
+        setCurrAddressErrors({});
+        setAddressStepError(null);
     };
 
     const setField = (key: keyof StudentFormData, val: string) => {
@@ -754,6 +768,34 @@ export default function StudentModal({
 
     /** Store individual address fields and advance */
     const handleNextFromStep2 = () => {
+        const permErrors = validateAddress(
+            permAddress,
+            permCascade.hasProvinces,
+        );
+        let currErrors: AddressErrors = {};
+        if (!sameAsPermanent) {
+            currErrors = validateAddress(
+                currAddress,
+                currCascade.hasProvinces,
+            );
+        }
+
+        if (
+            Object.keys(permErrors).length > 0 ||
+            Object.keys(currErrors).length > 0
+        ) {
+            setPermAddressErrors(permErrors);
+            setCurrAddressErrors(currErrors);
+            setAddressStepError(
+                'Please complete all required address fields before proceeding.',
+            );
+            return;
+        }
+
+        setPermAddressErrors({});
+        setCurrAddressErrors({});
+        setAddressStepError(null);
+
         const addr = sameAsPermanent ? permAddress : currAddress;
         form.setData({
             ...form.data,
@@ -893,8 +935,11 @@ export default function StudentModal({
                     'rfid_uid',
                     'status',
                 ];
+                const step2Fields = ['region', 'province', 'municipality', 'barangay'];
                 if (step1Fields.some((f) => f in errors)) {
                     setStep(1);
+                } else if (step2Fields.some((f) => f in errors)) {
+                    setStep(2);
                 }
                 setSubmitError(
                     'Failed to add student. Please review the highlighted fields and try again.',
@@ -1380,7 +1425,7 @@ export default function StudentModal({
                                         Student Address
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
-                                        Home address — optional
+                                        Home address — required
                                     </p>
                                 </div>
                             </div>
@@ -1393,6 +1438,10 @@ export default function StudentModal({
                             </div>
                         )}
 
+                        {addressStepError && (
+                            <ErrorBanner message={addressStepError} />
+                        )}
+
                         <StepIndicator current={2} />
 
                         <div className="max-h-[68vh] space-y-5 overflow-y-auto pr-1">
@@ -1401,36 +1450,64 @@ export default function StudentModal({
                                 title="Permanent Address"
                                 cascade={permCascade}
                                 barangayValue={permAddress.barangay}
-                                onRegionChange={(_code, name) =>
+                                required
+                                errors={permAddressErrors}
+                                onRegionChange={(_code, name) => {
                                     setPermAddress((p) => ({
                                         ...p,
                                         region: name,
                                         province: '',
                                         municipality: '',
                                         barangay: '',
-                                    }))
-                                }
-                                onProvinceChange={(_code, name) =>
+                                    }));
+                                    setPermAddressErrors((prev) => ({
+                                        ...prev,
+                                        region: undefined,
+                                        province: undefined,
+                                        municipality: undefined,
+                                        barangay: undefined,
+                                    }));
+                                    setAddressStepError(null);
+                                }}
+                                onProvinceChange={(_code, name) => {
                                     setPermAddress((p) => ({
                                         ...p,
                                         province: name,
                                         municipality: '',
                                         barangay: '',
-                                    }))
-                                }
-                                onMunicipalityChange={(_code, name) =>
+                                    }));
+                                    setPermAddressErrors((prev) => ({
+                                        ...prev,
+                                        province: undefined,
+                                        municipality: undefined,
+                                        barangay: undefined,
+                                    }));
+                                    setAddressStepError(null);
+                                }}
+                                onMunicipalityChange={(_code, name) => {
                                     setPermAddress((p) => ({
                                         ...p,
                                         municipality: name,
                                         barangay: '',
-                                    }))
-                                }
-                                onBarangayChange={(name) =>
+                                    }));
+                                    setPermAddressErrors((prev) => ({
+                                        ...prev,
+                                        municipality: undefined,
+                                        barangay: undefined,
+                                    }));
+                                    setAddressStepError(null);
+                                }}
+                                onBarangayChange={(name) => {
                                     setPermAddress((p) => ({
                                         ...p,
                                         barangay: name,
-                                    }))
-                                }
+                                    }));
+                                    setPermAddressErrors((prev) => ({
+                                        ...prev,
+                                        barangay: undefined,
+                                    }));
+                                    setAddressStepError(null);
+                                }}
                             />
 
                             {/* Same-address checkbox */}
@@ -1439,8 +1516,9 @@ export default function StudentModal({
                                     id="same_as_permanent_stu"
                                     checked={sameAsPermanent}
                                     onCheckedChange={(checked) => {
-                                        setSameAsPermanent(Boolean(checked));
-                                        if (checked) {
+                                        const isSame = Boolean(checked);
+                                        setSameAsPermanent(isSame);
+                                        if (isSame) {
                                             currCascade.reset();
                                             setCurrAddress({
                                                 region: '',
@@ -1448,6 +1526,7 @@ export default function StudentModal({
                                                 municipality: '',
                                                 barangay: '',
                                             });
+                                            setCurrAddressErrors({});
                                         }
                                     }}
                                 />
@@ -1467,36 +1546,64 @@ export default function StudentModal({
                                         title="Current Address"
                                         cascade={currCascade}
                                         barangayValue={currAddress.barangay}
-                                        onRegionChange={(_code, name) =>
+                                        required
+                                        errors={currAddressErrors}
+                                        onRegionChange={(_code, name) => {
                                             setCurrAddress((p) => ({
                                                 ...p,
                                                 region: name,
                                                 province: '',
                                                 municipality: '',
                                                 barangay: '',
-                                            }))
-                                        }
-                                        onProvinceChange={(_code, name) =>
+                                            }));
+                                            setCurrAddressErrors((prev) => ({
+                                                ...prev,
+                                                region: undefined,
+                                                province: undefined,
+                                                municipality: undefined,
+                                                barangay: undefined,
+                                            }));
+                                            setAddressStepError(null);
+                                        }}
+                                        onProvinceChange={(_code, name) => {
                                             setCurrAddress((p) => ({
                                                 ...p,
                                                 province: name,
                                                 municipality: '',
                                                 barangay: '',
-                                            }))
-                                        }
-                                        onMunicipalityChange={(_code, name) =>
+                                            }));
+                                            setCurrAddressErrors((prev) => ({
+                                                ...prev,
+                                                province: undefined,
+                                                municipality: undefined,
+                                                barangay: undefined,
+                                            }));
+                                            setAddressStepError(null);
+                                        }}
+                                        onMunicipalityChange={(_code, name) => {
                                             setCurrAddress((p) => ({
                                                 ...p,
                                                 municipality: name,
                                                 barangay: '',
-                                            }))
-                                        }
-                                        onBarangayChange={(name) =>
+                                            }));
+                                            setCurrAddressErrors((prev) => ({
+                                                ...prev,
+                                                municipality: undefined,
+                                                barangay: undefined,
+                                            }));
+                                            setAddressStepError(null);
+                                        }}
+                                        onBarangayChange={(name) => {
                                             setCurrAddress((p) => ({
                                                 ...p,
                                                 barangay: name,
-                                            }))
-                                        }
+                                            }));
+                                            setCurrAddressErrors((prev) => ({
+                                                ...prev,
+                                                barangay: undefined,
+                                            }));
+                                            setAddressStepError(null);
+                                        }}
                                     />
                                 </div>
                             )}

@@ -968,6 +968,8 @@ export default function TeacherModal({
             <AddressModal
                 open={open && step === 2}
                 title="Set Up Teacher Address"
+                description="Home address — required"
+                required
                 onBack={() => setStep(1)}
                 onNext={(data) => {
                     setPendingAddressData(data);

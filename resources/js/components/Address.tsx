@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { inputErrorClass } from '@/components/form-field-error';
 
 // ---------------------------------------------------------------------------
 // PSGC Public API
@@ -176,6 +177,38 @@ export type CascadeState = ReturnType<typeof useCascade>;
 // ---------------------------------------------------------------------------
 // Address section — renders Region → Province → Municipality → Barangay
 // ---------------------------------------------------------------------------
+export interface AddressErrors {
+    region?: string;
+    province?: string;
+    municipality?: string;
+    barangay?: string;
+}
+
+export function validateAddress(
+    addr: {
+        region: string;
+        province: string;
+        municipality: string;
+        barangay: string;
+    },
+    hasProvinces: boolean,
+): AddressErrors {
+    const errors: AddressErrors = {};
+    if (!addr.region?.trim()) {
+        errors.region = 'Region is required.';
+    }
+    if (hasProvinces && !addr.province?.trim()) {
+        errors.province = 'Province is required.';
+    }
+    if (!addr.municipality?.trim()) {
+        errors.municipality = 'City / Municipality is required.';
+    }
+    if (!addr.barangay?.trim()) {
+        errors.barangay = 'Barangay is required.';
+    }
+    return errors;
+}
+
 interface AddressSectionProps {
     title: string;
     cascade: CascadeState;
@@ -184,6 +217,8 @@ interface AddressSectionProps {
     onProvinceChange: (code: string, name: string) => void;
     onMunicipalityChange: (code: string, name: string) => void;
     onBarangayChange: (name: string) => void;
+    required?: boolean;
+    errors?: AddressErrors;
 }
 
 export function AddressSection({
@@ -194,6 +229,8 @@ export function AddressSection({
     onProvinceChange,
     onMunicipalityChange,
     onBarangayChange,
+    required = false,
+    errors,
 }: AddressSectionProps) {
     const {
         regions,
@@ -221,7 +258,7 @@ export function AddressSection({
             {/* Region */}
             <div>
                 <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                    Region
+                    Region {required && <span className="text-destructive">*</span>}
                 </Label>
                 <Select
                     value={regionCode}
@@ -233,7 +270,7 @@ export function AddressSection({
                     }}
                     disabled={loading.regions}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className={inputErrorClass(Boolean(errors?.region))}>
                         {loading.regions ? (
                             loadingLabel('Loading regions…')
                         ) : (
@@ -248,13 +285,18 @@ export function AddressSection({
                         ))}
                     </SelectContent>
                 </Select>
+                {errors?.region && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                        {errors.region}
+                    </p>
+                )}
             </div>
 
             {/* Province — hidden for regions without provinces (e.g. NCR) */}
             {hasProvinces && (
                 <div>
                     <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                        Province
+                        Province {required && <span className="text-destructive">*</span>}
                     </Label>
                     <Select
                         value={provinceCode}
@@ -267,7 +309,7 @@ export function AddressSection({
                         }}
                         disabled={!regionCode || loading.provinces}
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className={inputErrorClass(Boolean(errors?.province))}>
                             {loading.provinces ? (
                                 loadingLabel('Loading provinces…')
                             ) : (
@@ -282,13 +324,18 @@ export function AddressSection({
                             ))}
                         </SelectContent>
                     </Select>
+                    {errors?.province && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                            {errors.province}
+                        </p>
+                    )}
                 </div>
             )}
 
             {/* City / Municipality */}
             <div>
                 <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                    City / Municipality
+                    City / Municipality {required && <span className="text-destructive">*</span>}
                 </Label>
                 <Select
                     value={municipalityCode}
@@ -305,7 +352,7 @@ export function AddressSection({
                         loading.municipalities
                     }
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className={inputErrorClass(Boolean(errors?.municipality))}>
                         {loading.municipalities ? (
                             loadingLabel('Loading cities…')
                         ) : (
@@ -320,19 +367,24 @@ export function AddressSection({
                         ))}
                     </SelectContent>
                 </Select>
+                {errors?.municipality && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                        {errors.municipality}
+                    </p>
+                )}
             </div>
 
             {/* Barangay */}
             <div>
                 <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                    Barangay
+                    Barangay {required && <span className="text-destructive">*</span>}
                 </Label>
                 <Select
                     value={barangayValue}
                     onValueChange={onBarangayChange}
                     disabled={!municipalityCode || loading.barangays}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className={inputErrorClass(Boolean(errors?.barangay))}>
                         {loading.barangays ? (
                             loadingLabel('Loading barangays…')
                         ) : (
@@ -347,6 +399,11 @@ export function AddressSection({
                         ))}
                     </SelectContent>
                 </Select>
+                {errors?.barangay && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                        {errors.barangay}
+                    </p>
+                )}
             </div>
         </div>
     );
@@ -426,6 +483,7 @@ interface AddressModalProps {
     onClose: () => void;
     onSuccess?: () => void;
     title?: string;
+    description?: string;
     cancelLabel?: string;
     /** When provided the modal is in wizard step-2 mode: saves admin+address together */
     adminData?: PendingAdminData;
@@ -438,6 +496,7 @@ interface AddressModalProps {
      * submitting to the server (used when address is step 2 of 3+).
      */
     onNext?: (data: AddressFormData) => void;
+    required?: boolean;
 }
 
 export default function AddressModal({
@@ -445,16 +504,21 @@ export default function AddressModal({
     onClose,
     onSuccess,
     title = 'Add Address',
+    description,
     cancelLabel = 'Cancel',
     adminData,
     teacherData,
     onBack,
     onNext,
+    required = false,
 }: AddressModalProps) {
     const form = useForm<AddressFormData>(emptyForm);
 
     const permCascade = useCascade();
     const currCascade = useCascade();
+    const [permErrors, setPermErrors] = useState<AddressErrors>({});
+    const [currErrors, setCurrErrors] = useState<AddressErrors>({});
+    const [stepError, setStepError] = useState<string | null>(null);
 
     // Reset everything when modal closes
     useEffect(() => {
@@ -462,11 +526,55 @@ export default function AddressModal({
             form.reset();
             permCascade.reset();
             currCascade.reset();
+            setPermErrors({});
+            setCurrErrors({});
+            setStepError(null);
         }
     }, [open]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (required) {
+            const pErrors = validateAddress(
+                {
+                    region: form.data.perm_region,
+                    province: form.data.perm_province,
+                    municipality: form.data.perm_municipality,
+                    barangay: form.data.perm_barangay,
+                },
+                permCascade.hasProvinces,
+            );
+
+            let cErrors: AddressErrors = {};
+            if (!form.data.same_as_permanent) {
+                cErrors = validateAddress(
+                    {
+                        region: form.data.curr_region,
+                        province: form.data.curr_province,
+                        municipality: form.data.curr_municipality,
+                        barangay: form.data.curr_barangay,
+                    },
+                    currCascade.hasProvinces,
+                );
+            }
+
+            if (
+                Object.keys(pErrors).length > 0 ||
+                Object.keys(cErrors).length > 0
+            ) {
+                setPermErrors(pErrors);
+                setCurrErrors(cErrors);
+                setStepError(
+                    'Please complete all required address fields before proceeding.',
+                );
+                return;
+            }
+
+            setPermErrors({});
+            setCurrErrors({});
+            setStepError(null);
+        }
 
         // Collect-only mode — pass data to parent without submitting
         if (onNext) {
@@ -546,6 +654,14 @@ export default function AddressModal({
             perm_municipality: '',
             perm_barangay: '',
         });
+        setPermErrors((prev) => ({
+            ...prev,
+            region: undefined,
+            province: undefined,
+            municipality: undefined,
+            barangay: undefined,
+        }));
+        setStepError(null);
     };
 
     const handlePermProvince = (_code: string, name: string) => {
@@ -555,6 +671,13 @@ export default function AddressModal({
             perm_municipality: '',
             perm_barangay: '',
         });
+        setPermErrors((prev) => ({
+            ...prev,
+            province: undefined,
+            municipality: undefined,
+            barangay: undefined,
+        }));
+        setStepError(null);
     };
 
     const handlePermMunicipality = (_code: string, name: string) => {
@@ -563,6 +686,21 @@ export default function AddressModal({
             perm_municipality: name,
             perm_barangay: '',
         });
+        setPermErrors((prev) => ({
+            ...prev,
+            municipality: undefined,
+            barangay: undefined,
+        }));
+        setStepError(null);
+    };
+
+    const handlePermBarangay = (name: string) => {
+        setPermField('perm_barangay', name);
+        setPermErrors((prev) => ({
+            ...prev,
+            barangay: undefined,
+        }));
+        setStepError(null);
     };
 
     // Helpers to update current address fields and reset downstream
@@ -574,6 +712,14 @@ export default function AddressModal({
             curr_municipality: '',
             curr_barangay: '',
         });
+        setCurrErrors((prev) => ({
+            ...prev,
+            region: undefined,
+            province: undefined,
+            municipality: undefined,
+            barangay: undefined,
+        }));
+        setStepError(null);
     };
 
     const handleCurrProvince = (_code: string, name: string) => {
@@ -583,6 +729,13 @@ export default function AddressModal({
             curr_municipality: '',
             curr_barangay: '',
         });
+        setCurrErrors((prev) => ({
+            ...prev,
+            province: undefined,
+            municipality: undefined,
+            barangay: undefined,
+        }));
+        setStepError(null);
     };
 
     const handleCurrMunicipality = (_code: string, name: string) => {
@@ -591,6 +744,21 @@ export default function AddressModal({
             curr_municipality: name,
             curr_barangay: '',
         });
+        setCurrErrors((prev) => ({
+            ...prev,
+            municipality: undefined,
+            barangay: undefined,
+        }));
+        setStepError(null);
+    };
+
+    const handleCurrBarangay = (name: string) => {
+        form.setData('curr_barangay', name);
+        setCurrErrors((prev) => ({
+            ...prev,
+            barangay: undefined,
+        }));
+        setStepError(null);
     };
 
     return (
@@ -600,7 +768,25 @@ export default function AddressModal({
                     <DialogTitle className="text-xl font-semibold">
                         {title}
                     </DialogTitle>
+                    {description ? (
+                        <p className="text-xs text-muted-foreground">
+                            {description}
+                        </p>
+                    ) : required ? (
+                        <p className="text-xs text-muted-foreground">
+                            Home address — required
+                        </p>
+                    ) : null}
                 </DialogHeader>
+
+                {stepError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
+                        <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
+                        <p className="text-sm text-red-700 dark:text-red-400">
+                            {stepError}
+                        </p>
+                    </div>
+                )}
 
                 <form
                     onSubmit={handleSubmit}
@@ -634,12 +820,12 @@ export default function AddressModal({
                         title="Permanent Address"
                         cascade={permCascade}
                         barangayValue={form.data.perm_barangay}
+                        required={required}
+                        errors={permErrors}
                         onRegionChange={handlePermRegion}
                         onProvinceChange={handlePermProvince}
                         onMunicipalityChange={handlePermMunicipality}
-                        onBarangayChange={(name) =>
-                            setPermField('perm_barangay', name)
-                        }
+                        onBarangayChange={handlePermBarangay}
                     />
 
                     {/* Same-address checkbox */}
@@ -648,11 +834,12 @@ export default function AddressModal({
                             id="same_as_permanent"
                             checked={form.data.same_as_permanent}
                             onCheckedChange={(checked) => {
+                                const isSame = Boolean(checked);
                                 form.setData(
                                     'same_as_permanent',
-                                    Boolean(checked),
+                                    isSame,
                                 );
-                                if (checked) {
+                                if (isSame) {
                                     currCascade.reset();
                                     form.setData({
                                         ...form.data,
@@ -662,6 +849,8 @@ export default function AddressModal({
                                         curr_municipality: '',
                                         curr_barangay: '',
                                     });
+                                    setCurrErrors({});
+                                    setStepError(null);
                                 }
                             }}
                         />
@@ -680,12 +869,12 @@ export default function AddressModal({
                                 title="Current Address"
                                 cascade={currCascade}
                                 barangayValue={form.data.curr_barangay}
+                                required={required}
+                                errors={currErrors}
                                 onRegionChange={handleCurrRegion}
                                 onProvinceChange={handleCurrProvince}
                                 onMunicipalityChange={handleCurrMunicipality}
-                                onBarangayChange={(name) =>
-                                    form.setData('curr_barangay', name)
-                                }
+                                onBarangayChange={handleCurrBarangay}
                             />
                         </div>
                     )}
