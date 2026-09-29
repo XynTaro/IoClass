@@ -787,11 +787,6 @@ export default function TeacherModal({
                                         </Button>
                                     </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {scanTarget === 'rfid'
-                                        ? 'Tap card on reader to assign Primary Card (auto-advances to Master Card).'
-                                        : 'Tap card on reader to assign Master Card.'}
-                                </p>
 
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <RfidUidInput

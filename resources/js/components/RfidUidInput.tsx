@@ -49,7 +49,11 @@ export default function RfidUidInput({
     const inputRef = useRef<HTMLInputElement>(null);
     const [justScanned, setJustScanned] = useState(false);
     const [wirelessListening, setWirelessListening] = useState(false);
-    const { registry, loading, error: registryError } = useRfidRegistry(enabled);
+    const {
+        registry,
+        loading,
+        error: registryError,
+    } = useRfidRegistry(enabled);
 
     const normalizedValue = normalizeRfidUid(value);
     const normalizedExclude = excludeUid ? normalizeRfidUid(excludeUid) : '';
@@ -136,7 +140,12 @@ export default function RfidUidInput({
                             inputRef.current?.focus();
                         }}
                     >
-                        <Radio className={cn('h-3 w-3', wirelessListening && 'animate-pulse')} />
+                        <Radio
+                            className={cn(
+                                'h-3 w-3',
+                                wirelessListening && 'animate-pulse',
+                            )}
+                        />
                         {wirelessListening ? 'Listening…' : 'Resume scan'}
                     </Button>
                 )}
@@ -170,7 +179,7 @@ export default function RfidUidInput({
                     aria-readonly="true"
                     aria-invalid={hasError}
                     className={cn(
-                        'pl-9 font-mono uppercase tracking-wide',
+                        'pl-9 font-mono tracking-wide uppercase',
                         justScanned &&
                             !hasError &&
                             'border-emerald-500 ring-1 ring-emerald-500/30',
@@ -191,14 +200,10 @@ export default function RfidUidInput({
                 </p>
             )}
 
-            {captureGlobalScan && enabled && !error && !conflict && !wirelessListening && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                    USB reader: tap the card while this modal is open (works from any field).
-                </p>
-            )}
-
             {helperText && !error && !conflict && (
-                <p className="mt-1 text-xs text-muted-foreground">{helperText}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    {helperText}
+                </p>
             )}
 
             {registryError && (
@@ -208,21 +213,28 @@ export default function RfidUidInput({
             )}
 
             {conflict && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
+                <p
+                    className="mt-1 text-xs text-red-600 dark:text-red-400"
+                    role="alert"
+                >
                     Already registered to {conflict.type}{' '}
                     <span className="font-medium">{conflict.name}</span>.
                 </p>
             )}
 
             {error && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
+                <p
+                    className="mt-1 text-xs text-red-600 dark:text-red-400"
+                    role="alert"
+                >
                     {error}
                 </p>
             )}
 
             {!error && !conflict && normalizedValue !== '' && (
                 <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                    {justScanned ? 'Card scanned — ' : ''}UID ready: {normalizedValue}
+                    {justScanned ? 'Card scanned — ' : ''}UID ready:{' '}
+                    {normalizedValue}
                 </p>
             )}
         </div>
