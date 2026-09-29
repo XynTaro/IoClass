@@ -15,7 +15,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
-import AddressModal, { type AddressFormData, type PendingTeacherData } from '@/components/Address';
+import AddressModal, {
+    type AddressFormData,
+    type PendingTeacherData,
+} from '@/components/Address';
 import { ModalHeader, ModalStepIndicator } from '@/components/modal-header';
 import RfidUidInput from '@/components/RfidUidInput';
 import ScheduleModal, {
@@ -26,18 +29,19 @@ import ScheduleModal, {
 } from '@/components/ScheduleModal';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { FormFieldError, inputErrorClass } from '@/components/form-field-error';
 import { Label } from '@/components/ui/label';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useWirelessRfidCapture } from '@/hooks/use-wireless-rfid-capture';
 import { normalizeRfidUid } from '@/lib/rfid';
-import { cn, formatContactNumberInput, formatEmailInput, formatNameInput } from '@/lib/utils';
+import {
+    cn,
+    formatContactNumberInput,
+    formatEmailInput,
+    formatNameInput,
+} from '@/lib/utils';
 
 const CREATE_STEPS = [
     { label: 'Teacher', icon: UserRound },
@@ -102,9 +106,13 @@ export default function TeacherModal({
     // Wizard state (create mode only)
     const { isOnline } = useOnlineStatus();
     const [step, setStep] = useState<1 | 2 | 3>(1);
-    const [pendingTeacherData, setPendingTeacherData] = useState<PendingTeacherData | null>(null);
-    const [pendingAddressData, setPendingAddressData] = useState<AddressFormData | null>(null);
-    const [localErrors, setLocalErrors] = useState<Partial<Record<keyof TeacherFormData, string>>>({});
+    const [pendingTeacherData, setPendingTeacherData] =
+        useState<PendingTeacherData | null>(null);
+    const [pendingAddressData, setPendingAddressData] =
+        useState<AddressFormData | null>(null);
+    const [localErrors, setLocalErrors] = useState<
+        Partial<Record<keyof TeacherFormData, string>>
+    >({});
     const [rfidUidConflict, setRfidUidConflict] = useState(false);
     const [masterCardConflict, setMasterCardConflict] = useState(false);
     const [scanTarget, setScanTarget] = useState<'rfid' | 'master'>('rfid');
@@ -114,17 +122,28 @@ export default function TeacherModal({
 
     const isStep1Active = open && (mode === 'edit' || step === 1);
 
-    const [clearedPageErrors, setClearedPageErrors] = useState<Record<string, boolean>>({});
-    const { errors: pageErrors = {} } = usePage<{ errors: Record<string, string> }>().props;
+    const [clearedPageErrors, setClearedPageErrors] = useState<
+        Record<string, boolean>
+    >({});
+    const { errors: pageErrors = {} } = usePage<{
+        errors: Record<string, string>;
+    }>().props;
 
     const getFieldError = (field: string): string | undefined => {
-        const formErr = (form.errors as Record<string, string | undefined>)[field];
+        const formErr = (form.errors as Record<string, string | undefined>)[
+            field
+        ];
         if (formErr) return formErr;
 
-        const localErr = (localErrors as Record<string, string | undefined>)[field as keyof TeacherFormData];
+        const localErr = (localErrors as Record<string, string | undefined>)[
+            field as keyof TeacherFormData
+        ];
         if (localErr) return localErr;
 
-        if (!clearedPageErrors[field] && (pageErrors as Record<string, string | undefined>)[field]) {
+        if (
+            !clearedPageErrors[field] &&
+            (pageErrors as Record<string, string | undefined>)[field]
+        ) {
             return (pageErrors as Record<string, string | undefined>)[field];
         }
 
@@ -322,8 +341,10 @@ export default function TeacherModal({
 
     const validateStep1 = (): boolean => {
         const errors: Partial<Record<keyof TeacherFormData, string>> = {};
-        if (!form.data.tch_fname.trim()) errors.tch_fname = 'First name is required.';
-        if (!form.data.tch_lname.trim()) errors.tch_lname = 'Last name is required.';
+        if (!form.data.tch_fname.trim())
+            errors.tch_fname = 'First name is required.';
+        if (!form.data.tch_lname.trim())
+            errors.tch_lname = 'Last name is required.';
         if (!form.data.tch_email.trim()) {
             errors.tch_email = 'Email is required.';
         } else if (/\s/.test(form.data.tch_email)) {
@@ -331,11 +352,13 @@ export default function TeacherModal({
         }
 
         if (!form.data.contact_number.trim()) {
-            errors.contact_number = 'Contact number is required for SMS delivery.';
+            errors.contact_number =
+                'Contact number is required for SMS delivery.';
         } else {
             const cleanNum = form.data.contact_number.replace(/\D/g, '');
             if (cleanNum.length !== 11) {
-                errors.contact_number = 'Contact number must be exactly 11 digits.';
+                errors.contact_number =
+                    'Contact number must be exactly 11 digits.';
             }
         }
 
@@ -343,20 +366,24 @@ export default function TeacherModal({
         const masterCard = normalizeRfidUid(form.data.master_card);
 
         if (!form.data.tch_rfid_uid.trim()) {
-            errors.tch_rfid_uid = 'RFID UID is required.';
+            errors.tch_rfid_uid = 'Primary RFID card is required.';
         }
 
         if (rfidUid !== '' && masterCard !== '' && rfidUid === masterCard) {
-            errors.tch_rfid_uid = 'RFID UID and master card must be different.';
-            errors.master_card = 'RFID UID and master card must be different.';
+            errors.tch_rfid_uid =
+                'Primary card and master card must be different.';
+            errors.master_card =
+                'Primary card and master card must be different.';
         }
 
         if (rfidUidConflict) {
-            errors.tch_rfid_uid = 'This RFID card is already registered to another person.';
+            errors.tch_rfid_uid =
+                'This RFID card is already registered to another person.';
         }
 
         if (masterCardConflict) {
-            errors.master_card = 'This RFID card is already registered to another person.';
+            errors.master_card =
+                'This RFID card is already registered to another person.';
         }
 
         setLocalErrors(errors);
@@ -384,7 +411,8 @@ export default function TeacherModal({
 
         if (!isOnline) {
             setLocalErrors({
-                tch_fname: 'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
+                tch_fname:
+                    'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
             });
             return;
         }
@@ -395,7 +423,13 @@ export default function TeacherModal({
 
         if (!form.data.reset_password) {
             form.transform((data) => {
-                const { tch_pw, tch_pw_confirmation, auto_password, reset_password, ...cleanData } = data;
+                const {
+                    tch_pw,
+                    tch_pw_confirmation,
+                    auto_password,
+                    reset_password,
+                    ...cleanData
+                } = data;
                 return cleanData;
             });
         } else {
@@ -436,529 +470,724 @@ export default function TeacherModal({
             >
                 <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
                     <div className="space-y-3 p-6 pt-4">
-                    <ModalHeader
-                        icon={UserRound}
-                        tone="blue"
-                        title={mode === 'edit' ? 'Edit Teacher' : 'Add Teacher'}
-                        description={
-                            mode === 'edit'
-                                ? 'Update this teacher’s details and account'
-                                : 'Basic info, RFID cards, and account'
-                        }
-                    />
+                        <ModalHeader
+                            icon={UserRound}
+                            tone="blue"
+                            title={
+                                mode === 'edit' ? 'Edit Teacher' : 'Add Teacher'
+                            }
+                            description={
+                                mode === 'edit'
+                                    ? 'Update this teacher’s details and account'
+                                    : 'Basic info, RFID cards, and account'
+                            }
+                        />
 
-                    {mode === 'create' && (
-                        <ModalStepIndicator steps={CREATE_STEPS} current={1} />
-                    )}
-
-                    {!isOnline && (
-                        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                            <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                            <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
-                        </div>
-                    )}
-
-                    {mode === 'create' && hasRestoredDraft && (
-                        <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-                            <span className="flex items-center gap-1.5">
-                                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                Restored unsaved draft from your previous session.
-                            </span>
-                            <button
-                                type="button"
-                                onClick={handleClearDraft}
-                                className="font-medium underline hover:text-emerald-950 dark:hover:text-emerald-100 cursor-pointer"
-                            >
-                                Clear draft
-                            </button>
-                        </div>
-                    )}
-
-                    <form
-                        onSubmit={
-                            mode === 'edit'
-                                ? handleEditSubmit
-                                : (e) => {
-                                      e.preventDefault();
-                                      handleNext();
-                                  }
-                        }
-                        className="max-h-[70vh] space-y-3 overflow-y-auto pr-1"
-                    >
-                        {Object.entries(pageErrors)
-                            .filter(
-                                ([k]) =>
-                                    !clearedPageErrors[k] &&
-                                    ![
-                                        'tch_fname',
-                                        'tch_mname',
-                                        'tch_lname',
-                                        'tch_email',
-                                        'contact_number',
-                                        'tch_rfid_uid',
-                                        'master_card',
-                                        'tch_pw',
-                                        'tch_pw_confirmation',
-                                    ].includes(k)
-                            )
-                            .map(([k, msg]) => (
-                                <div
-                                    key={k}
-                                    className="rounded-lg border border-red-500/50 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
-                                    role="alert"
-                                >
-                                    <strong className="capitalize">{k.replace(/_/g, ' ')}:</strong> {msg}
-                                </div>
-                            ))}
-
-                        {/* Name */}
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <div>
-                                <Label
-                                    htmlFor="tch_fname"
-                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                >
-                                    First name <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    id="tch_fname"
-                                    placeholder="First name"
-                                    value={form.data.tch_fname}
-                                    onChange={(e) => {
-                                        form.setData('tch_fname', formatNameInput(e.target.value));
-                                        clearFieldErrors('tch_fname');
-                                    }}
-                                    aria-invalid={Boolean(getFieldError('tch_fname'))}
-                                    className={inputErrorClass(Boolean(getFieldError('tch_fname')))}
-                                />
-                                <FormFieldError
-                                    label="First name"
-                                    message={getFieldError('tch_fname')}
-                                />
-                            </div>
-
-                            <div>
-                                <Label
-                                    htmlFor="tch_mname"
-                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                >
-                                    Middle name
-                                </Label>
-                                <Input
-                                    id="tch_mname"
-                                    placeholder="Middle name (optional)"
-                                    value={form.data.tch_mname}
-                                    onChange={(e) => {
-                                        form.setData('tch_mname', formatNameInput(e.target.value));
-                                        clearFieldErrors('tch_mname');
-                                    }}
-                                    aria-invalid={Boolean(getFieldError('tch_mname'))}
-                                    className={inputErrorClass(Boolean(getFieldError('tch_mname')))}
-                                />
-                                <FormFieldError
-                                    label="Middle name"
-                                    message={getFieldError('tch_mname')}
-                                />
-                            </div>
-
-                            <div>
-                                <Label
-                                    htmlFor="tch_lname"
-                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                >
-                                    Last name <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    id="tch_lname"
-                                    placeholder="Last name"
-                                    value={form.data.tch_lname}
-                                    onChange={(e) => {
-                                        form.setData('tch_lname', formatNameInput(e.target.value));
-                                        clearFieldErrors('tch_lname');
-                                    }}
-                                    aria-invalid={Boolean(getFieldError('tch_lname'))}
-                                    className={inputErrorClass(Boolean(getFieldError('tch_lname')))}
-                                />
-                                <FormFieldError
-                                    label="Last name"
-                                    message={getFieldError('tch_lname')}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Email + contact */}
-                        <div className="grid gap-3 md:grid-cols-2">
-                            <div>
-                                <Label
-                                    htmlFor="tch_email"
-                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                >
-                                    Email <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    id="tch_email"
-                                    type="email"
-                                    placeholder="name@example.com"
-                                    value={form.data.tch_email}
-                                    onKeyDown={(e) => {
-                                        if (e.key === ' ') {
-                                            e.preventDefault();
-                                        }
-                                    }}
-                                    onChange={(e) => {
-                                        form.setData('tch_email', formatEmailInput(e.target.value));
-                                        clearFieldErrors('tch_email');
-                                    }}
-                                    aria-invalid={Boolean(getFieldError('tch_email'))}
-                                    className={inputErrorClass(Boolean(getFieldError('tch_email')))}
-                                />
-                                <FormFieldError
-                                    label="Email"
-                                    message={getFieldError('tch_email')}
-                                />
-                            </div>
-
-                            <div>
-                                <Label
-                                    htmlFor="contact_number"
-                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                >
-                                    Contact number <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    id="contact_number"
-                                    placeholder="09xx xxx xxxx"
-                                    value={form.data.contact_number}
-                                    maxLength={13}
-                                    onChange={(e) => {
-                                        form.setData('contact_number', formatContactNumberInput(e.target.value));
-                                        clearFieldErrors('contact_number');
-                                    }}
-                                    aria-invalid={Boolean(getFieldError('contact_number'))}
-                                    className={inputErrorClass(Boolean(getFieldError('contact_number')))}
-                                />
-                                <FormFieldError
-                                    label="Contact number"
-                                    message={getFieldError('contact_number')}
-                                />
-                            </div>
-                        </div>
-
-                        {/* RFID / Card */}
-                        <div className="space-y-2 rounded-xl border bg-card p-3 shadow-sm">
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                    <CreditCard className="size-4 text-sky-600 dark:text-sky-400" />
-                                    <p className="text-sm font-semibold text-foreground">RFID Cards</p>
-                                </div>
-                                <div className="flex items-center gap-1 rounded-md border p-0.5">
-                                    <Button
-                                        type="button"
-                                        variant={scanTarget === 'rfid' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        className="h-6 px-2.5 text-xs"
-                                        onClick={() => setScanTarget('rfid')}
-                                    >
-                                        RFID UID
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={scanTarget === 'master' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        className="h-6 px-2.5 text-xs"
-                                        onClick={() => setScanTarget('master')}
-                                    >
-                                        Master Card
-                                    </Button>
-                                </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {scanTarget === 'rfid'
-                                    ? 'Tap a card on the ESP32 — it will fill RFID UID, then auto-advance to Master Card.'
-                                    : 'Tap a card on the ESP32 — it will fill Master Card.'}
-                            </p>
-
-                            <div className="grid gap-3 md:grid-cols-2">
-                            <RfidUidInput
-                                id="tch_rfid_uid"
-                                label="RFID UID"
-                                value={form.data.tch_rfid_uid}
-                                onChange={(value) => {
-                                    form.setData('tch_rfid_uid', value);
-                                    clearFieldErrors('tch_rfid_uid');
-                                    if (value) setScanTarget('master');
-                                }}
-                                error={getFieldError('tch_rfid_uid')}
-                                excludeUid={
-                                    mode === 'edit'
-                                        ? (teacher?.tch_rfid_uid as string | null) ?? ''
-                                        : ''
-                                }
-                                required
-                                enabled={isStep1Active}
-                                captureGlobalScan={isStep1Active && scanTarget === 'rfid'}
-                                wirelessCapture={false}
-                                onConflictChange={setRfidUidConflict}
+                        {mode === 'create' && (
+                            <ModalStepIndicator
+                                steps={CREATE_STEPS}
+                                current={1}
                             />
+                        )}
 
-                            <RfidUidInput
-                                id="master_card"
-                                label="Master card"
-                                value={form.data.master_card}
-                                onChange={(value) => {
-                                    form.setData('master_card', value);
-                                    clearFieldErrors('master_card');
-                                }}
-                                error={getFieldError('master_card')}
-                                excludeUid={
-                                    mode === 'edit'
-                                        ? (teacher?.master_card as string | null) ?? ''
-                                        : ''
-                                }
-                                helperText="Backup card for substitute access."
-                                enabled={isStep1Active}
-                                captureGlobalScan={isStep1Active && scanTarget === 'master'}
-                                wirelessCapture={false}
-                                onConflictChange={setMasterCardConflict}
-                            />
+                        {!isOnline && (
+                            <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                                <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span>
+                                    Internet connection lost. Your entered data
+                                    has been preserved in this modal.
+                                </span>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Security */}
-                        <div className="space-y-2 rounded-xl border bg-card p-3 shadow-sm">
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                    <KeyRound className="size-4 text-amber-600 dark:text-amber-400" />
-                                    <p className="text-sm font-semibold text-foreground">Security</p>
-                                </div>
-                                {mode === 'edit' && form.data.reset_password && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 gap-1.5 rounded-lg text-xs"
-                                        onClick={() => {
-                                            const pwd = generatePassword(10);
-                                            form.setData('tch_pw', pwd);
-                                            form.setData('tch_pw_confirmation', pwd);
-                                            clearPasswordErrors();
+                        {mode === 'create' && hasRestoredDraft && (
+                            <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                <span className="flex items-center gap-1.5">
+                                    <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    Restored unsaved draft from your previous
+                                    session.
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleClearDraft}
+                                    className="cursor-pointer font-medium underline hover:text-emerald-950 dark:hover:text-emerald-100"
+                                >
+                                    Clear draft
+                                </button>
+                            </div>
+                        )}
+
+                        <form
+                            onSubmit={
+                                mode === 'edit'
+                                    ? handleEditSubmit
+                                    : (e) => {
+                                          e.preventDefault();
+                                          handleNext();
+                                      }
+                            }
+                            className="max-h-[70vh] space-y-3 overflow-y-auto pr-1"
+                        >
+                            {Object.entries(pageErrors)
+                                .filter(
+                                    ([k]) =>
+                                        !clearedPageErrors[k] &&
+                                        ![
+                                            'tch_fname',
+                                            'tch_mname',
+                                            'tch_lname',
+                                            'tch_email',
+                                            'contact_number',
+                                            'tch_rfid_uid',
+                                            'master_card',
+                                            'tch_pw',
+                                            'tch_pw_confirmation',
+                                        ].includes(k),
+                                )
+                                .map(([k, msg]) => (
+                                    <div
+                                        key={k}
+                                        className="rounded-lg border border-red-500/50 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                        role="alert"
+                                    >
+                                        <strong className="capitalize">
+                                            {k.replace(/_/g, ' ')}:
+                                        </strong>{' '}
+                                        {msg}
+                                    </div>
+                                ))}
+
+                            {/* Name */}
+                            <div className="grid gap-3 md:grid-cols-3">
+                                <div>
+                                    <Label
+                                        htmlFor="tch_fname"
+                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                    >
+                                        First name{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Input
+                                        id="tch_fname"
+                                        placeholder="First name"
+                                        value={form.data.tch_fname}
+                                        onChange={(e) => {
+                                            form.setData(
+                                                'tch_fname',
+                                                formatNameInput(e.target.value),
+                                            );
+                                            clearFieldErrors('tch_fname');
                                         }}
+                                        aria-invalid={Boolean(
+                                            getFieldError('tch_fname'),
+                                        )}
+                                        className={inputErrorClass(
+                                            Boolean(getFieldError('tch_fname')),
+                                        )}
+                                    />
+                                    <FormFieldError
+                                        label="First name"
+                                        message={getFieldError('tch_fname')}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label
+                                        htmlFor="tch_mname"
+                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                                     >
-                                        <RefreshCw className="size-3.5" />
-                                        Regenerate
-                                    </Button>
+                                        Middle name
+                                    </Label>
+                                    <Input
+                                        id="tch_mname"
+                                        placeholder="Middle name (optional)"
+                                        value={form.data.tch_mname}
+                                        onChange={(e) => {
+                                            form.setData(
+                                                'tch_mname',
+                                                formatNameInput(e.target.value),
+                                            );
+                                            clearFieldErrors('tch_mname');
+                                        }}
+                                        aria-invalid={Boolean(
+                                            getFieldError('tch_mname'),
+                                        )}
+                                        className={inputErrorClass(
+                                            Boolean(getFieldError('tch_mname')),
+                                        )}
+                                    />
+                                    <FormFieldError
+                                        label="Middle name"
+                                        message={getFieldError('tch_mname')}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label
+                                        htmlFor="tch_lname"
+                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                    >
+                                        Last name{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Input
+                                        id="tch_lname"
+                                        placeholder="Last name"
+                                        value={form.data.tch_lname}
+                                        onChange={(e) => {
+                                            form.setData(
+                                                'tch_lname',
+                                                formatNameInput(e.target.value),
+                                            );
+                                            clearFieldErrors('tch_lname');
+                                        }}
+                                        aria-invalid={Boolean(
+                                            getFieldError('tch_lname'),
+                                        )}
+                                        className={inputErrorClass(
+                                            Boolean(getFieldError('tch_lname')),
+                                        )}
+                                    />
+                                    <FormFieldError
+                                        label="Last name"
+                                        message={getFieldError('tch_lname')}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Email + contact */}
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <div>
+                                    <Label
+                                        htmlFor="tch_email"
+                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                    >
+                                        Email{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Input
+                                        id="tch_email"
+                                        type="email"
+                                        placeholder="name@example.com"
+                                        value={form.data.tch_email}
+                                        onKeyDown={(e) => {
+                                            if (e.key === ' ') {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                        onChange={(e) => {
+                                            form.setData(
+                                                'tch_email',
+                                                formatEmailInput(
+                                                    e.target.value,
+                                                ),
+                                            );
+                                            clearFieldErrors('tch_email');
+                                        }}
+                                        aria-invalid={Boolean(
+                                            getFieldError('tch_email'),
+                                        )}
+                                        className={inputErrorClass(
+                                            Boolean(getFieldError('tch_email')),
+                                        )}
+                                    />
+                                    <FormFieldError
+                                        label="Email"
+                                        message={getFieldError('tch_email')}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label
+                                        htmlFor="contact_number"
+                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                    >
+                                        Contact number{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Input
+                                        id="contact_number"
+                                        placeholder="09xx xxx xxxx"
+                                        value={form.data.contact_number}
+                                        maxLength={13}
+                                        onChange={(e) => {
+                                            form.setData(
+                                                'contact_number',
+                                                formatContactNumberInput(
+                                                    e.target.value,
+                                                ),
+                                            );
+                                            clearFieldErrors('contact_number');
+                                        }}
+                                        aria-invalid={Boolean(
+                                            getFieldError('contact_number'),
+                                        )}
+                                        className={inputErrorClass(
+                                            Boolean(
+                                                getFieldError('contact_number'),
+                                            ),
+                                        )}
+                                    />
+                                    <FormFieldError
+                                        label="Contact number"
+                                        message={getFieldError(
+                                            'contact_number',
+                                        )}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* RFID / Card */}
+                            <div className="space-y-2 rounded-xl border bg-card p-3 shadow-sm">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <CreditCard className="size-4 text-sky-600 dark:text-sky-400" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                            RFID Cards
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1 rounded-md border p-0.5">
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                scanTarget === 'rfid'
+                                                    ? 'default'
+                                                    : 'ghost'
+                                            }
+                                            size="sm"
+                                            className="h-6 px-2.5 text-xs"
+                                            onClick={() =>
+                                                setScanTarget('rfid')
+                                            }
+                                        >
+                                            Primary Card
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                scanTarget === 'master'
+                                                    ? 'default'
+                                                    : 'ghost'
+                                            }
+                                            size="sm"
+                                            className="h-6 px-2.5 text-xs"
+                                            onClick={() =>
+                                                setScanTarget('master')
+                                            }
+                                        >
+                                            Master Card
+                                        </Button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {scanTarget === 'rfid'
+                                        ? 'Tap card on reader to assign Primary Card (auto-advances to Master Card).'
+                                        : 'Tap card on reader to assign Master Card.'}
+                                </p>
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <RfidUidInput
+                                        id="tch_rfid_uid"
+                                        label="Primary RFID Card"
+                                        value={form.data.tch_rfid_uid}
+                                        onChange={(value) => {
+                                            form.setData('tch_rfid_uid', value);
+                                            clearFieldErrors('tch_rfid_uid');
+                                            if (value) setScanTarget('master');
+                                        }}
+                                        error={getFieldError('tch_rfid_uid')}
+                                        excludeUid={
+                                            mode === 'edit'
+                                                ? ((teacher?.tch_rfid_uid as
+                                                      | string
+                                                      | null) ?? '')
+                                                : ''
+                                        }
+                                        helperText="Main card used for daily check-in."
+                                        required
+                                        enabled={isStep1Active}
+                                        captureGlobalScan={
+                                            isStep1Active &&
+                                            scanTarget === 'rfid'
+                                        }
+                                        wirelessCapture={false}
+                                        onConflictChange={setRfidUidConflict}
+                                    />
+
+                                    <RfidUidInput
+                                        id="master_card"
+                                        label="Master Card"
+                                        value={form.data.master_card}
+                                        onChange={(value) => {
+                                            form.setData('master_card', value);
+                                            clearFieldErrors('master_card');
+                                        }}
+                                        error={getFieldError('master_card')}
+                                        excludeUid={
+                                            mode === 'edit'
+                                                ? ((teacher?.master_card as
+                                                      | string
+                                                      | null) ?? '')
+                                                : ''
+                                        }
+                                        helperText="Backup card for substitute access."
+                                        enabled={isStep1Active}
+                                        captureGlobalScan={
+                                            isStep1Active &&
+                                            scanTarget === 'master'
+                                        }
+                                        wirelessCapture={false}
+                                        onConflictChange={setMasterCardConflict}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Security */}
+                            <div className="space-y-2 rounded-xl border bg-card p-3 shadow-sm">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <KeyRound className="size-4 text-amber-600 dark:text-amber-400" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                            Security
+                                        </p>
+                                    </div>
+                                    {mode === 'edit' &&
+                                        form.data.reset_password && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 gap-1.5 rounded-lg text-xs"
+                                                onClick={() => {
+                                                    const pwd =
+                                                        generatePassword(10);
+                                                    form.setData('tch_pw', pwd);
+                                                    form.setData(
+                                                        'tch_pw_confirmation',
+                                                        pwd,
+                                                    );
+                                                    clearPasswordErrors();
+                                                }}
+                                            >
+                                                <RefreshCw className="size-3.5" />
+                                                Regenerate
+                                            </Button>
+                                        )}
+                                </div>
+
+                                {mode === 'create' ? (
+                                    <div className="rounded-xl border border-sky-500/30 bg-sky-50/50 p-3.5 text-xs text-sky-950 dark:bg-sky-950/30 dark:text-sky-300">
+                                        <p className="font-semibold text-sky-800 dark:text-sky-200">
+                                            Temporary Password via SMS
+                                        </p>
+                                        <p className="mt-1 text-muted-foreground">
+                                            A secure temporary password will be
+                                            auto-generated and sent via SMS to
+                                            the teacher's contact number. They
+                                            will be required to change their
+                                            password upon first login.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Reset password toggle — edit mode only */}
+                                        <label
+                                            htmlFor="reset_password"
+                                            className={cn(
+                                                'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
+                                                form.data.reset_password
+                                                    ? 'border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20'
+                                                    : 'border-border/60 hover:bg-muted/40',
+                                            )}
+                                        >
+                                            <Checkbox
+                                                id="reset_password"
+                                                checked={
+                                                    form.data.reset_password
+                                                }
+                                                onCheckedChange={(v) => {
+                                                    const checked = Boolean(v);
+                                                    form.setData(
+                                                        'reset_password',
+                                                        checked,
+                                                    );
+                                                    if (!checked) {
+                                                        form.setData(
+                                                            'tch_pw',
+                                                            '',
+                                                        );
+                                                        form.setData(
+                                                            'tch_pw_confirmation',
+                                                            '',
+                                                        );
+                                                    }
+                                                    clearPasswordErrors();
+                                                }}
+                                            />
+                                            <span className="min-w-0">
+                                                <span className="block text-sm font-medium">
+                                                    Reset password
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    Generate a new secure
+                                                    password for this teacher.
+                                                </span>
+                                            </span>
+                                        </label>
+                                    </>
+                                )}
+
+                                {/* Password fields */}
+                                {mode === 'edit' && form.data.reset_password ? (
+                                    <>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                            <div>
+                                                <Label
+                                                    htmlFor="tch_pw"
+                                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                                >
+                                                    Password{' '}
+                                                    <span className="text-destructive">
+                                                        *
+                                                    </span>
+                                                </Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="tch_pw"
+                                                        type={
+                                                            showPassword
+                                                                ? 'text'
+                                                                : 'password'
+                                                        }
+                                                        placeholder="Password"
+                                                        value={form.data.tch_pw}
+                                                        onChange={(e) => {
+                                                            form.setData(
+                                                                'tch_pw',
+                                                                e.target.value,
+                                                            );
+                                                            clearPasswordErrors();
+                                                        }}
+                                                        className={cn(
+                                                            'pr-16 font-mono text-sm',
+                                                            inputErrorClass(
+                                                                Boolean(
+                                                                    getFieldError(
+                                                                        'tch_pw',
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        )}
+                                                        aria-invalid={Boolean(
+                                                            getFieldError(
+                                                                'tch_pw',
+                                                            ),
+                                                        )}
+                                                        readOnly
+                                                        required
+                                                    />
+                                                    <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                copyToClipboard(
+                                                                    form.data
+                                                                        .tch_pw,
+                                                                    'pw',
+                                                                )
+                                                            }
+                                                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                            aria-label="Copy password"
+                                                        >
+                                                            {copied === 'pw' ? (
+                                                                <Check className="size-3.5 text-emerald-600" />
+                                                            ) : (
+                                                                <Copy className="size-3.5" />
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setShowPassword(
+                                                                    (p) => !p,
+                                                                )
+                                                            }
+                                                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                            aria-label={
+                                                                showPassword
+                                                                    ? 'Hide password'
+                                                                    : 'Show password'
+                                                            }
+                                                        >
+                                                            {showPassword ? (
+                                                                <EyeOff className="size-3.5" />
+                                                            ) : (
+                                                                <Eye className="size-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <FormFieldError
+                                                    label="Password"
+                                                    message={getFieldError(
+                                                        'tch_pw',
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <Label
+                                                    htmlFor="tch_pw_confirmation"
+                                                    className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                                >
+                                                    Confirm password{' '}
+                                                    <span className="text-destructive">
+                                                        *
+                                                    </span>
+                                                </Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="tch_pw_confirmation"
+                                                        type={
+                                                            showConfirmPassword
+                                                                ? 'text'
+                                                                : 'password'
+                                                        }
+                                                        placeholder="Confirm password"
+                                                        value={
+                                                            form.data
+                                                                .tch_pw_confirmation
+                                                        }
+                                                        onChange={(e) => {
+                                                            form.setData(
+                                                                'tch_pw_confirmation',
+                                                                e.target.value,
+                                                            );
+                                                            clearPasswordErrors();
+                                                        }}
+                                                        className={cn(
+                                                            'pr-16 font-mono text-sm',
+                                                            inputErrorClass(
+                                                                Boolean(
+                                                                    getFieldError(
+                                                                        'tch_pw_confirmation',
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        )}
+                                                        aria-invalid={Boolean(
+                                                            getFieldError(
+                                                                'tch_pw_confirmation',
+                                                            ),
+                                                        )}
+                                                        readOnly
+                                                        required
+                                                    />
+                                                    <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                copyToClipboard(
+                                                                    form.data
+                                                                        .tch_pw_confirmation,
+                                                                    'confirm',
+                                                                )
+                                                            }
+                                                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                            aria-label="Copy password"
+                                                        >
+                                                            {copied ===
+                                                            'confirm' ? (
+                                                                <Check className="size-3.5 text-emerald-600" />
+                                                            ) : (
+                                                                <Copy className="size-3.5" />
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setShowConfirmPassword(
+                                                                    (p) => !p,
+                                                                )
+                                                            }
+                                                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                            aria-label={
+                                                                showConfirmPassword
+                                                                    ? 'Hide password'
+                                                                    : 'Show password'
+                                                            }
+                                                        >
+                                                            {showConfirmPassword ? (
+                                                                <EyeOff className="size-3.5" />
+                                                            ) : (
+                                                                <Eye className="size-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <FormFieldError
+                                                    label="Confirm password"
+                                                    message={getFieldError(
+                                                        'tch_pw_confirmation',
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-muted-foreground">
+                                            Auto-generated password — copy it
+                                            before saving.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                        The current password stays unchanged
+                                        unless you enable a reset.
+                                    </p>
                                 )}
                             </div>
+                        </form>
 
-                            {mode === 'create' ? (
-                                <div className="rounded-xl border border-sky-500/30 bg-sky-50/50 p-3.5 text-xs text-sky-950 dark:bg-sky-950/30 dark:text-sky-300">
-                                    <p className="font-semibold text-sky-800 dark:text-sky-200">Temporary Password via SMS</p>
-                                    <p className="mt-1 text-muted-foreground">
-                                        A secure temporary password will be auto-generated and sent via SMS to the teacher's contact number. They will be required to change their password upon first login.
-                                    </p>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Reset password toggle — edit mode only */}
-                                    <label
-                                        htmlFor="reset_password"
-                                        className={cn(
-                                            'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
-                                            form.data.reset_password
-                                                ? 'border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20'
-                                                : 'border-border/60 hover:bg-muted/40',
-                                        )}
-                                    >
-                                        <Checkbox
-                                            id="reset_password"
-                                            checked={form.data.reset_password}
-                                            onCheckedChange={(v) => {
-                                                const checked = Boolean(v);
-                                                form.setData('reset_password', checked);
-                                                if (!checked) {
-                                                    form.setData('tch_pw', '');
-                                                    form.setData('tch_pw_confirmation', '');
-                                                }
-                                                clearPasswordErrors();
-                                            }}
-                                        />
-                                        <span className="min-w-0">
-                                            <span className="block text-sm font-medium">
-                                                Reset password
-                                            </span>
-                                            <span className="block text-xs text-muted-foreground">
-                                                Generate a new secure password for this teacher.
-                                            </span>
-                                        </span>
-                                    </label>
-                                </>
-                            )}
-
-                            {/* Password fields */}
-                            {mode === 'edit' && form.data.reset_password ? (
-                                <>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                        <div>
-                                            <Label
-                                                htmlFor="tch_pw"
-                                                className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                            >
-                                                Password <span className="text-destructive">*</span>
-                                            </Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="tch_pw"
-                                                    type={showPassword ? 'text' : 'password'}
-                                                    placeholder="Password"
-                                                    value={form.data.tch_pw}
-                                                    onChange={(e) => {
-                                                        form.setData('tch_pw', e.target.value);
-                                                        clearPasswordErrors();
-                                                    }}
-                                                    className={cn(
-                                                        'pr-16 font-mono text-sm',
-                                                        inputErrorClass(Boolean(getFieldError('tch_pw'))),
-                                                    )}
-                                                    aria-invalid={Boolean(getFieldError('tch_pw'))}
-                                                    readOnly
-                                                    required
-                                                />
-                                                <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyToClipboard(form.data.tch_pw, 'pw')}
-                                                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                                        aria-label="Copy password"
-                                                    >
-                                                        {copied === 'pw' ? (
-                                                            <Check className="size-3.5 text-emerald-600" />
-                                                        ) : (
-                                                            <Copy className="size-3.5" />
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowPassword((p) => !p)}
-                                                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                                    >
-                                                        {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <FormFieldError
-                                                label="Password"
-                                                message={getFieldError('tch_pw')}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <Label
-                                                htmlFor="tch_pw_confirmation"
-                                                className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                            >
-                                                Confirm password <span className="text-destructive">*</span>
-                                            </Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="tch_pw_confirmation"
-                                                    type={showConfirmPassword ? 'text' : 'password'}
-                                                    placeholder="Confirm password"
-                                                    value={form.data.tch_pw_confirmation}
-                                                    onChange={(e) => {
-                                                        form.setData('tch_pw_confirmation', e.target.value);
-                                                        clearPasswordErrors();
-                                                    }}
-                                                    className={cn(
-                                                        'pr-16 font-mono text-sm',
-                                                        inputErrorClass(
-                                                            Boolean(getFieldError('tch_pw_confirmation')),
-                                                        ),
-                                                    )}
-                                                    aria-invalid={Boolean(getFieldError('tch_pw_confirmation'))}
-                                                    readOnly
-                                                    required
-                                                />
-                                                <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            copyToClipboard(form.data.tch_pw_confirmation, 'confirm')
-                                                        }
-                                                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                                        aria-label="Copy password"
-                                                    >
-                                                        {copied === 'confirm' ? (
-                                                            <Check className="size-3.5 text-emerald-600" />
-                                                        ) : (
-                                                            <Copy className="size-3.5" />
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowConfirmPassword((p) => !p)}
-                                                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                                        aria-label={
-                                                            showConfirmPassword ? 'Hide password' : 'Show password'
-                                                        }
-                                                    >
-                                                        {showConfirmPassword ? (
-                                                            <EyeOff className="size-3.5" />
-                                                        ) : (
-                                                            <Eye className="size-3.5" />
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <FormFieldError
-                                                label="Confirm password"
-                                                message={getFieldError('tch_pw_confirmation')}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <p className="text-xs text-muted-foreground">
-                                        Auto-generated password — copy it before saving.
-                                    </p>
-                                </>
-                            ) : (
-                                <p className="text-xs text-muted-foreground">
-                                    The current password stays unchanged unless you enable a reset.
-                                </p>
-                            )}
-                        </div>
-                    </form>
-
-                    <DialogFooter className="flex justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="rounded-xl"
-                            onClick={onClose}
-                            disabled={form.processing}
-                        >
-                            Cancel
-                        </Button>
-                        {mode === 'edit' ? (
-                            <Button
-                                type="submit"
-                                disabled={form.processing}
-                                onClick={handleEditSubmit}
-                                className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                            >
-                                {form.processing ? 'Saving…' : 'Save changes'}
-                            </Button>
-                        ) : (
+                        <DialogFooter className="flex justify-end gap-2">
                             <Button
                                 type="button"
-                                onClick={handleNext}
-                                className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                variant="outline"
+                                className="rounded-xl"
+                                onClick={onClose}
+                                disabled={form.processing}
                             >
-                                Next
-                                <ChevronRight className="ml-1 size-4" />
+                                Cancel
                             </Button>
-                        )}
-                    </DialogFooter>
+                            {mode === 'edit' ? (
+                                <Button
+                                    type="submit"
+                                    disabled={form.processing}
+                                    onClick={handleEditSubmit}
+                                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                >
+                                    {form.processing
+                                        ? 'Saving…'
+                                        : 'Save changes'}
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                >
+                                    Next
+                                    <ChevronRight className="ml-1 size-4" />
+                                </Button>
+                            )}
+                        </DialogFooter>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -991,7 +1220,10 @@ export default function TeacherModal({
                 subjects={subjects}
                 teacherData={
                     pendingTeacherData && pendingAddressData
-                        ? ({ ...pendingTeacherData, ...pendingAddressData } as PendingTeacherWithAddressData)
+                        ? ({
+                              ...pendingTeacherData,
+                              ...pendingAddressData,
+                          } as PendingTeacherWithAddressData)
                         : undefined
                 }
                 onBack={() => setStep(2)}
