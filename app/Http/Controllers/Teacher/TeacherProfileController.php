@@ -21,6 +21,7 @@ class TeacherProfileController extends Controller
     {
         /** @var Teacher $teacher */
         $teacher = Auth::guard('teacher')->user();
+        $teacher->load('address');
 
         return Inertia::render('Teacher/Profile/Index', [
             'teacher' => [
@@ -29,6 +30,12 @@ class TeacherProfileController extends Controller
                 'lname' => $teacher->tch_lname,
                 'email' => $teacher->tch_email,
                 'contact_number' => $teacher->contact_number,
+                'address' => $teacher->address ? [
+                    'barangay' => $teacher->address->barangay,
+                    'municipality' => $teacher->address->municipality,
+                    'province' => $teacher->address->province,
+                    'region' => $teacher->address->region,
+                ] : null,
             ],
             'status' => $request->session()->get('status'),
         ]);

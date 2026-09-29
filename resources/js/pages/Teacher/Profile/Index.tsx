@@ -4,7 +4,9 @@ import {
     Camera,
     Eye,
     EyeOff,
+    Info,
     KeyRound,
+    MapPin,
     Phone,
     Shield,
     User,
@@ -12,20 +14,28 @@ import {
 import { useMemo, useState, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useInitials } from '@/hooks/use-initials';
 import TeacherLayout from '@/layouts/teacher/teacher-layout';
 
-import { cn, formatContactNumberInput, formatEmailInput, formatNameInput } from '@/lib/utils';
+import {
+    cn,
+    formatContactNumberInput,
+    formatEmailInput,
+    formatNameInput,
+} from '@/lib/utils';
 import teacher from '@/routes/teacher';
 import type { SharedData } from '@/types';
+
+type AddressData = {
+    barangay: string | null;
+    municipality: string | null;
+    province: string | null;
+    region: string | null;
+};
 
 type TeacherData = {
     fname: string;
@@ -33,6 +43,7 @@ type TeacherData = {
     lname: string;
     email: string;
     contact_number: string | null;
+    address?: AddressData | null;
 };
 
 type PageProps = SharedData & {
@@ -42,7 +53,11 @@ type PageProps = SharedData & {
 
 // ─── Password strength ────────────────────────────────────────────────────────
 
-function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+function getPasswordStrength(pw: string): {
+    score: number;
+    label: string;
+    color: string;
+} {
     if (!pw) return { score: 0, label: '', color: '' };
     let score = 0;
     if (pw.length >= 8) score++;
@@ -80,7 +95,9 @@ function Field({
                     {error}
                 </p>
             )}
-            {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
+            {hint && !error && (
+                <p className="text-xs text-muted-foreground">{hint}</p>
+            )}
         </div>
     );
 }
@@ -138,7 +155,11 @@ function PasswordInput({
                 className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                 tabIndex={-1}
             >
-                {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {show ? (
+                    <EyeOff className="size-4" />
+                ) : (
+                    <Eye className="size-4" />
+                )}
             </button>
         </div>
     );
@@ -153,11 +174,22 @@ export default function TeacherProfileIndex() {
     const fullName = auth.user.name;
     const initials = getInitials(fullName);
 
+    const address = teacherData.address;
+    const formattedAddress = useMemo(() => {
+        if (!address) return '';
+        return [
+            address.barangay,
+            address.municipality,
+            address.province,
+            address.region,
+        ]
+            .filter(Boolean)
+            .join(', ');
+    }, [address]);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [avatarError, setAvatarError] = useState<string | null>(null);
-
-
 
     const triggerFileInput = () => {
         fileInputRef.current?.click();
@@ -175,21 +207,25 @@ export default function TeacherProfileIndex() {
         setAvatarError(null);
         setIsUploading(true);
 
-        router.post('/teacher/profile/avatar', {
-            avatar: file,
-        }, {
-            forceFormData: true,
-            preserveScroll: true,
-            onFinish: () => setIsUploading(false),
-            onError: (errors) => {
-                if (errors.avatar) {
-                    setAvatarError(errors.avatar);
-                }
+        router.post(
+            '/teacher/profile/avatar',
+            {
+                avatar: file,
             },
-            onSuccess: () => {
-                setAvatarError(null);
-            }
-        });
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onFinish: () => setIsUploading(false),
+                onError: (errors) => {
+                    if (errors.avatar) {
+                        setAvatarError(errors.avatar);
+                    }
+                },
+                onSuccess: () => {
+                    setAvatarError(null);
+                },
+            },
+        );
     };
 
     const profileForm = useForm({
@@ -239,7 +275,10 @@ export default function TeacherProfileIndex() {
         if (profileForm.data.contact_number) {
             const cleanNum = profileForm.data.contact_number.replace(/\D/g, '');
             if (cleanNum.length !== 11) {
-                profileForm.setError('contact_number', 'Contact number must be exactly 11 digits.');
+                profileForm.setError(
+                    'contact_number',
+                    'Contact number must be exactly 11 digits.',
+                );
                 hasError = true;
             }
         }
@@ -248,7 +287,9 @@ export default function TeacherProfileIndex() {
             return;
         }
 
-        profileForm.patch(teacher.profile.update.url(), { preserveScroll: true });
+        profileForm.patch(teacher.profile.update.url(), {
+            preserveScroll: true,
+        });
     }
 
     function submitPassword(e: React.FormEvent) {
@@ -273,11 +314,15 @@ export default function TeacherProfileIndex() {
                                 My Profile
                             </h1>
                             <p className="text-sm text-muted-foreground">
-                                Manage your account information and security settings.
+                                Manage your account information and security
+                                settings.
                             </p>
                         </div>
                         <div className="inline-flex w-fit items-center gap-2 rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground shadow-xs backdrop-blur-sm">
-                            <Shield className="size-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                            <Shield
+                                className="size-4 shrink-0 text-blue-600 dark:text-blue-400"
+                                aria-hidden
+                            />
                             <span className="font-medium text-foreground">
                                 Teacher Account
                             </span>
@@ -321,7 +366,13 @@ export default function TeacherProfileIndex() {
                                             className="absolute right-0 bottom-0.5 flex size-7 items-center justify-center rounded-full border border-border/60 bg-background shadow-sm transition-colors hover:bg-muted"
                                             title="Change photo"
                                         >
-                                            <Camera className={cn("size-3.5 text-muted-foreground", isUploading && "animate-pulse")} />
+                                            <Camera
+                                                className={cn(
+                                                    'size-3.5 text-muted-foreground',
+                                                    isUploading &&
+                                                        'animate-pulse',
+                                                )}
+                                            />
                                         </button>
                                         <input
                                             type="file"
@@ -343,11 +394,10 @@ export default function TeacherProfileIndex() {
                                         Teacher
                                     </span>
                                     {avatarError && (
-                                        <p className="mt-2 text-center text-xs text-red-500 font-medium">
+                                        <p className="mt-2 text-center text-xs font-medium text-red-500">
                                             {avatarError}
                                         </p>
                                     )}
-
                                 </div>
 
                                 <Separator className="my-4" />
@@ -369,9 +419,28 @@ export default function TeacherProfileIndex() {
                                         </div>
                                         <span className="text-muted-foreground">
                                             {teacherData.contact_number ? (
-                                                formatContactNumberInput(teacherData.contact_number)
+                                                formatContactNumberInput(
+                                                    teacherData.contact_number,
+                                                )
                                             ) : (
-                                                <span className="italic opacity-60">No number</span>
+                                                <span className="italic opacity-60">
+                                                    No number
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-start gap-2.5 text-sm">
+                                        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/60">
+                                            <MapPin className="size-3.5 text-muted-foreground" />
+                                        </div>
+                                        <span className="text-xs leading-snug text-muted-foreground">
+                                            {formattedAddress ? (
+                                                formattedAddress
+                                            ) : (
+                                                <span className="italic opacity-60">
+                                                    No address on file
+                                                </span>
                                             )}
                                         </span>
                                     </div>
@@ -407,9 +476,10 @@ export default function TeacherProfileIndex() {
                             </CardHeader>
                             <Separator />
                             <CardContent className="pt-5">
-
-
-                                <form onSubmit={submitProfile} className="space-y-5">
+                                <form
+                                    onSubmit={submitProfile}
+                                    className="space-y-5"
+                                >
                                     {/* Name row */}
                                     <div className="grid gap-4 sm:grid-cols-3">
                                         <Field
@@ -419,8 +489,15 @@ export default function TeacherProfileIndex() {
                                             <Input
                                                 value={profileForm.data.fname}
                                                 onChange={(e) => {
-                                                    profileForm.setData('fname', formatNameInput(e.target.value));
-                                                    profileForm.clearErrors('fname');
+                                                    profileForm.setData(
+                                                        'fname',
+                                                        formatNameInput(
+                                                            e.target.value,
+                                                        ),
+                                                    );
+                                                    profileForm.clearErrors(
+                                                        'fname',
+                                                    );
                                                 }}
                                                 className="rounded-xl"
                                                 placeholder="Juan"
@@ -433,8 +510,15 @@ export default function TeacherProfileIndex() {
                                             <Input
                                                 value={profileForm.data.mname}
                                                 onChange={(e) => {
-                                                    profileForm.setData('mname', formatNameInput(e.target.value));
-                                                    profileForm.clearErrors('mname');
+                                                    profileForm.setData(
+                                                        'mname',
+                                                        formatNameInput(
+                                                            e.target.value,
+                                                        ),
+                                                    );
+                                                    profileForm.clearErrors(
+                                                        'mname',
+                                                    );
                                                 }}
                                                 className="rounded-xl"
                                                 placeholder="Optional"
@@ -447,8 +531,15 @@ export default function TeacherProfileIndex() {
                                             <Input
                                                 value={profileForm.data.lname}
                                                 onChange={(e) => {
-                                                    profileForm.setData('lname', formatNameInput(e.target.value));
-                                                    profileForm.clearErrors('lname');
+                                                    profileForm.setData(
+                                                        'lname',
+                                                        formatNameInput(
+                                                            e.target.value,
+                                                        ),
+                                                    );
+                                                    profileForm.clearErrors(
+                                                        'lname',
+                                                    );
                                                 }}
                                                 className="rounded-xl"
                                                 placeholder="Dela Cruz"
@@ -466,15 +557,24 @@ export default function TeacherProfileIndex() {
                                                 <AtSign className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
                                                 <Input
                                                     type="email"
-                                                    value={profileForm.data.email}
+                                                    value={
+                                                        profileForm.data.email
+                                                    }
                                                     onKeyDown={(e) => {
                                                         if (e.key === ' ') {
                                                             e.preventDefault();
                                                         }
                                                     }}
                                                     onChange={(e) => {
-                                                        profileForm.setData('email', formatEmailInput(e.target.value));
-                                                        profileForm.clearErrors('email');
+                                                        profileForm.setData(
+                                                            'email',
+                                                            formatEmailInput(
+                                                                e.target.value,
+                                                            ),
+                                                        );
+                                                        profileForm.clearErrors(
+                                                            'email',
+                                                        );
                                                     }}
                                                     className="rounded-xl pl-8"
                                                     placeholder="teacher@school.edu.ph"
@@ -483,16 +583,29 @@ export default function TeacherProfileIndex() {
                                         </Field>
                                         <Field
                                             label="Contact Number"
-                                            error={profileForm.errors.contact_number}
+                                            error={
+                                                profileForm.errors
+                                                    .contact_number
+                                            }
                                         >
                                             <div className="relative">
                                                 <Phone className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
                                                 <Input
                                                     type="tel"
-                                                    value={profileForm.data.contact_number}
+                                                    value={
+                                                        profileForm.data
+                                                            .contact_number
+                                                    }
                                                     onChange={(e) => {
-                                                        profileForm.setData('contact_number', formatContactNumberInput(e.target.value));
-                                                        profileForm.clearErrors('contact_number');
+                                                        profileForm.setData(
+                                                            'contact_number',
+                                                            formatContactNumberInput(
+                                                                e.target.value,
+                                                            ),
+                                                        );
+                                                        profileForm.clearErrors(
+                                                            'contact_number',
+                                                        );
                                                     }}
                                                     className="rounded-xl pl-8"
                                                     placeholder="09xx xxx xxxx"
@@ -511,10 +624,79 @@ export default function TeacherProfileIndex() {
                                             disabled={profileForm.processing}
                                             className="rounded-xl bg-blue-600 px-5 font-semibold text-white hover:bg-blue-700"
                                         >
-                                            {profileForm.processing ? 'Saving…' : 'Save Changes'}
+                                            {profileForm.processing
+                                                ? 'Saving…'
+                                                : 'Save Changes'}
                                         </Button>
                                     </div>
                                 </form>
+                            </CardContent>
+                        </Card>
+
+                        {/* Residential Address (Read-only) */}
+                        <Card className="rounded-2xl border-border/60 shadow-sm">
+                            <CardHeader className="pb-4">
+                                <SectionHeader
+                                    icon={MapPin}
+                                    title="Residential Address"
+                                    description="Official home address on record with the school."
+                                />
+                            </CardHeader>
+                            <Separator />
+                            <CardContent className="pt-5">
+                                {address &&
+                                (address.barangay ||
+                                    address.municipality ||
+                                    address.province ||
+                                    address.region) ? (
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Barangay
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.barangay || '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Municipality / City
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.municipality || '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Province
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.province || '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Region
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.region || '—'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">
+                                        No residential address on file.
+                                    </p>
+                                )}
+
+                                <div className="mt-4 flex items-center gap-2 rounded-xl border border-border/40 bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+                                    <Info className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                                    <span>
+                                        Official address on record. To request
+                                        changes to your registered address,
+                                        please contact school administration.
+                                    </span>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -529,20 +711,31 @@ export default function TeacherProfileIndex() {
                             </CardHeader>
                             <Separator />
                             <CardContent className="pt-5">
-
-
-                                <form onSubmit={submitPassword} className="space-y-5">
+                                <form
+                                    onSubmit={submitPassword}
+                                    className="space-y-5"
+                                >
                                     <Field
                                         label="Current Password"
-                                        error={passwordForm.errors.current_password}
+                                        error={
+                                            passwordForm.errors.current_password
+                                        }
                                     >
                                         <PasswordInput
-                                            value={passwordForm.data.current_password}
+                                            value={
+                                                passwordForm.data
+                                                    .current_password
+                                            }
                                             onChange={(v) =>
-                                                passwordForm.setData('current_password', v)
+                                                passwordForm.setData(
+                                                    'current_password',
+                                                    v,
+                                                )
                                             }
                                             show={showCurrent}
-                                            onToggle={() => setShowCurrent((v) => !v)}
+                                            onToggle={() =>
+                                                setShowCurrent((v) => !v)
+                                            }
                                             autoComplete="current-password"
                                         />
                                     </Field>
@@ -553,21 +746,34 @@ export default function TeacherProfileIndex() {
                                             error={passwordForm.errors.password}
                                         >
                                             <PasswordInput
-                                                value={passwordForm.data.password}
+                                                value={
+                                                    passwordForm.data.password
+                                                }
                                                 onChange={(v) =>
-                                                    passwordForm.setData('password', v)
+                                                    passwordForm.setData(
+                                                        'password',
+                                                        v,
+                                                    )
                                                 }
                                                 show={showNew}
-                                                onToggle={() => setShowNew((v) => !v)}
+                                                onToggle={() =>
+                                                    setShowNew((v) => !v)
+                                                }
                                                 autoComplete="new-password"
                                             />
                                         </Field>
                                         <Field
                                             label="Confirm Password"
-                                            error={passwordForm.errors.password_confirmation}
+                                            error={
+                                                passwordForm.errors
+                                                    .password_confirmation
+                                            }
                                         >
                                             <PasswordInput
-                                                value={passwordForm.data.password_confirmation}
+                                                value={
+                                                    passwordForm.data
+                                                        .password_confirmation
+                                                }
                                                 onChange={(v) =>
                                                     passwordForm.setData(
                                                         'password_confirmation',
@@ -575,7 +781,9 @@ export default function TeacherProfileIndex() {
                                                     )
                                                 }
                                                 show={showConfirm}
-                                                onToggle={() => setShowConfirm((v) => !v)}
+                                                onToggle={() =>
+                                                    setShowConfirm((v) => !v)
+                                                }
                                                 autoComplete="new-password"
                                             />
                                         </Field>
@@ -591,11 +799,14 @@ export default function TeacherProfileIndex() {
                                                 <span
                                                     className={cn(
                                                         'font-semibold',
-                                                        pwStrength.score <= 1 && 'text-red-500',
+                                                        pwStrength.score <= 1 &&
+                                                            'text-red-500',
                                                         pwStrength.score <= 3 &&
-                                                            pwStrength.score > 1 &&
+                                                            pwStrength.score >
+                                                                1 &&
                                                             'text-amber-500',
-                                                        pwStrength.score > 3 && 'text-blue-600',
+                                                        pwStrength.score > 3 &&
+                                                            'text-blue-600',
                                                     )}
                                                 >
                                                     {pwStrength.label}
@@ -607,7 +818,8 @@ export default function TeacherProfileIndex() {
                                                         key={step}
                                                         className={cn(
                                                             'h-1.5 flex-1 rounded-full transition-all',
-                                                            step <= pwStrength.score
+                                                            step <=
+                                                                pwStrength.score
                                                                 ? pwStrength.color
                                                                 : 'bg-muted',
                                                         )}
@@ -619,8 +831,8 @@ export default function TeacherProfileIndex() {
 
                                     <div className="flex items-center justify-between border-t border-border/40 pt-4">
                                         <p className="text-xs text-muted-foreground">
-                                            Min. 8 characters with uppercase, numbers &amp;
-                                            symbols.
+                                            Min. 8 characters with uppercase,
+                                            numbers &amp; symbols.
                                         </p>
                                         <Button
                                             type="submit"
@@ -638,8 +850,6 @@ export default function TeacherProfileIndex() {
                     </div>
                 </div>
             </div>
-
-
         </TeacherLayout>
     );
 }

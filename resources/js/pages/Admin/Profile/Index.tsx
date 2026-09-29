@@ -4,7 +4,9 @@ import {
     Camera,
     Eye,
     EyeOff,
+    Info,
     KeyRound,
+    MapPin,
     Phone,
     Shield,
     User,
@@ -34,12 +36,20 @@ import {
 import admin from '@/routes/admin';
 import type { SharedData } from '@/types';
 
+type AddressData = {
+    barangay: string | null;
+    municipality: string | null;
+    province: string | null;
+    region: string | null;
+};
+
 type AdminData = {
     fname: string;
     mname: string | null;
     lname: string;
     email: string;
     contact_number: string | null;
+    address?: AddressData | null;
 };
 
 type PageProps = SharedData & {
@@ -170,6 +180,19 @@ export default function AdminProfileIndex() {
     const fullName = auth.user.name;
     const initials = getInitials(fullName);
 
+    const address = adminData.address;
+    const formattedAddress = useMemo(() => {
+        if (!address) return '';
+        return [
+            address.barangay,
+            address.municipality,
+            address.province,
+            address.region,
+        ]
+            .filter(Boolean)
+            .join(', ');
+    }, [address]);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -258,7 +281,10 @@ export default function AdminProfileIndex() {
         if (profileForm.data.contact_number) {
             const cleanNum = profileForm.data.contact_number.replace(/\D/g, '');
             if (cleanNum.length !== 11) {
-                profileForm.setError('contact_number', 'Contact number must be exactly 11 digits.');
+                profileForm.setError(
+                    'contact_number',
+                    'Contact number must be exactly 11 digits.',
+                );
                 hasError = true;
             }
         }
@@ -436,10 +462,27 @@ export default function AdminProfileIndex() {
                                         </div>
                                         <span className="text-muted-foreground">
                                             {adminData.contact_number ? (
-                                                formatContactNumberInput(adminData.contact_number)
+                                                formatContactNumberInput(
+                                                    adminData.contact_number,
+                                                )
                                             ) : (
                                                 <span className="italic opacity-60">
                                                     No number
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-start gap-2.5 text-sm">
+                                        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/60">
+                                            <MapPin className="size-3.5 text-muted-foreground" />
+                                        </div>
+                                        <span className="text-xs leading-snug text-muted-foreground">
+                                            {formattedAddress ? (
+                                                formattedAddress
+                                            ) : (
+                                                <span className="italic opacity-60">
+                                                    No address on file
                                                 </span>
                                             )}
                                         </span>
@@ -630,6 +673,73 @@ export default function AdminProfileIndex() {
                                         </Button>
                                     </div>
                                 </form>
+                            </CardContent>
+                        </Card>
+
+                        {/* Residential Address (Read-only) */}
+                        <Card className="rounded-2xl border-border/60 shadow-sm">
+                            <CardHeader className="pb-4">
+                                <SectionHeader
+                                    icon={MapPin}
+                                    title="Residential Address"
+                                    description="Official home address on record with the school."
+                                />
+                            </CardHeader>
+                            <Separator />
+                            <CardContent className="pt-5">
+                                {address &&
+                                (address.barangay ||
+                                    address.municipality ||
+                                    address.province ||
+                                    address.region) ? (
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Barangay
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.barangay || '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Municipality / City
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.municipality || '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Province
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.province || '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                                            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Region
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium text-foreground">
+                                                {address.region || '—'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">
+                                        No residential address on file.
+                                    </p>
+                                )}
+
+                                <div className="mt-4 flex items-center gap-2 rounded-xl border border-border/40 bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+                                    <Info className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                    <span>
+                                        Official address on record. To request
+                                        changes to your registered address,
+                                        please contact school administration.
+                                    </span>
+                                </div>
                             </CardContent>
                         </Card>
 

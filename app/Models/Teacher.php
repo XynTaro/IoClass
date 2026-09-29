@@ -7,6 +7,7 @@ use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 
 class Teacher extends Model implements Authenticatable
@@ -66,5 +67,13 @@ class Teacher extends Model implements Authenticatable
     public function getAuthPassword(): string
     {
         return (string) $this->tch_pw;
+    }
+
+    /**
+     * @return BelongsTo<Address, $this>
+     */
+    public function address(): BelongsTo
+    {
+        return $this->belongsTo(Address::class, 'add_id', 'add_id');
     }
 }

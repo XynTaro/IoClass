@@ -19,6 +19,7 @@ class AdminProfileController extends Controller
     {
         /** @var Admin $admin */
         $admin = auth()->guard('admin')->user();
+        $admin->load('address');
 
         return Inertia::render('Admin/Profile/Index', [
             'admin' => [
@@ -27,6 +28,12 @@ class AdminProfileController extends Controller
                 'lname' => $admin->lname,
                 'email' => $admin->email,
                 'contact_number' => $admin->contact_number,
+                'address' => $admin->address ? [
+                    'barangay' => $admin->address->barangay,
+                    'municipality' => $admin->address->municipality,
+                    'province' => $admin->address->province,
+                    'region' => $admin->address->region,
+                ] : null,
             ],
             'status' => $request->session()->get('status'),
         ]);
