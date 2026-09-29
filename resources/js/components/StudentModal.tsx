@@ -775,11 +775,20 @@ export default function StudentModal({
     // -------------------------------------------------------------------------
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        const errors = validateStep1(form.data);
+        if (Object.keys(errors).length > 0) {
+            setLocalErrors(errors);
+            setSubmitError('Please fix the validation errors before saving.');
+            return;
+        }
+
         if (rfidRegistryConflict) {
             setLocalErrors({
                 rfid_uid:
                     'This RFID card is already registered to another person.',
             });
+            setSubmitError('Please fix the validation errors before saving.');
             return;
         }
 
@@ -787,6 +796,7 @@ export default function StudentModal({
             setLocalErrors({
                 rfid_uid: 'RFID UID is required.',
             });
+            setSubmitError('Please fix the validation errors before saving.');
             return;
         }
 
@@ -809,12 +819,16 @@ export default function StudentModal({
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
+                setSubmitError(null);
                 onSuccess?.();
                 onClose();
             },
-            onError: () => {
+            onError: (errors) => {
+                const firstMsg = Object.values(errors)[0];
                 setSubmitError(
-                    'Failed to save student. Please check the fields and try again.',
+                    typeof firstMsg === 'string'
+                        ? firstMsg
+                        : 'Failed to update student. Please check the fields and try again.',
                 );
             },
         });

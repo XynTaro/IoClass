@@ -1,18 +1,23 @@
 import { useForm } from '@inertiajs/react';
-import { CalendarRange } from 'lucide-react';
-import { useEffect } from 'react';
+import { AlertCircle, CalendarRange } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import { FormFieldError, inputErrorClass } from '@/components/form-field-error';
 import { ModalHeader } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+function ErrorBanner({ message }: { message: string }) {
+    return (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
+            <p className="text-sm text-red-700 dark:text-red-400">{message}</p>
+        </div>
+    );
+}
 
 export interface SchoolYear {
     sy_id?: number;
@@ -72,6 +77,8 @@ export default function SchoolYearModal({
     schoolYear,
     mode,
 }: SchoolYearModalProps) {
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
     const form = useForm<SchoolYearFormData>({
         sy_id: '',
         sy_label: '',
@@ -95,6 +102,8 @@ export default function SchoolYearModal({
     useEffect(() => {
         if (!open) {
             form.reset();
+            form.clearErrors();
+            setSubmitError(null);
         }
     }, [open]);
 
@@ -109,6 +118,7 @@ export default function SchoolYearModal({
         if (newLabel) {
             form.clearErrors('sy_label');
         }
+        setSubmitError(null);
     };
 
     const handleEndDateChange = (val: string) => {
@@ -122,27 +132,72 @@ export default function SchoolYearModal({
         if (newLabel) {
             form.clearErrors('sy_label');
         }
+        setSubmitError(null);
+    };
+
+    const validate = (): boolean => {
+        const errors: Record<string, string> = {};
+        if (!form.data.start_date) {
+            errors.start_date = 'Start date is required.';
+        }
+        if (!form.data.end_date) {
+            errors.end_date = 'End date is required.';
+        }
+        if (
+            form.data.start_date &&
+            form.data.end_date &&
+            form.data.start_date >= form.data.end_date
+        ) {
+            errors.end_date = 'End date must be after start date.';
+        }
+        if (!String(form.data.sy_label ?? '').trim()) {
+            errors.sy_label = 'School year label is required.';
+        }
+        form.setError(errors);
+        return Object.keys(errors).length === 0;
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!validate()) {
+            setSubmitError('Please fix the validation errors before saving.');
+            return;
+        }
+        setSubmitError(null);
+
         if (mode === 'edit') {
             const syId = form.data.sy_id;
             if (!syId) return;
             form.put(route('admin.school-year.update', { id: syId }), {
                 onSuccess: () => {
+                    setSubmitError(null);
                     onSuccess?.();
                     onClose();
                 },
-                onError: () => {},
+                onError: (errors) => {
+                    const first = Object.values(errors)[0];
+                    setSubmitError(
+                        typeof first === 'string'
+                            ? first
+                            : 'Failed to update school year. Please check the fields and try again.',
+                    );
+                },
             });
         } else {
             form.post(route('admin.school-year.store'), {
                 onSuccess: () => {
+                    setSubmitError(null);
                     onSuccess?.();
                     onClose();
                 },
-                onError: () => {},
+                onError: (errors) => {
+                    const first = Object.values(errors)[0];
+                    setSubmitError(
+                        typeof first === 'string'
+                            ? first
+                            : 'Failed to add school year. Please check the fields and try again.',
+                    );
+                },
             });
         }
     };
@@ -153,7 +208,9 @@ export default function SchoolYearModal({
                 <ModalHeader
                     icon={CalendarRange}
                     tone="emerald"
-                    title={mode === 'edit' ? 'Edit School Year' : 'Add School Year'}
+                    title={
+                        mode === 'edit' ? 'Edit School Year' : 'Add School Year'
+                    }
                     description="Date range, label, and active status"
                 />
 
@@ -167,16 +224,21 @@ export default function SchoolYearModal({
                                 htmlFor="start_date"
                                 className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                             >
-                                Start date <span className="text-destructive">*</span>
+                                Start date{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="start_date"
                                 type="date"
                                 value={form.data.start_date ?? ''}
-                                onChange={(e) => handleStartDateChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleStartDateChange(e.target.value)
+                                }
                                 required
                                 aria-invalid={Boolean(form.errors.start_date)}
-                                className={inputErrorClass(Boolean(form.errors.start_date))}
+                                className={inputErrorClass(
+                                    Boolean(form.errors.start_date),
+                                )}
                             />
                             <FormFieldError
                                 label="Start date"
@@ -189,17 +251,22 @@ export default function SchoolYearModal({
                                 htmlFor="end_date"
                                 className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                             >
-                                End date <span className="text-destructive">*</span>
+                                End date{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="end_date"
                                 type="date"
                                 min={form.data.start_date ?? undefined}
                                 value={form.data.end_date ?? ''}
-                                onChange={(e) => handleEndDateChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleEndDateChange(e.target.value)
+                                }
                                 required
                                 aria-invalid={Boolean(form.errors.end_date)}
-                                className={inputErrorClass(Boolean(form.errors.end_date))}
+                                className={inputErrorClass(
+                                    Boolean(form.errors.end_date),
+                                )}
                             />
                             <FormFieldError
                                 label="End date"
@@ -214,7 +281,8 @@ export default function SchoolYearModal({
                                 htmlFor="sy_label"
                                 className="inline-block text-xs font-medium text-muted-foreground"
                             >
-                                School Year <span className="text-destructive">*</span>
+                                School Year{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <span className="text-[11px] text-muted-foreground">
                                 Auto-set from dates
@@ -227,12 +295,18 @@ export default function SchoolYearModal({
                             onChange={(e) => {
                                 form.setData('sy_label', e.target.value);
                                 form.clearErrors('sy_label');
+                                setSubmitError(null);
                             }}
                             required
                             aria-invalid={Boolean(form.errors.sy_label)}
-                            className={inputErrorClass(Boolean(form.errors.sy_label))}
+                            className={inputErrorClass(
+                                Boolean(form.errors.sy_label),
+                            )}
                         />
-                        <FormFieldError label="Label" message={form.errors.sy_label} />
+                        <FormFieldError
+                            label="Label"
+                            message={form.errors.sy_label}
+                        />
                     </div>
 
                     <div
@@ -246,23 +320,27 @@ export default function SchoolYearModal({
                             <Checkbox
                                 id="is_active"
                                 checked={form.data.is_active}
-                                onCheckedChange={(checked) =>
-                                    form.setData('is_active', Boolean(checked))
-                                }
+                                onCheckedChange={(checked) => {
+                                    form.setData('is_active', Boolean(checked));
+                                    setSubmitError(null);
+                                }}
                             />
                             <Label
                                 htmlFor="is_active"
-                                className="text-sm font-medium cursor-pointer"
+                                className="cursor-pointer text-sm font-medium"
                             >
                                 Set as active school year
                             </Label>
                         </div>
                         {form.data.is_active && (
                             <p className="mt-1.5 pl-6 text-xs text-amber-600 dark:text-amber-400">
-                                This will deactivate any currently active school year.
+                                This will deactivate any currently active school
+                                year.
                             </p>
                         )}
                     </div>
+
+                    {submitError && <ErrorBanner message={submitError} />}
 
                     <DialogFooter className="flex justify-end gap-2 border-t pt-4">
                         <Button

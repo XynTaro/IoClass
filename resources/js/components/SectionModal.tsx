@@ -1,15 +1,11 @@
 import { useForm } from '@inertiajs/react';
-import { Users } from 'lucide-react';
-import { useEffect } from 'react';
+import { AlertCircle, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import { FormFieldError, inputErrorClass } from '@/components/form-field-error';
 import { ModalHeader } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,6 +15,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+
+function ErrorBanner({ message }: { message: string }) {
+    return (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
+            <p className="text-sm text-red-700 dark:text-red-400">{message}</p>
+        </div>
+    );
+}
 
 export interface Section {
     sect_id?: number;
@@ -58,6 +63,8 @@ export default function SectionModal({
     mode,
     gradeLevels = [],
 }: SectionModalProps) {
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
     const form = useForm<SectionFormData>({
         sect_id: '',
         sect_name: '',
@@ -66,7 +73,9 @@ export default function SectionModal({
 
     const availableGradeLevels = Array.from(
         new Set([
-            ...(gradeLevels && gradeLevels.length > 0 ? gradeLevels : DEFAULT_GRADE_LEVELS),
+            ...(gradeLevels && gradeLevels.length > 0
+                ? gradeLevels
+                : DEFAULT_GRADE_LEVELS),
             ...(form.data.gr_level ? [form.data.gr_level] : []),
         ]),
     )
@@ -87,28 +96,63 @@ export default function SectionModal({
         if (!open) {
             form.reset();
             form.clearErrors();
+            setSubmitError(null);
         }
     }, [open]);
 
+    const validate = (): boolean => {
+        const errors: Record<string, string> = {};
+        if (!String(form.data.sect_name ?? '').trim()) {
+            errors.sect_name = 'Section name is required.';
+        }
+        if (!String(form.data.gr_level ?? '').trim()) {
+            errors.gr_level = 'Grade level is required.';
+        }
+        form.setError(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!validate()) {
+            setSubmitError('Please fix the validation errors before saving.');
+            return;
+        }
+        setSubmitError(null);
+
         if (mode === 'edit') {
             const sectionId = form.data.sect_id;
             if (!sectionId) return;
             form.put(route('admin.section.update', { id: sectionId }), {
                 onSuccess: () => {
+                    setSubmitError(null);
                     onSuccess?.();
                     onClose();
                 },
-                onError: () => {},
+                onError: (errors) => {
+                    const first = Object.values(errors)[0];
+                    setSubmitError(
+                        typeof first === 'string'
+                            ? first
+                            : 'Failed to update section. Please check the fields and try again.',
+                    );
+                },
             });
         } else {
             form.post(route('admin.section.store'), {
                 onSuccess: () => {
+                    setSubmitError(null);
                     onSuccess?.();
                     onClose();
                 },
-                onError: () => {},
+                onError: (errors) => {
+                    const first = Object.values(errors)[0];
+                    setSubmitError(
+                        typeof first === 'string'
+                            ? first
+                            : 'Failed to add section. Please check the fields and try again.',
+                    );
+                },
             });
         }
     };
@@ -132,7 +176,8 @@ export default function SectionModal({
                             htmlFor="sect_name"
                             className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                         >
-                            Section name <span className="text-destructive">*</span>
+                            Section name{' '}
+                            <span className="text-destructive">*</span>
                         </Label>
                         <Input
                             id="sect_name"
@@ -141,10 +186,13 @@ export default function SectionModal({
                             onChange={(e) => {
                                 form.setData('sect_name', e.target.value);
                                 form.clearErrors('sect_name');
+                                setSubmitError(null);
                             }}
                             required
                             aria-invalid={Boolean(form.errors.sect_name)}
-                            className={inputErrorClass(Boolean(form.errors.sect_name))}
+                            className={inputErrorClass(
+                                Boolean(form.errors.sect_name),
+                            )}
                         />
                         <FormFieldError
                             label="Section name"
@@ -154,18 +202,22 @@ export default function SectionModal({
 
                     <div>
                         <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                            Grade level <span className="text-destructive">*</span>
+                            Grade level{' '}
+                            <span className="text-destructive">*</span>
                         </Label>
                         <Select
                             value={form.data.gr_level ?? ''}
                             onValueChange={(v) => {
                                 form.setData('gr_level', v);
                                 form.clearErrors('gr_level');
+                                setSubmitError(null);
                             }}
                         >
                             <SelectTrigger
                                 id="gr_level"
-                                className={inputErrorClass(Boolean(form.errors.gr_level))}
+                                className={inputErrorClass(
+                                    Boolean(form.errors.gr_level),
+                                )}
                             >
                                 <SelectValue placeholder="Select grade level" />
                             </SelectTrigger>
@@ -182,6 +234,8 @@ export default function SectionModal({
                             message={form.errors.gr_level}
                         />
                     </div>
+
+                    {submitError && <ErrorBanner message={submitError} />}
 
                     <DialogFooter className="flex justify-end gap-2 border-t pt-4">
                         <Button

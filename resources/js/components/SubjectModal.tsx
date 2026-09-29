@@ -1,15 +1,11 @@
 import { useForm } from '@inertiajs/react';
-import { BookOpen } from 'lucide-react';
-import { useEffect } from 'react';
+import { AlertCircle, BookOpen } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import { FormFieldError, inputErrorClass } from '@/components/form-field-error';
 import { ModalHeader } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -45,6 +41,15 @@ interface SubjectModalProps {
     gradeLevels?: string[];
 }
 
+function ErrorBanner({ message }: { message: string }) {
+    return (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
+            <p className="text-sm text-red-700 dark:text-red-400">{message}</p>
+        </div>
+    );
+}
+
 const DEFAULT_GRADE_LEVELS = [
     'Grade 7',
     'Grade 8',
@@ -70,10 +75,13 @@ export default function SubjectModal({
         subj_name: '',
         gr_level: '',
     });
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const availableGradeLevels = Array.from(
         new Set([
-            ...(gradeLevels && gradeLevels.length > 0 ? gradeLevels : DEFAULT_GRADE_LEVELS),
+            ...(gradeLevels && gradeLevels.length > 0
+                ? gradeLevels
+                : DEFAULT_GRADE_LEVELS),
             ...(form.data.gr_level ? [form.data.gr_level] : []),
         ]),
     )
@@ -94,34 +102,67 @@ export default function SubjectModal({
     useEffect(() => {
         if (!open) {
             form.reset();
+            form.clearErrors();
+            setSubmitError(null);
         }
     }, [open]);
 
-    const canSubmit =
-        String(form.data.subj_code ?? '').trim() !== '' &&
-        String(form.data.subj_name ?? '').trim() !== '' &&
-        String(form.data.gr_level ?? '').trim() !== '';
+    const validate = (): boolean => {
+        const errors: Record<string, string> = {};
+        if (!String(form.data.subj_code ?? '').trim()) {
+            errors.subj_code = 'Subject code is required.';
+        }
+        if (!String(form.data.gr_level ?? '').trim()) {
+            errors.gr_level = 'Grade level is required.';
+        }
+        if (!String(form.data.subj_name ?? '').trim()) {
+            errors.subj_name = 'Subject name is required.';
+        }
+        form.setError(errors);
+        return Object.keys(errors).length === 0;
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!canSubmit) return;
+        if (!validate()) {
+            setSubmitError('Please fix the validation errors before saving.');
+            return;
+        }
+        setSubmitError(null);
+
         if (mode === 'edit') {
             const subjectId = form.data.subj_id;
             if (!subjectId) return;
             form.put(route(updateRoute, { id: subjectId }), {
                 onSuccess: () => {
+                    setSubmitError(null);
                     onSuccess?.();
                     onClose();
                 },
-                onError: () => {},
+                onError: (errors) => {
+                    const first = Object.values(errors)[0];
+                    setSubmitError(
+                        typeof first === 'string'
+                            ? first
+                            : 'Failed to update subject. Please check the fields and try again.',
+                    );
+                },
             });
         } else {
             form.post(route(storeRoute), {
                 onSuccess: () => {
+                    setSubmitError(null);
                     onSuccess?.();
                     onClose();
                 },
-                onError: () => {},
+                onError: (errors) => {
+                    const first = Object.values(errors)[0];
+                    setSubmitError(
+                        typeof first === 'string'
+                            ? first
+                            : 'Failed to add subject. Please check the fields and try again.',
+                    );
+                },
             });
         }
     };
@@ -146,7 +187,8 @@ export default function SubjectModal({
                                 htmlFor="subj_code"
                                 className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                             >
-                                Subject code <span className="text-destructive">*</span>
+                                Subject code{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="subj_code"
@@ -170,7 +212,8 @@ export default function SubjectModal({
 
                         <div>
                             <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                                Grade level <span className="text-destructive">*</span>
+                                Grade level{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Select
                                 value={form.data.gr_level ?? ''}
@@ -179,7 +222,11 @@ export default function SubjectModal({
                                     form.clearErrors('gr_level');
                                 }}
                             >
-                                <SelectTrigger className={inputErrorClass(Boolean(form.errors.gr_level))}>
+                                <SelectTrigger
+                                    className={inputErrorClass(
+                                        Boolean(form.errors.gr_level),
+                                    )}
+                                >
                                     <SelectValue placeholder="Select grade level" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -202,7 +249,8 @@ export default function SubjectModal({
                             htmlFor="subj_name"
                             className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                         >
-                            Subject name <span className="text-destructive">*</span>
+                            Subject name{' '}
+                            <span className="text-destructive">*</span>
                         </Label>
                         <Input
                             id="subj_name"
@@ -224,6 +272,8 @@ export default function SubjectModal({
                         />
                     </div>
 
+                    {submitError && <ErrorBanner message={submitError} />}
+
                     <DialogFooter className="flex justify-end gap-2 border-t pt-4">
                         <Button
                             type="button"
@@ -236,7 +286,7 @@ export default function SubjectModal({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={form.processing || !canSubmit}
+                            disabled={form.processing}
                             className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                             {form.processing

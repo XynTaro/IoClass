@@ -1,5 +1,6 @@
 import { useForm, usePage } from '@inertiajs/react';
 import {
+    AlertCircle,
     CalendarDays,
     Check,
     ChevronRight,
@@ -48,6 +49,15 @@ const CREATE_STEPS = [
     { label: 'Address', icon: MapPin },
     { label: 'Schedule', icon: CalendarDays },
 ];
+
+function ErrorBanner({ message }: { message: string }) {
+    return (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
+            <p className="text-sm text-red-700 dark:text-red-400">{message}</p>
+        </div>
+    );
+}
 
 type Status = 'active' | 'inactive';
 
@@ -116,6 +126,7 @@ export default function TeacherModal({
     const [rfidUidConflict, setRfidUidConflict] = useState(false);
     const [masterCardConflict, setMasterCardConflict] = useState(false);
     const [scanTarget, setScanTarget] = useState<'rfid' | 'master'>('rfid');
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
     const TEACHER_DRAFT_KEY = 'ioclass_draft_teacher_create';
@@ -158,6 +169,7 @@ export default function TeacherModal({
             return next;
         });
         setClearedPageErrors((prev) => ({ ...prev, [field]: true }));
+        setSubmitError(null);
     };
 
     // Single wireless capture — routes to the active scan target automatically.
@@ -264,6 +276,7 @@ export default function TeacherModal({
             setRfidUidConflict(false);
             setMasterCardConflict(false);
             setScanTarget('rfid');
+            setSubmitError(null);
             setHasRestoredDraft(false);
         }
     }, [open]);
@@ -386,6 +399,20 @@ export default function TeacherModal({
                 'This RFID card is already registered to another person.';
         }
 
+        if (mode === 'edit' && form.data.reset_password) {
+            if (!form.data.tch_pw.trim()) {
+                errors.tch_pw = 'Password is required.';
+            } else if (form.data.tch_pw.length < 8) {
+                errors.tch_pw = 'Password must be at least 8 characters.';
+            }
+            if (!form.data.tch_pw_confirmation.trim()) {
+                errors.tch_pw_confirmation = 'Confirm password is required.';
+            } else if (form.data.tch_pw !== form.data.tch_pw_confirmation) {
+                errors.tch_pw_confirmation =
+                    'Password confirmation does not match.';
+            }
+        }
+
         setLocalErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -410,16 +437,18 @@ export default function TeacherModal({
         if (!teacherId) return;
 
         if (!isOnline) {
-            setLocalErrors({
-                tch_fname:
-                    'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
-            });
+            setSubmitError(
+                'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
+            );
             return;
         }
 
         if (!validateStep1()) {
+            setSubmitError('Please fix the validation errors before saving.');
             return;
         }
+
+        setSubmitError(null);
 
         if (!form.data.reset_password) {
             form.transform((data) => {
@@ -443,10 +472,18 @@ export default function TeacherModal({
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
+                setSubmitError(null);
                 onSuccess?.();
                 onClose();
             },
-            onError: () => {},
+            onError: (errors) => {
+                const firstMsg = Object.values(errors)[0];
+                setSubmitError(
+                    typeof firstMsg === 'string'
+                        ? firstMsg
+                        : 'Failed to update teacher. Please check the fields and try again.',
+                );
+            },
         });
     };
 
@@ -1150,6 +1187,10 @@ export default function TeacherModal({
                                 )}
                             </div>
                         </form>
+
+                        {submitError && mode === 'edit' && (
+                            <ErrorBanner message={submitError} />
+                        )}
 
                         <DialogFooter className="flex justify-end gap-2">
                             <Button

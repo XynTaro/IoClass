@@ -1,5 +1,12 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { CalendarDays, Check, ChevronLeft, Plus, Trash2, WifiOff } from 'lucide-react';
+import {
+    CalendarDays,
+    Check,
+    ChevronLeft,
+    Plus,
+    Trash2,
+    WifiOff,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import type { AddressFormData, PendingTeacherData } from '@/components/Address';
@@ -7,11 +14,7 @@ import { ModalHeader } from '@/components/modal-header';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -23,7 +26,8 @@ import {
 
 import { FormFieldError } from '@/components/form-field-error';
 
-export type PendingTeacherWithAddressData = PendingTeacherData & AddressFormData;
+export type PendingTeacherWithAddressData = PendingTeacherData &
+    AddressFormData;
 
 export const DAYS_OF_WEEK = [
     'Monday',
@@ -131,7 +135,12 @@ function slotToPayload(slot: ScheduleSlotState): ScheduleSlotPayload {
     };
 }
 
-function slotFieldError(errors: Record<string, string>, index: number, field: string, isEdit = false): string | undefined {
+function slotFieldError(
+    errors: Record<string, string>,
+    index: number,
+    field: string,
+    isEdit = false,
+): string | undefined {
     if (isEdit) {
         return errors[field] ?? errors[`schedules.${index}.${field}`];
     }
@@ -169,13 +178,15 @@ function ScheduleSlotEditor({
     onChange,
     onRemove,
 }: ScheduleSlotEditorProps) {
-    const filteredSections = slot.gradeFilter && slot.gradeFilter !== 'all'
-        ? sections.filter((s) => s.gr_level === slot.gradeFilter)
-        : sections;
+    const filteredSections =
+        slot.gradeFilter && slot.gradeFilter !== 'all'
+            ? sections.filter((s) => s.gr_level === slot.gradeFilter)
+            : sections;
 
-    const filteredRooms = slot.buildingFilter && slot.buildingFilter !== 'all'
-        ? rooms.filter((r) => r.building_id === Number(slot.buildingFilter))
-        : rooms;
+    const filteredRooms =
+        slot.buildingFilter && slot.buildingFilter !== 'all'
+            ? rooms.filter((r) => r.building_id === Number(slot.buildingFilter))
+            : rooms;
 
     const updateSlot = (patch: Partial<ScheduleSlotState>) => {
         onChange(index, { ...slot, ...patch });
@@ -201,17 +212,28 @@ function ScheduleSlotEditor({
     const sectError = slotFieldError(errors, index, 'sect_id', isEditMode);
     const roomError = slotFieldError(errors, index, 'room_id', isEditMode);
     const subjError = slotFieldError(errors, index, 'subj_id', isEditMode);
-    const startTimeError = slotFieldError(errors, index, 'start_time', isEditMode);
+    const startTimeError = slotFieldError(
+        errors,
+        index,
+        'start_time',
+        isEditMode,
+    );
     const endTimeError = slotFieldError(errors, index, 'end_time', isEditMode);
     const dayError = isEditMode
-        ? (errors.day_of_week ?? errors.days ?? errors[`schedules.${index}.days`] ?? errors[`schedules.${index}.days.0`])
-        : (errors[`schedules.${index}.days`] ?? errors[`schedules.${index}.days.0`]);
+        ? (errors.day_of_week ??
+          errors.days ??
+          errors[`schedules.${index}.days`] ??
+          errors[`schedules.${index}.days.0`])
+        : (errors[`schedules.${index}.days`] ??
+          errors[`schedules.${index}.days.0`]);
 
     return (
         <div className="space-y-4 rounded-xl border border-l-4 border-l-indigo-400 bg-card p-4 shadow-sm dark:border-l-indigo-600">
             <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">
-                    {singleDayOnly ? 'Schedule slot' : `Schedule slot ${index + 1}`}
+                    {singleDayOnly
+                        ? 'Schedule slot'
+                        : `Schedule slot ${index + 1}`}
                 </p>
                 {canRemove && (
                     <Button
@@ -234,13 +256,20 @@ function ScheduleSlotEditor({
                     </Label>
                     <Select
                         value={slot.gradeFilter || 'all'}
-                        onValueChange={(value) => updateSlot({ gradeFilter: value === 'all' ? '' : value, sect_id: '' })}
+                        onValueChange={(value) =>
+                            updateSlot({
+                                gradeFilter: value === 'all' ? '' : value,
+                                sect_id: '',
+                            })
+                        }
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="All grade levels" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All grade levels</SelectItem>
+                            <SelectItem value="all">
+                                All grade levels
+                            </SelectItem>
                             {gradeLevels.map((g) => (
                                 <SelectItem key={g} value={g}>
                                     {g}
@@ -256,15 +285,25 @@ function ScheduleSlotEditor({
                     </Label>
                     <Select
                         value={slot.sect_id === '' ? '' : String(slot.sect_id)}
-                        onValueChange={(v) => updateSlot({ sect_id: Number(v) })}
+                        onValueChange={(v) =>
+                            updateSlot({ sect_id: Number(v) })
+                        }
                     >
-                        <SelectTrigger className={sectError ? 'border-red-500' : ''}>
+                        <SelectTrigger
+                            className={sectError ? 'border-red-500' : ''}
+                        >
                             <SelectValue placeholder="Select section" />
                         </SelectTrigger>
                         <SelectContent>
                             {filteredSections.map((s) => (
-                                <SelectItem key={s.sect_id} value={String(s.sect_id)}>
-                                    {slot.gradeFilter && slot.gradeFilter !== 'all' ? s.sect_name : `${s.gr_level} — ${s.sect_name}`}
+                                <SelectItem
+                                    key={s.sect_id}
+                                    value={String(s.sect_id)}
+                                >
+                                    {slot.gradeFilter &&
+                                    slot.gradeFilter !== 'all'
+                                        ? s.sect_name
+                                        : `${s.gr_level} — ${s.sect_name}`}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -280,7 +319,12 @@ function ScheduleSlotEditor({
                     </Label>
                     <Select
                         value={slot.buildingFilter || 'all'}
-                        onValueChange={(value) => updateSlot({ buildingFilter: value === 'all' ? '' : value, room_id: '' })}
+                        onValueChange={(value) =>
+                            updateSlot({
+                                buildingFilter: value === 'all' ? '' : value,
+                                room_id: '',
+                            })
+                        }
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="All buildings" />
@@ -288,7 +332,10 @@ function ScheduleSlotEditor({
                         <SelectContent>
                             <SelectItem value="all">All buildings</SelectItem>
                             {buildings.map((b) => (
-                                <SelectItem key={b.building_id} value={String(b.building_id)}>
+                                <SelectItem
+                                    key={b.building_id}
+                                    value={String(b.building_id)}
+                                >
                                     {b.building_name}
                                 </SelectItem>
                             ))}
@@ -302,15 +349,25 @@ function ScheduleSlotEditor({
                     </Label>
                     <Select
                         value={slot.room_id === '' ? '' : String(slot.room_id)}
-                        onValueChange={(v) => updateSlot({ room_id: Number(v) })}
+                        onValueChange={(v) =>
+                            updateSlot({ room_id: Number(v) })
+                        }
                     >
-                        <SelectTrigger className={roomError ? 'border-red-500' : ''}>
+                        <SelectTrigger
+                            className={roomError ? 'border-red-500' : ''}
+                        >
                             <SelectValue placeholder="Select room" />
                         </SelectTrigger>
                         <SelectContent>
                             {filteredRooms.map((r) => (
-                                <SelectItem key={r.room_id} value={String(r.room_id)}>
-                                    {slot.buildingFilter && slot.buildingFilter !== 'all' ? r.room_no : `${r.building?.building_name ?? '—'} — ${r.room_no}`}
+                                <SelectItem
+                                    key={r.room_id}
+                                    value={String(r.room_id)}
+                                >
+                                    {slot.buildingFilter &&
+                                    slot.buildingFilter !== 'all'
+                                        ? r.room_no
+                                        : `${r.building?.building_name ?? '—'} — ${r.room_no}`}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -327,12 +384,17 @@ function ScheduleSlotEditor({
                     value={slot.subj_id === '' ? '' : String(slot.subj_id)}
                     onValueChange={(v) => updateSlot({ subj_id: Number(v) })}
                 >
-                    <SelectTrigger className={subjError ? 'border-red-500' : ''}>
+                    <SelectTrigger
+                        className={subjError ? 'border-red-500' : ''}
+                    >
                         <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent>
                         {subjects.map((s) => (
-                            <SelectItem key={s.subj_id} value={String(s.subj_id)}>
+                            <SelectItem
+                                key={s.subj_id}
+                                value={String(s.subj_id)}
+                            >
                                 {s.subj_code} — {s.subj_name}
                             </SelectItem>
                         ))}
@@ -348,10 +410,22 @@ function ScheduleSlotEditor({
                     </Label>
                     {!singleDayOnly && (
                         <div className="flex flex-wrap gap-1">
-                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => selectDays(WEEKDAYS)}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => selectDays(WEEKDAYS)}
+                            >
                                 Weekdays
                             </Button>
-                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => selectDays([])}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => selectDays([])}
+                            >
                                 Clear
                             </Button>
                         </div>
@@ -381,7 +455,10 @@ function ScheduleSlotEditor({
 
             <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                    <Label htmlFor={`start_time_${index}`} className="mb-1 inline-block text-xs font-medium text-muted-foreground">
+                    <Label
+                        htmlFor={`start_time_${index}`}
+                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                    >
                         Start time <span className="text-destructive">*</span>
                     </Label>
                     <input
@@ -389,16 +466,24 @@ function ScheduleSlotEditor({
                         type="time"
                         step="60"
                         value={slot.start_time}
-                        onChange={(e) => updateSlot({ start_time: e.target.value })}
-                        className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                        onChange={(e) =>
+                            updateSlot({ start_time: e.target.value })
+                        }
+                        className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none ${
                             startTimeError ? 'border-red-500' : 'border-input'
                         }`}
                     />
-                    <FormFieldError label="Start time" message={startTimeError} />
+                    <FormFieldError
+                        label="Start time"
+                        message={startTimeError}
+                    />
                 </div>
 
                 <div>
-                    <Label htmlFor={`end_time_${index}`} className="mb-1 inline-block text-xs font-medium text-muted-foreground">
+                    <Label
+                        htmlFor={`end_time_${index}`}
+                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                    >
                         End time <span className="text-destructive">*</span>
                     </Label>
                     <input
@@ -406,8 +491,10 @@ function ScheduleSlotEditor({
                         type="time"
                         step="60"
                         value={slot.end_time}
-                        onChange={(e) => updateSlot({ end_time: e.target.value })}
-                        className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                        onChange={(e) =>
+                            updateSlot({ end_time: e.target.value })
+                        }
+                        className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none ${
                             endTimeError ? 'border-red-500' : 'border-input'
                         }`}
                     />
@@ -431,7 +518,9 @@ export default function ScheduleModal({
     teacherId,
     onBack,
 }: ScheduleModalProps) {
-    const [slots, setSlots] = useState<ScheduleSlotState[]>([createEmptySlot()]);
+    const [slots, setSlots] = useState<ScheduleSlotState[]>([
+        createEmptySlot(),
+    ]);
     const [adviserGradeFilter, setAdviserGradeFilter] = useState('');
     const [isSkipping, setIsSkipping] = useState(false);
 
@@ -455,11 +544,13 @@ export default function ScheduleModal({
 
     const buildings = useMemo(
         () =>
-            [...new Map(
-                rooms
-                    .filter((r) => r.building)
-                    .map((r) => [r.building!.building_id, r.building!]),
-            ).values()].sort((a, b) => a.building_name.localeCompare(b.building_name)),
+            [
+                ...new Map(
+                    rooms
+                        .filter((r) => r.building)
+                        .map((r) => [r.building!.building_id, r.building!]),
+                ).values(),
+            ].sort((a, b) => a.building_name.localeCompare(b.building_name)),
         [rooms],
     );
 
@@ -482,13 +573,18 @@ export default function ScheduleModal({
         setSlots([
             {
                 gradeFilter: sect?.gr_level ?? '',
-                buildingFilter: room?.building_id != null ? String(room.building_id) : '',
+                buildingFilter:
+                    room?.building_id != null ? String(room.building_id) : '',
                 sect_id: schedule.sect_id,
                 room_id: schedule.room_id,
                 subj_id: schedule.subj_id,
                 days: schedule.day_of_week ? [schedule.day_of_week] : [],
-                start_time: schedule.start_time ? schedule.start_time.slice(0, 5) : '',
-                end_time: schedule.end_time ? schedule.end_time.slice(0, 5) : '',
+                start_time: schedule.start_time
+                    ? schedule.start_time.slice(0, 5)
+                    : '',
+                end_time: schedule.end_time
+                    ? schedule.end_time.slice(0, 5)
+                    : '',
             },
         ]);
 
@@ -498,7 +594,9 @@ export default function ScheduleModal({
         });
 
         if (schedule.adviser_sect_id) {
-            const adviserSect = sections.find((s) => s.sect_id === schedule.adviser_sect_id);
+            const adviserSect = sections.find(
+                (s) => s.sect_id === schedule.adviser_sect_id,
+            );
             if (adviserSect) {
                 setAdviserGradeFilter(adviserSect.gr_level);
             }
@@ -506,7 +604,9 @@ export default function ScheduleModal({
     }, [schedule, mode, open]);
 
     const { isOnline } = useOnlineStatus();
-    const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+    const [clientErrors, setClientErrors] = useState<Record<string, string>>(
+        {},
+    );
 
     useEffect(() => {
         if (!open) {
@@ -519,7 +619,9 @@ export default function ScheduleModal({
     }, [open]);
 
     const updateSlot = (index: number, slot: ScheduleSlotState) => {
-        setSlots((current) => current.map((item, i) => (i === index ? slot : item)));
+        setSlots((current) =>
+            current.map((item, i) => (i === index ? slot : item)),
+        );
         // Clear client errors for this slot
         setClientErrors((prev) => {
             const next = { ...prev };
@@ -540,7 +642,8 @@ export default function ScheduleModal({
         setSlots((current) => current.filter((_, i) => i !== index));
     };
 
-    const buildSchedulePayload = (): ScheduleSlotPayload[] => slots.map(slotToPayload);
+    const buildSchedulePayload = (): ScheduleSlotPayload[] =>
+        slots.map(slotToPayload);
 
     const isSlotEmpty = (slot: ScheduleSlotState): boolean => {
         return (
@@ -553,19 +656,28 @@ export default function ScheduleModal({
         );
     };
 
-    const validateSlot = (slot: ScheduleSlotState, index: number): Record<string, string> => {
+    const validateSlot = (
+        slot: ScheduleSlotState,
+        index: number,
+    ): Record<string, string> => {
         const errs: Record<string, string> = {};
-        if (!slot.sect_id) errs[`schedules.${index}.sect_id`] = 'Please select a section.';
-        if (!slot.room_id) errs[`schedules.${index}.room_id`] = 'Please select a room.';
-        if (!slot.subj_id) errs[`schedules.${index}.subj_id`] = 'Please select a subject.';
-        if (!slot.days || slot.days.length === 0) errs[`schedules.${index}.days`] = 'Please select at least one day.';
+        if (!slot.sect_id)
+            errs[`schedules.${index}.sect_id`] = 'Please select a section.';
+        if (!slot.room_id)
+            errs[`schedules.${index}.room_id`] = 'Please select a room.';
+        if (!slot.subj_id)
+            errs[`schedules.${index}.subj_id`] = 'Please select a subject.';
+        if (!slot.days || slot.days.length === 0)
+            errs[`schedules.${index}.days`] = 'Please select at least one day.';
         if (!slot.start_time) {
-            errs[`schedules.${index}.start_time`] = 'Please enter a start time.';
+            errs[`schedules.${index}.start_time`] =
+                'Please enter a start time.';
         }
         if (!slot.end_time) {
             errs[`schedules.${index}.end_time`] = 'Please enter an end time.';
         } else if (slot.start_time && slot.end_time <= slot.start_time) {
-            errs[`schedules.${index}.end_time`] = 'End time must be after start time.';
+            errs[`schedules.${index}.end_time`] =
+                'End time must be after start time.';
         }
         return errs;
     };
@@ -577,26 +689,31 @@ export default function ScheduleModal({
 
         if (!isOnline) {
             setClientErrors({
-                general: 'No internet connection. Your entered teacher details are safe in this form. Please reconnect to the internet and click Skip again.',
+                general:
+                    'No internet connection. Your entered teacher details are safe in this form. Please reconnect to the internet and click Skip again.',
             });
             setIsSkipping(false);
             return;
         }
 
         setIsSkipping(true);
-        router.post(route('admin.teacher.storeWithAddress'), teacherData as unknown as Record<string, string>, {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: () => {
-                sessionStorage.removeItem('ioclass_draft_teacher_create');
-                onSuccess?.();
-                onClose();
+        router.post(
+            route('admin.teacher.storeWithAddress'),
+            teacherData as unknown as Record<string, string>,
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    sessionStorage.removeItem('ioclass_draft_teacher_create');
+                    onSuccess?.();
+                    onClose();
+                },
+                onError: (errs) => {
+                    setClientErrors(errs);
+                },
+                onFinish: () => setIsSkipping(false),
             },
-            onError: (errs) => {
-                setClientErrors(errs);
-            },
-            onFinish: () => setIsSkipping(false),
-        });
+        );
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -605,7 +722,8 @@ export default function ScheduleModal({
         if (teacherData) {
             if (!isOnline) {
                 setClientErrors({
-                    general: 'No internet connection. Your entered teacher and schedule details are safe in this form. Please reconnect to the internet and click Save again.',
+                    general:
+                        'No internet connection. Your entered teacher and schedule details are safe in this form. Please reconnect to the internet and click Save again.',
                 });
                 return;
             }
@@ -616,12 +734,19 @@ export default function ScheduleModal({
             let newErrors: Record<string, string> = {};
             activeSlots.forEach((slot) => {
                 const originalIndex = slots.indexOf(slot);
-                const slotErrs = validateSlot(slot, originalIndex >= 0 ? originalIndex : 0);
+                const slotErrs = validateSlot(
+                    slot,
+                    originalIndex >= 0 ? originalIndex : 0,
+                );
                 newErrors = { ...newErrors, ...slotErrs };
             });
 
-            if (adviserForm.data.is_adviser && !adviserForm.data.adviser_sect_id) {
-                newErrors.adviser_sect_id = 'Please select an advisory section.';
+            if (
+                adviserForm.data.is_adviser &&
+                !adviserForm.data.adviser_sect_id
+            ) {
+                newErrors.adviser_sect_id =
+                    'Please select an advisory section.';
             }
 
             if (Object.keys(newErrors).length > 0) {
@@ -634,7 +759,9 @@ export default function ScheduleModal({
             const schedulePayload = activeSlots.map(slotToPayload);
             const adviserFields = {
                 is_adviser: adviserForm.data.is_adviser,
-                adviser_sect_id: adviserForm.data.is_adviser ? adviserForm.data.adviser_sect_id : '',
+                adviser_sect_id: adviserForm.data.is_adviser
+                    ? adviserForm.data.adviser_sect_id
+                    : '',
             };
 
             submitForm.transform(() => ({
@@ -660,29 +787,51 @@ export default function ScheduleModal({
         const schedulePayload = buildSchedulePayload();
         const adviserFields = {
             is_adviser: adviserForm.data.is_adviser,
-            adviser_sect_id: adviserForm.data.is_adviser ? adviserForm.data.adviser_sect_id : '',
+            adviser_sect_id: adviserForm.data.is_adviser
+                ? adviserForm.data.adviser_sect_id
+                : '',
         };
 
         if (mode === 'edit' && schedule) {
+            const slotErrs = validateSlot(slots[0], 0);
+            if (Object.keys(slotErrs).length > 0) {
+                setClientErrors(slotErrs);
+                return;
+            }
+            setClientErrors({});
+
             submitForm.transform(() => ({
-                sect_id: slots[0]?.sect_id ? Number(slots[0].sect_id) : schedule.sect_id,
-                room_id: slots[0]?.room_id ? Number(slots[0].room_id) : schedule.room_id,
-                subj_id: slots[0]?.subj_id ? Number(slots[0].subj_id) : schedule.subj_id,
+                sect_id: slots[0]?.sect_id
+                    ? Number(slots[0].sect_id)
+                    : schedule.sect_id,
+                room_id: slots[0]?.room_id
+                    ? Number(slots[0].room_id)
+                    : schedule.room_id,
+                subj_id: slots[0]?.subj_id
+                    ? Number(slots[0].subj_id)
+                    : schedule.subj_id,
                 day_of_week: slots[0]?.days[0] ?? schedule.day_of_week ?? '',
-                start_time: slots[0]?.start_time ? slots[0].start_time.slice(0, 5) : '',
-                end_time: slots[0]?.end_time ? slots[0].end_time.slice(0, 5) : '',
+                start_time: slots[0]?.start_time
+                    ? slots[0].start_time.slice(0, 5)
+                    : '',
+                end_time: slots[0]?.end_time
+                    ? slots[0].end_time.slice(0, 5)
+                    : '',
             }));
-            submitForm.put(route('admin.schedule.update', schedule.schedule_id), {
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: () => {
-                    onSuccess?.();
-                    onClose();
+            submitForm.put(
+                route('admin.schedule.update', schedule.schedule_id),
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        onSuccess?.();
+                        onClose();
+                    },
+                    onError: (errs) => {
+                        setClientErrors(errs);
+                    },
                 },
-                onError: (errs) => {
-                    setClientErrors(errs);
-                },
-            });
+            );
             return;
         }
 
@@ -708,230 +857,318 @@ export default function ScheduleModal({
         });
     };
 
-    const pageErrors = (usePage<any>().props.errors ?? {}) as Record<string, string>;
-    const errors = { ...pageErrors, ...(submitForm.errors as Record<string, string>), ...clientErrors };
+    const pageErrors = (usePage<any>().props.errors ?? {}) as Record<
+        string,
+        string
+    >;
+    const errors = {
+        ...pageErrors,
+        ...(submitForm.errors as Record<string, string>),
+        ...clientErrors,
+    };
     const isProcessing = submitForm.processing || adviserForm.processing;
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
                 <div className="space-y-4 p-6 pt-4">
-                <ModalHeader
-                    icon={CalendarDays}
-                    tone="indigo"
-                    title={mode === 'edit' ? 'Edit Schedule' : 'Add Schedule'}
-                    description={
-                        mode === 'edit'
-                            ? 'Update schedule slot details, room, and time'
-                            : 'Add one or more slots — select multiple days when the same class repeats'
-                    }
-                />
+                    <ModalHeader
+                        icon={CalendarDays}
+                        tone="indigo"
+                        title={
+                            mode === 'edit' ? 'Edit Schedule' : 'Add Schedule'
+                        }
+                        description={
+                            mode === 'edit'
+                                ? 'Update schedule slot details, room, and time'
+                                : 'Add one or more slots — select multiple days when the same class repeats'
+                        }
+                    />
 
-                {!isOnline && (
-                    <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                        <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                        <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="max-h-[68vh] space-y-5 overflow-y-auto pr-1">
-                    {Object.entries(errors)
-                        .filter(([key]) => !key.startsWith('schedules.') && key !== 'adviser_sect_id')
-                        .map(([key, msg]) => (
-                            <div
-                                key={key}
-                                className="flex items-center justify-between rounded-lg border border-red-500/50 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
-                                role="alert"
-                            >
-                                <div>
-                                    {key !== 'general' && (
-                                        <strong className="capitalize">{key.replace(/^tch_/, '').replace(/_/g, ' ')}: </strong>
-                                    )}
-                                    <span>{msg}</span>
-                                </div>
-                                {onBack && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs"
-                                        onClick={onBack}
-                                    >
-                                        Back to edit
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-
-                    <div className="space-y-4">
-                        {slots.map((slot, index) => (
-                            <ScheduleSlotEditor
-                                key={index}
-                                slot={slot}
-                                index={index}
-                                canRemove={!isEditMode && slots.length > 1}
-                                sections={sections}
-                                rooms={rooms}
-                                subjects={subjects}
-                                gradeLevels={gradeLevels}
-                                buildings={buildings}
-                                errors={errors}
-                                singleDayOnly={isEditMode}
-                                isEditMode={isEditMode}
-                                onChange={updateSlot}
-                                onRemove={removeSlot}
-                            />
-                        ))}
-                    </div>
-
-                    {!isEditMode && (
-                        <Button type="button" variant="outline" size="sm" onClick={addSlot} className="w-full">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add another slot
-                        </Button>
-                    )}
-
-                    {showAdviser && (
-                        <div className="rounded-md border px-4 py-3">
-                            <div className="flex items-start gap-3">
-                                <Checkbox
-                                    id="is_adviser"
-                                    checked={adviserForm.data.is_adviser}
-                                    onCheckedChange={(checked) => {
-                                        adviserForm.setData('is_adviser', Boolean(checked));
-                                        if (!checked) {
-                                            adviserForm.setData('adviser_sect_id', '');
-                                            setAdviserGradeFilter('');
-                                        }
-                                    }}
-                                    className="mt-0.5"
-                                />
-                                <div>
-                                    <Label htmlFor="is_adviser" className="cursor-pointer text-sm font-medium">
-                                        This teacher is an adviser
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Assign an advisory section separate from the teaching slots above.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {adviserForm.data.is_adviser && (
-                                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                    <div>
-                                        <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                                            Advisory grade level
-                                        </Label>
-                                        <Select
-                                            value={adviserGradeFilter || 'all'}
-                                            onValueChange={(value) => {
-                                                setAdviserGradeFilter(value === 'all' ? '' : value);
-                                                adviserForm.setData('adviser_sect_id', '');
-                                            }}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="All grade levels" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">All grade levels</SelectItem>
-                                                {gradeLevels.map((g) => (
-                                                    <SelectItem key={g} value={g}>
-                                                        {g}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div>
-                                        <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                                            Advisory section <span className="text-destructive">*</span>
-                                        </Label>
-                                        <Select
-                                            value={
-                                                adviserForm.data.adviser_sect_id === ''
-                                                    ? ''
-                                                    : String(adviserForm.data.adviser_sect_id)
-                                            }
-                                            onValueChange={(v) => {
-                                                adviserForm.setData('adviser_sect_id', Number(v));
-                                            }}
-                                        >
-                                            <SelectTrigger className={errors.adviser_sect_id ? 'border-red-500' : ''}>
-                                                <SelectValue placeholder="Select section" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {adviserSections.map((s) => (
-                                                    <SelectItem key={s.sect_id} value={String(s.sect_id)}>
-                                                        {adviserGradeFilter
-                                                            ? s.sect_name
-                                                            : `${s.gr_level} — ${s.sect_name}`}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormFieldError label="Advisory section" message={errors.adviser_sect_id} />
-                                    </div>
-                                </div>
-                            )}
+                    {!isOnline && (
+                        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                            <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <span>
+                                Internet connection lost. Your entered data has
+                                been preserved in this modal.
+                            </span>
                         </div>
                     )}
-                </form>
 
-                <DialogFooter className="flex justify-end gap-2">
-                    {teacherData ? (
-                        <>
+                    <form
+                        onSubmit={handleSubmit}
+                        className="max-h-[68vh] space-y-5 overflow-y-auto pr-1"
+                    >
+                        {Object.entries(errors)
+                            .filter(
+                                ([key]) =>
+                                    !key.startsWith('schedules.') &&
+                                    key !== 'adviser_sect_id',
+                            )
+                            .map(([key, msg]) => (
+                                <div
+                                    key={key}
+                                    className="flex items-center justify-between rounded-lg border border-red-500/50 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                    role="alert"
+                                >
+                                    <div>
+                                        {key !== 'general' && (
+                                            <strong className="capitalize">
+                                                {key
+                                                    .replace(/^tch_/, '')
+                                                    .replace(/_/g, ' ')}
+                                                :{' '}
+                                            </strong>
+                                        )}
+                                        <span>{msg}</span>
+                                    </div>
+                                    {onBack && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={onBack}
+                                        >
+                                            Back to edit
+                                        </Button>
+                                    )}
+                                </div>
+                            ))}
+
+                        <div className="space-y-4">
+                            {slots.map((slot, index) => (
+                                <ScheduleSlotEditor
+                                    key={index}
+                                    slot={slot}
+                                    index={index}
+                                    canRemove={!isEditMode && slots.length > 1}
+                                    sections={sections}
+                                    rooms={rooms}
+                                    subjects={subjects}
+                                    gradeLevels={gradeLevels}
+                                    buildings={buildings}
+                                    errors={errors}
+                                    singleDayOnly={isEditMode}
+                                    isEditMode={isEditMode}
+                                    onChange={updateSlot}
+                                    onRemove={removeSlot}
+                                />
+                            ))}
+                        </div>
+
+                        {!isEditMode && (
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="rounded-xl"
-                                onClick={onBack}
-                                disabled={isProcessing || isSkipping}
+                                size="sm"
+                                onClick={addSlot}
+                                className="w-full"
                             >
-                                <ChevronLeft className="mr-1 size-4" />
-                                Back
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add another slot
                             </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="rounded-xl"
-                                onClick={handleSkip}
-                                disabled={isProcessing || isSkipping}
-                            >
-                                {isSkipping ? 'Saving…' : 'Skip (no schedule)'}
-                            </Button>
-                            <Button
-                                type="submit"
-                                onClick={handleSubmit}
-                                disabled={isProcessing || isSkipping}
-                                className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                            >
-                                <Check className="mr-1 size-4" />
-                                {isProcessing ? 'Saving…' : 'Save with schedule'}
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="rounded-xl"
-                                onClick={onClose}
-                                disabled={isProcessing}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isProcessing}
-                                onClick={handleSubmit}
-                                className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                            >
-                                {isProcessing ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Add schedule'}
-                            </Button>
-                        </>
-                    )}
-                </DialogFooter>
+                        )}
+
+                        {showAdviser && (
+                            <div className="rounded-md border px-4 py-3">
+                                <div className="flex items-start gap-3">
+                                    <Checkbox
+                                        id="is_adviser"
+                                        checked={adviserForm.data.is_adviser}
+                                        onCheckedChange={(checked) => {
+                                            adviserForm.setData(
+                                                'is_adviser',
+                                                Boolean(checked),
+                                            );
+                                            if (!checked) {
+                                                adviserForm.setData(
+                                                    'adviser_sect_id',
+                                                    '',
+                                                );
+                                                setAdviserGradeFilter('');
+                                            }
+                                        }}
+                                        className="mt-0.5"
+                                    />
+                                    <div>
+                                        <Label
+                                            htmlFor="is_adviser"
+                                            className="cursor-pointer text-sm font-medium"
+                                        >
+                                            This teacher is an adviser
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Assign an advisory section separate
+                                            from the teaching slots above.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {adviserForm.data.is_adviser && (
+                                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                        <div>
+                                            <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
+                                                Advisory grade level
+                                            </Label>
+                                            <Select
+                                                value={
+                                                    adviserGradeFilter || 'all'
+                                                }
+                                                onValueChange={(value) => {
+                                                    setAdviserGradeFilter(
+                                                        value === 'all'
+                                                            ? ''
+                                                            : value,
+                                                    );
+                                                    adviserForm.setData(
+                                                        'adviser_sect_id',
+                                                        '',
+                                                    );
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="All grade levels" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">
+                                                        All grade levels
+                                                    </SelectItem>
+                                                    {gradeLevels.map((g) => (
+                                                        <SelectItem
+                                                            key={g}
+                                                            value={g}
+                                                        >
+                                                            {g}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div>
+                                            <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
+                                                Advisory section{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Select
+                                                value={
+                                                    adviserForm.data
+                                                        .adviser_sect_id === ''
+                                                        ? ''
+                                                        : String(
+                                                              adviserForm.data
+                                                                  .adviser_sect_id,
+                                                          )
+                                                }
+                                                onValueChange={(v) => {
+                                                    adviserForm.setData(
+                                                        'adviser_sect_id',
+                                                        Number(v),
+                                                    );
+                                                }}
+                                            >
+                                                <SelectTrigger
+                                                    className={
+                                                        errors.adviser_sect_id
+                                                            ? 'border-red-500'
+                                                            : ''
+                                                    }
+                                                >
+                                                    <SelectValue placeholder="Select section" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {adviserSections.map(
+                                                        (s) => (
+                                                            <SelectItem
+                                                                key={s.sect_id}
+                                                                value={String(
+                                                                    s.sect_id,
+                                                                )}
+                                                            >
+                                                                {adviserGradeFilter
+                                                                    ? s.sect_name
+                                                                    : `${s.gr_level} — ${s.sect_name}`}
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormFieldError
+                                                label="Advisory section"
+                                                message={errors.adviser_sect_id}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </form>
+
+                    <DialogFooter className="flex justify-end gap-2">
+                        {teacherData ? (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="rounded-xl"
+                                    onClick={onBack}
+                                    disabled={isProcessing || isSkipping}
+                                >
+                                    <ChevronLeft className="mr-1 size-4" />
+                                    Back
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="rounded-xl"
+                                    onClick={handleSkip}
+                                    disabled={isProcessing || isSkipping}
+                                >
+                                    {isSkipping
+                                        ? 'Saving…'
+                                        : 'Skip (no schedule)'}
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    onClick={handleSubmit}
+                                    disabled={isProcessing || isSkipping}
+                                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                >
+                                    <Check className="mr-1 size-4" />
+                                    {isProcessing
+                                        ? 'Saving…'
+                                        : 'Save with schedule'}
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="rounded-xl"
+                                    onClick={onClose}
+                                    disabled={isProcessing}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isProcessing}
+                                    onClick={handleSubmit}
+                                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                >
+                                    {isProcessing
+                                        ? 'Saving…'
+                                        : mode === 'edit'
+                                          ? 'Save changes'
+                                          : 'Add schedule'}
+                                </Button>
+                            </>
+                        )}
+                    </DialogFooter>
                 </div>
             </DialogContent>
         </Dialog>
