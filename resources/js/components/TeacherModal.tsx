@@ -16,7 +16,7 @@ import {
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import AddressModal, { type AddressFormData, type PendingTeacherData } from '@/components/Address';
-import { ModalAccentBar, ModalHeader, ModalStepIndicator } from '@/components/modal-header';
+import { ModalHeader, ModalStepIndicator } from '@/components/modal-header';
 import RfidUidInput from '@/components/RfidUidInput';
 import ScheduleModal, {
     type PendingTeacherWithAddressData,
@@ -435,7 +435,6 @@ export default function TeacherModal({
                 }}
             >
                 <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
-                    <ModalAccentBar />
                     <div className="space-y-3 p-6 pt-4">
                     <ModalHeader
                         icon={UserRound}

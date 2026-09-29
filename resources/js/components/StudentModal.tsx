@@ -996,7 +996,6 @@ export default function StudentModal({
                 }}
             >
                 <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
-                    <div className="h-1 w-full bg-emerald-500" />
                     <div className="space-y-4 p-6 pt-4">
                         <DialogHeader>
                             <div className="flex items-center gap-3">
@@ -1398,7 +1397,6 @@ export default function StudentModal({
                 }}
             >
                 <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-xl">
-                    <div className="h-1 w-full bg-emerald-500" />
                     <div className="space-y-4 p-6 pt-4">
                         <DialogHeader>
                             <div className="flex items-center gap-3">
@@ -1633,7 +1631,6 @@ export default function StudentModal({
                 }}
             >
                 <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
-                    <div className="h-1 w-full bg-emerald-500" />
                     <div className="space-y-4 p-6 pt-4">
                         <DialogHeader>
                             <div className="flex items-center gap-3">

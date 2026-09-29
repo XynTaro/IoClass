@@ -2,7 +2,7 @@ import { useForm } from '@inertiajs/react';
 import { CalendarClock, Plus, Trash2, BookOpen, Calendar } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
-import { ModalAccentBar, ModalHeader } from '@/components/modal-header';
+import { ModalHeader } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -321,7 +321,6 @@ export default function SectionScheduleModal({
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-xl">
-                <ModalAccentBar />
                 <div className="space-y-4 p-6 pt-4">
                     <ModalHeader
                         icon={CalendarClock}

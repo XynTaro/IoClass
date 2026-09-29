@@ -3,7 +3,7 @@ import { CalendarDays, Check, ChevronLeft, Plus, Trash2, WifiOff } from 'lucide-
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import type { AddressFormData, PendingTeacherData } from '@/components/Address';
-import { ModalAccentBar, ModalHeader } from '@/components/modal-header';
+import { ModalHeader } from '@/components/modal-header';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -715,7 +715,6 @@ export default function ScheduleModal({
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
-                <ModalAccentBar />
                 <div className="space-y-4 p-6 pt-4">
                 <ModalHeader
                     icon={CalendarDays}

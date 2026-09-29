@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import AddressModal, { type PendingAdminData } from '@/components/Address';
-import { ModalAccentBar, ModalHeader, ModalStepIndicator } from '@/components/modal-header';
+import { ModalHeader, ModalStepIndicator } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -246,7 +246,6 @@ export default function AdminModal({
         {/* Step 1 — Admin info (always shown in edit; shown in step 1 of create wizard) */}
         <Dialog open={open && (mode === 'edit' || step === 1)} onOpenChange={(isOpen) => { if (!isOpen) { onClose(); setStep(1); } }}>
             <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-xl">
-                <ModalAccentBar />
                 <div className="space-y-4 p-6 pt-4">
                 <ModalHeader
                     icon={ShieldCheck}
