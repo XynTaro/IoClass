@@ -466,6 +466,8 @@ class AdminStudentController extends Controller
                 Storage::disk('public')->delete($student->photo);
             }
             $validated['photo'] = null;
+        } else {
+            unset($validated['photo']);
         }
 
         $validated['rfid_uid'] = RfidUid::normalize($validated['rfid_uid'] ?? null);

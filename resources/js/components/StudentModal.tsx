@@ -1,16 +1,12 @@
 import { useForm } from '@inertiajs/react';
 import {
     AlertCircle,
-    Camera,
     Check,
     ChevronLeft,
     ChevronRight,
     GraduationCap,
     HeartHandshake,
-    Image as ImageIcon,
     MapPin,
-    Trash2,
-    Upload,
     User,
     UserRound,
     UsersRound,
@@ -40,7 +36,6 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import {
     cn,
     formatContactNumberInput,
-    formatEmailInput,
     formatLrnInput,
     formatNameInput,
 } from '@/lib/utils';
@@ -172,8 +167,6 @@ interface StudentFormData {
     stu_mname: string;
     stu_lname: string;
     gender: 'male' | 'female' | '';
-    photo: File | null;
-    remove_photo?: boolean;
     sect_id: number | '';
     gr_level: string;
     sect: string;
@@ -215,8 +208,6 @@ const emptyForm: StudentFormData = {
     stu_mname: '',
     stu_lname: '',
     gender: 'male',
-    photo: null,
-    remove_photo: false,
     sect_id: '',
     gr_level: '',
     sect: '',
@@ -523,9 +514,7 @@ export default function StudentModal({
     const [localErrors, setLocalErrors] = useState<LocalErrors>({});
     const [rfidRegistryConflict, setRfidRegistryConflict] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const STUDENT_DRAFT_KEY = 'ioclass_draft_student_create';
 
@@ -545,9 +534,15 @@ export default function StudentModal({
         barangay: '',
     });
     const [sameAsPermanent, setSameAsPermanent] = useState(true);
-    const [permAddressErrors, setPermAddressErrors] = useState<AddressErrors>({});
-    const [currAddressErrors, setCurrAddressErrors] = useState<AddressErrors>({});
-    const [addressStepError, setAddressStepError] = useState<string | null>(null);
+    const [permAddressErrors, setPermAddressErrors] = useState<AddressErrors>(
+        {},
+    );
+    const [currAddressErrors, setCurrAddressErrors] = useState<AddressErrors>(
+        {},
+    );
+    const [addressStepError, setAddressStepError] = useState<string | null>(
+        null,
+    );
 
     // Derived grade levels (unique, sorted consecutively by number)
     const gradeOptions = Array.from(
@@ -575,14 +570,9 @@ export default function StudentModal({
                 stu_mname: student.stu_mname ?? '',
                 stu_lname: student.stu_lname ?? '',
                 gender: (student.gender as 'male' | 'female') ?? 'male',
-                photo: null,
-                remove_photo: false,
                 rfid_uid: student.rfid_uid ?? '',
                 status: student.status ?? 'active',
             });
-            setPhotoPreview(student.photo ? `/storage/${student.photo}` : null);
-        } else if (mode === 'create') {
-            setPhotoPreview(null);
         }
     }, [student, mode, open]);
 
@@ -592,10 +582,6 @@ export default function StudentModal({
             form.reset();
             setStep(1);
             setLocalErrors({});
-            setPhotoPreview(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
             permCascade.reset();
             currCascade.reset();
             setPermAddress({
@@ -631,10 +617,11 @@ export default function StudentModal({
                         form.setData({
                             ...emptyForm,
                             ...parsed.data,
-                            photo: null,
                         });
-                        if (parsed.permAddress) setPermAddress(parsed.permAddress);
-                        if (parsed.currAddress) setCurrAddress(parsed.currAddress);
+                        if (parsed.permAddress)
+                            setPermAddress(parsed.permAddress);
+                        if (parsed.currAddress)
+                            setCurrAddress(parsed.currAddress);
                         if (typeof parsed.sameAsPermanent === 'boolean') {
                             setSameAsPermanent(parsed.sameAsPermanent);
                         }
@@ -666,11 +653,10 @@ export default function StudentModal({
             form.data.mother_is_deceased;
 
         if (hasContent) {
-            const { photo, ...dataWithoutPhoto } = form.data;
             sessionStorage.setItem(
                 STUDENT_DRAFT_KEY,
                 JSON.stringify({
-                    data: dataWithoutPhoto,
+                    data: form.data,
                     permAddress,
                     currAddress,
                     sameAsPermanent,
@@ -678,17 +664,21 @@ export default function StudentModal({
                 }),
             );
         }
-    }, [open, mode, form.data, permAddress, currAddress, sameAsPermanent, step]);
+    }, [
+        open,
+        mode,
+        form.data,
+        permAddress,
+        currAddress,
+        sameAsPermanent,
+        step,
+    ]);
 
     const handleClearDraft = () => {
         sessionStorage.removeItem(STUDENT_DRAFT_KEY);
         form.reset();
         setStep(1);
         setLocalErrors({});
-        setPhotoPreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
         permCascade.reset();
         currCascade.reset();
         setPermAddress({
@@ -722,28 +712,6 @@ export default function StudentModal({
         });
     };
 
-    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            form.setData('photo', file);
-            form.setData('remove_photo', false);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhotoPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleRemovePhoto = () => {
-        form.setData('photo', null);
-        form.setData('remove_photo', true);
-        setPhotoPreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-
     // -------------------------------------------------------------------------
     // Step navigation
     // -------------------------------------------------------------------------
@@ -772,10 +740,7 @@ export default function StudentModal({
         );
         let currErrors: AddressErrors = {};
         if (!sameAsPermanent) {
-            currErrors = validateAddress(
-                currAddress,
-                currCascade.hasProvinces,
-            );
+            currErrors = validateAddress(currAddress, currCascade.hasProvinces);
         }
 
         if (
@@ -826,7 +791,9 @@ export default function StudentModal({
         }
 
         if (!isOnline) {
-            setSubmitError('Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.');
+            setSubmitError(
+                'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
+            );
             return;
         }
 
@@ -873,7 +840,9 @@ export default function StudentModal({
         }
 
         if (!isOnline) {
-            setSubmitError('Cannot add student while offline. Your entered data has been preserved. Please check your internet connection and try again.');
+            setSubmitError(
+                'Cannot add student while offline. Your entered data has been preserved. Please check your internet connection and try again.',
+            );
             return;
         }
 
@@ -889,11 +858,16 @@ export default function StudentModal({
                 errors.father_lname = 'Father last name is required.';
             }
             if (!form.data.father_contact_number.trim()) {
-                errors.father_contact_number = 'Father contact number is required.';
+                errors.father_contact_number =
+                    'Father contact number is required.';
             } else {
-                const cleanNum = form.data.father_contact_number.replace(/\D/g, '');
+                const cleanNum = form.data.father_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
                 if (cleanNum.length !== 11) {
-                    errors.father_contact_number = 'Contact number must be exactly 11 digits.';
+                    errors.father_contact_number =
+                        'Contact number must be exactly 11 digits.';
                 }
             }
         }
@@ -907,37 +881,55 @@ export default function StudentModal({
                 errors.mother_lname = 'Mother last name is required.';
             }
             if (!form.data.mother_contact_number.trim()) {
-                errors.mother_contact_number = 'Mother contact number is required.';
+                errors.mother_contact_number =
+                    'Mother contact number is required.';
             } else {
-                const cleanNum = form.data.mother_contact_number.replace(/\D/g, '');
+                const cleanNum = form.data.mother_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
                 if (cleanNum.length !== 11) {
-                    errors.mother_contact_number = 'Contact number must be exactly 11 digits.';
+                    errors.mother_contact_number =
+                        'Contact number must be exactly 11 digits.';
                 }
             }
         }
 
         // Guardian validation (required only if both parents are deceased)
-        const bothParentsDeceased = Boolean(form.data.father_is_deceased && form.data.mother_is_deceased);
+        const bothParentsDeceased = Boolean(
+            form.data.father_is_deceased && form.data.mother_is_deceased,
+        );
         if (bothParentsDeceased) {
             if (!form.data.guardian_name.trim()) {
-                errors.guardian_name = 'Guardian first name is required when both parents are deceased.';
+                errors.guardian_name =
+                    'Guardian first name is required when both parents are deceased.';
             }
             if (!form.data.guardian_lname.trim()) {
-                errors.guardian_lname = 'Guardian last name is required when both parents are deceased.';
+                errors.guardian_lname =
+                    'Guardian last name is required when both parents are deceased.';
             }
             if (!form.data.guardian_contact_number.trim()) {
-                errors.guardian_contact_number = 'Guardian contact number is required when both parents are deceased.';
+                errors.guardian_contact_number =
+                    'Guardian contact number is required when both parents are deceased.';
             } else {
-                const cleanNum = form.data.guardian_contact_number.replace(/\D/g, '');
+                const cleanNum = form.data.guardian_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
                 if (cleanNum.length !== 11) {
-                    errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
+                    errors.guardian_contact_number =
+                        'Contact number must be exactly 11 digits.';
                 }
             }
         } else {
             if (form.data.guardian_contact_number.trim()) {
-                const cleanNum = form.data.guardian_contact_number.replace(/\D/g, '');
+                const cleanNum = form.data.guardian_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
                 if (cleanNum.length !== 11) {
-                    errors.guardian_contact_number = 'Contact number must be exactly 11 digits.';
+                    errors.guardian_contact_number =
+                        'Contact number must be exactly 11 digits.';
                 }
             }
         }
@@ -964,11 +956,15 @@ export default function StudentModal({
                     'stu_mname',
                     'stu_lname',
                     'gender',
-                    'photo',
                     'rfid_uid',
                     'status',
                 ];
-                const step2Fields = ['region', 'province', 'municipality', 'barangay'];
+                const step2Fields = [
+                    'region',
+                    'province',
+                    'municipality',
+                    'barangay',
+                ];
                 if (step1Fields.some((f) => f in errors)) {
                     setStep(1);
                 } else if (step2Fields.some((f) => f in errors)) {
@@ -1025,7 +1021,10 @@ export default function StudentModal({
                         {!isOnline && (
                             <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
                                 <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                                <span>
+                                    Internet connection lost. Your entered data
+                                    has been preserved in this modal.
+                                </span>
                             </div>
                         )}
 
@@ -1033,12 +1032,13 @@ export default function StudentModal({
                             <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
                                 <span className="flex items-center gap-1.5">
                                     <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    Restored unsaved draft from your previous session.
+                                    Restored unsaved draft from your previous
+                                    session.
                                 </span>
                                 <button
                                     type="button"
                                     onClick={handleClearDraft}
-                                    className="font-medium underline hover:text-emerald-950 dark:hover:text-emerald-100 cursor-pointer"
+                                    className="cursor-pointer font-medium underline hover:text-emerald-950 dark:hover:text-emerald-100"
                                 >
                                     Clear draft
                                 </button>
@@ -1058,69 +1058,6 @@ export default function StudentModal({
                             }
                             className="max-h-[72vh] space-y-4 overflow-y-auto pr-1"
                         >
-                            {/* Student Photo */}
-                            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 p-3.5 transition-colors hover:bg-muted/30 sm:flex-row sm:justify-start">
-                                <div className="relative group flex size-18 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-muted-foreground/25 bg-background shadow-xs">
-                                    {photoPreview ? (
-                                        <img
-                                            src={photoPreview}
-                                            alt="Student preview"
-                                            className="size-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center text-muted-foreground/50">
-                                            <User className="size-8" />
-                                        </div>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
-                                        title="Upload photo"
-                                    >
-                                        <Camera className="size-5" />
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 space-y-1 text-center sm:text-left">
-                                    <div className="flex items-center gap-2 justify-center sm:justify-start">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 gap-1.5 text-xs font-semibold cursor-pointer"
-                                            onClick={() => fileInputRef.current?.click()}
-                                        >
-                                            <Upload className="size-3.5" />
-                                            {photoPreview ? 'Change Photo' : 'Upload Photo'}
-                                        </Button>
-                                        {photoPreview && (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40 cursor-pointer"
-                                                onClick={handleRemovePhoto}
-                                            >
-                                                <Trash2 className="size-3.5" />
-                                                Remove
-                                            </Button>
-                                        )}
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        PNG, JPG, or WEBP up to 2MB. Optional.
-                                    </p>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/jpg,image/webp"
-                                        className="hidden"
-                                        onChange={handlePhotoChange}
-                                    />
-                                    {form.errors.photo && <FieldError message={form.errors.photo} />}
-                                </div>
-                            </div>
-
                             <Field
                                 id="lrn"
                                 label="LRN *"
@@ -1141,16 +1078,19 @@ export default function StudentModal({
                             {/* Gender / Sex */}
                             <div>
                                 <Label className="mb-1.5 inline-block text-xs font-medium text-muted-foreground">
-                                    Gender / Sex <span className="text-destructive">*</span>
+                                    Gender / Sex{' '}
+                                    <span className="text-destructive">*</span>
                                 </Label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setField('gender', 'male')}
+                                        onClick={() =>
+                                            setField('gender', 'male')
+                                        }
                                         className={cn(
-                                            'flex items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all cursor-pointer',
+                                            'flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all',
                                             form.data.gender === 'male'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-700 ring-2 ring-blue-500/20 dark:text-blue-400 dark:bg-blue-500/15'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-700 ring-2 ring-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'
                                                 : 'border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground',
                                         )}
                                     >
@@ -1169,11 +1109,13 @@ export default function StudentModal({
 
                                     <button
                                         type="button"
-                                        onClick={() => setField('gender', 'female')}
+                                        onClick={() =>
+                                            setField('gender', 'female')
+                                        }
                                         className={cn(
-                                            'flex items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all cursor-pointer',
+                                            'flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all',
                                             form.data.gender === 'female'
-                                                ? 'border-rose-500 bg-rose-500/10 text-rose-700 ring-2 ring-rose-500/20 dark:text-rose-400 dark:bg-rose-500/15'
+                                                ? 'border-rose-500 bg-rose-500/10 text-rose-700 ring-2 ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-400'
                                                 : 'border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground',
                                         )}
                                     >
@@ -1190,7 +1132,11 @@ export default function StudentModal({
                                         <span>Female</span>
                                     </button>
                                 </div>
-                                <FieldError message={form.errors.gender ?? localErrors.gender} />
+                                <FieldError
+                                    message={
+                                        form.errors.gender ?? localErrors.gender
+                                    }
+                                />
                             </div>
 
                             <div className="grid gap-3 sm:grid-cols-3">
@@ -1253,7 +1199,10 @@ export default function StudentModal({
                                         htmlFor="gr_level"
                                         className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                                     >
-                                        Grade level <span className="text-destructive">*</span>
+                                        Grade level{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
                                     </Label>
                                     <select
                                         id="gr_level"
@@ -1290,7 +1239,10 @@ export default function StudentModal({
                                         htmlFor="sect"
                                         className="mb-1 inline-block text-xs font-medium text-muted-foreground"
                                     >
-                                        Section <span className="text-destructive">*</span>
+                                        Section{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
                                     </Label>
                                     <select
                                         id="sect"
@@ -1467,7 +1419,10 @@ export default function StudentModal({
                         {!isOnline && (
                             <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
                                 <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                                <span>
+                                    Internet connection lost. Your entered data
+                                    has been preserved in this modal.
+                                </span>
                             </div>
                         )}
 
@@ -1690,7 +1645,9 @@ export default function StudentModal({
                                         Parent / Guardian
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
-                                        Parents are required unless deceased. Guardian is required if both parents are deceased.
+                                        Parents are required unless deceased.
+                                        Guardian is required if both parents are
+                                        deceased.
                                     </p>
                                 </div>
                             </div>
@@ -1699,7 +1656,10 @@ export default function StudentModal({
                         {!isOnline && (
                             <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
                                 <WifiOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                <span>Internet connection lost. Your entered data has been preserved in this modal.</span>
+                                <span>
+                                    Internet connection lost. Your entered data
+                                    has been preserved in this modal.
+                                </span>
                             </div>
                         )}
 
@@ -1709,17 +1669,21 @@ export default function StudentModal({
                             onSubmit={handleCreateSubmit}
                             className="max-h-[68vh] space-y-4 overflow-y-auto pr-1"
                         >
-                            {form.data.father_is_deceased && form.data.mother_is_deceased && (
-                                <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                    <div>
-                                        <p className="font-semibold">Both parents are marked deceased</p>
-                                        <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                                            Guardian first name, last name, and contact number are required.
-                                        </p>
+                            {form.data.father_is_deceased &&
+                                form.data.mother_is_deceased && (
+                                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                                        <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                        <div>
+                                            <p className="font-semibold">
+                                                Both parents are marked deceased
+                                            </p>
+                                            <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                                                Guardian first name, last name,
+                                                and contact number are required.
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
                             <ParentSection
                                 title="Father"
@@ -1738,9 +1702,17 @@ export default function StudentModal({
                                             father_lname: '',
                                             father_contact_number: '',
                                         });
-                                        form.clearErrors('father_name', 'father_mname', 'father_lname', 'father_contact_number');
+                                        form.clearErrors(
+                                            'father_name',
+                                            'father_mname',
+                                            'father_lname',
+                                            'father_contact_number',
+                                        );
                                     } else {
-                                        form.setData('father_is_deceased', false);
+                                        form.setData(
+                                            'father_is_deceased',
+                                            false,
+                                        );
                                     }
                                 }}
                             />
@@ -1761,9 +1733,17 @@ export default function StudentModal({
                                             mother_lname: '',
                                             mother_contact_number: '',
                                         });
-                                        form.clearErrors('mother_name', 'mother_mname', 'mother_lname', 'mother_contact_number');
+                                        form.clearErrors(
+                                            'mother_name',
+                                            'mother_mname',
+                                            'mother_lname',
+                                            'mother_contact_number',
+                                        );
                                     } else {
-                                        form.setData('mother_is_deceased', false);
+                                        form.setData(
+                                            'mother_is_deceased',
+                                            false,
+                                        );
                                     }
                                 }}
                             />
@@ -1773,8 +1753,16 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
-                                required={Boolean(form.data.father_is_deceased && form.data.mother_is_deceased)}
-                                badgeNote={form.data.father_is_deceased && form.data.mother_is_deceased ? 'Parents deceased' : undefined}
+                                required={Boolean(
+                                    form.data.father_is_deceased &&
+                                    form.data.mother_is_deceased,
+                                )}
+                                badgeNote={
+                                    form.data.father_is_deceased &&
+                                    form.data.mother_is_deceased
+                                        ? 'Parents deceased'
+                                        : undefined
+                                }
                             />
                         </form>
 
