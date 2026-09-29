@@ -91,7 +91,10 @@ interface PageProps {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: route('admin.dashboard') },
-    { title: 'Teacher Attendance', href: route('admin.teacher-attendance.index') },
+    {
+        title: 'Teacher Attendance',
+        href: route('admin.teacher-attendance.index'),
+    },
 ];
 
 const PRESET_REMARKS = [
@@ -107,12 +110,17 @@ export default function TeacherAttendanceIndex() {
     const { attendance, summary, filters } = usePage<PageProps>().props;
 
     const [searchQuery, setSearchQuery] = useState(filters.q ?? '');
-    const [selectedDate, setSelectedDate] = useState(filters.date ?? new Date().toISOString().split('T')[0]);
-    const [statusFilter, setStatusFilter] = useState<string>(filters.status ?? 'all');
+    const [selectedDate, setSelectedDate] = useState(
+        filters.date ?? new Date().toISOString().split('T')[0],
+    );
+    const [statusFilter, setStatusFilter] = useState<string>(
+        filters.status ?? 'all',
+    );
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
     // Edit modal state
-    const [editingTeacher, setEditingTeacher] = useState<TeacherAttendanceRow | null>(null);
+    const [editingTeacher, setEditingTeacher] =
+        useState<TeacherAttendanceRow | null>(null);
     const [editStatus, setEditStatus] = useState<AttendanceStatus>('present');
     const [editTimeIn, setEditTimeIn] = useState<string>('');
     const [editRemarks, setEditRemarks] = useState<string>('');
@@ -138,15 +146,23 @@ export default function TeacherAttendanceIndex() {
 
     const attendanceRate = useMemo(() => {
         if (!summary.total) return 0;
-        return Math.round(((summary.present + summary.late) / summary.total) * 100);
+        return Math.round(
+            ((summary.present + summary.late) / summary.total) * 100,
+        );
     }, [summary]);
 
-    const applyFilters = (newParams: { q?: string; date?: string; status?: string }) => {
+    const applyFilters = (newParams: {
+        q?: string;
+        date?: string;
+        status?: string;
+    }) => {
         const query: Record<string, string> = {};
 
         const q = newParams.q !== undefined ? newParams.q : searchQuery;
-        const date = newParams.date !== undefined ? newParams.date : selectedDate;
-        const status = newParams.status !== undefined ? newParams.status : statusFilter;
+        const date =
+            newParams.date !== undefined ? newParams.date : selectedDate;
+        const status =
+            newParams.status !== undefined ? newParams.status : statusFilter;
 
         if (q.trim()) query.q = q.trim();
         if (date) query.date = date;
@@ -222,7 +238,7 @@ export default function TeacherAttendanceIndex() {
                 onError: () => {
                     setIsSaving(false);
                 },
-            }
+            },
         );
     };
 
@@ -236,18 +252,18 @@ export default function TeacherAttendanceIndex() {
             color: 'text-zinc-900 dark:text-zinc-100',
             bg: 'bg-zinc-100 dark:bg-zinc-800',
             accent: 'border-zinc-300 dark:border-zinc-700',
-            glow: 'from-zinc-500/10 to-transparent',
         },
         {
             label: 'Present',
             key: 'present',
             value: summary.present,
-            subtext: summary.total ? `${Math.round((summary.present / summary.total) * 100)}% of total` : '0%',
+            subtext: summary.total
+                ? `${Math.round((summary.present / summary.total) * 100)}% of total`
+                : '0%',
             icon: CheckCircle2,
             color: 'text-emerald-600 dark:text-emerald-400',
             bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
             accent: 'border-emerald-500/30',
-            glow: 'from-emerald-500/10 to-transparent',
         },
         {
             label: 'Late',
@@ -258,7 +274,6 @@ export default function TeacherAttendanceIndex() {
             color: 'text-amber-600 dark:text-amber-400',
             bg: 'bg-amber-500/10 dark:bg-amber-500/15',
             accent: 'border-amber-500/30',
-            glow: 'from-amber-500/10 to-transparent',
         },
         {
             label: 'Excused',
@@ -269,7 +284,6 @@ export default function TeacherAttendanceIndex() {
             color: 'text-blue-600 dark:text-blue-400',
             bg: 'bg-blue-500/10 dark:bg-blue-500/15',
             accent: 'border-blue-500/30',
-            glow: 'from-blue-500/10 to-transparent',
         },
         {
             label: 'Absent',
@@ -280,7 +294,6 @@ export default function TeacherAttendanceIndex() {
             color: 'text-rose-600 dark:text-rose-400',
             bg: 'bg-rose-500/10 dark:bg-rose-500/15',
             accent: 'border-rose-500/30',
-            glow: 'from-rose-500/10 to-transparent',
         },
     ];
 
@@ -313,11 +326,16 @@ export default function TeacherAttendanceIndex() {
         return (
             <span
                 className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 border transition-all',
-                    item.style
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ring-1 transition-all',
+                    item.style,
                 )}
             >
-                <span className={cn('size-1.5 rounded-full animate-pulse', item.dot)} />
+                <span
+                    className={cn(
+                        'size-1.5 animate-pulse rounded-full',
+                        item.dot,
+                    )}
+                />
                 {item.label}
             </span>
         );
@@ -329,22 +347,31 @@ export default function TeacherAttendanceIndex() {
             header: 'Teacher',
             cell: ({ row }) => {
                 const item = row.original;
-                const initials = `${item.tch_fname?.[0] ?? ''}${item.tch_lname?.[0] ?? ''}`.toUpperCase();
-                const fullName = [item.tch_fname, item.tch_mname, item.tch_lname].filter(Boolean).join(' ');
+                const initials =
+                    `${item.tch_fname?.[0] ?? ''}${item.tch_lname?.[0] ?? ''}`.toUpperCase();
+                const fullName = [
+                    item.tch_fname,
+                    item.tch_mname,
+                    item.tch_lname,
+                ]
+                    .filter(Boolean)
+                    .join(' ');
 
                 return (
                     <div className="flex items-center gap-3 py-1">
                         <Avatar className="size-10 rounded-full border-2 border-emerald-500/20 shadow-sm transition-transform hover:scale-105">
                             <AvatarImage src={item.avatar} alt={fullName} />
-                            <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 text-xs dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
+                            <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-xs text-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
                                 {initials || 'TC'}
                             </AvatarFallback>
                         </Avatar>
                         <div className="space-y-0.5">
-                            <p className="font-semibold text-foreground text-sm tracking-tight hover:text-emerald-600 transition-colors">
+                            <p className="text-sm font-semibold tracking-tight text-foreground transition-colors hover:text-emerald-600">
                                 {fullName}
                             </p>
-                            <p className="text-xs text-muted-foreground">{item.tch_email}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {item.tch_email}
+                            </p>
                         </div>
                     </div>
                 );
@@ -356,11 +383,13 @@ export default function TeacherAttendanceIndex() {
             cell: ({ row }) => {
                 const uid = row.original.tch_rfid_uid;
                 return uid ? (
-                    <span className="font-mono text-xs font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-2 py-1 rounded-md border border-emerald-200/40 dark:border-emerald-800/40">
+                    <span className="rounded-md border border-emerald-200/40 bg-emerald-50 px-2 py-1 font-mono text-xs font-medium text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/50 dark:text-emerald-300">
                         {uid}
                     </span>
                 ) : (
-                    <span className="text-xs text-muted-foreground/60 italic font-mono">Unregistered</span>
+                    <span className="font-mono text-xs text-muted-foreground/60 italic">
+                        Unregistered
+                    </span>
                 );
             },
         },
@@ -373,13 +402,17 @@ export default function TeacherAttendanceIndex() {
                     <div className="flex items-center gap-2 text-sm font-semibold">
                         {timeIn ? (
                             <>
-                                <div className="p-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                <div className="rounded-md bg-zinc-100 p-1 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                                     <Clock className="size-3.5" />
                                 </div>
-                                <span className="text-foreground tracking-tight">{timeIn}</span>
+                                <span className="tracking-tight text-foreground">
+                                    {timeIn}
+                                </span>
                             </>
                         ) : (
-                            <span className="text-muted-foreground/50 font-normal">—</span>
+                            <span className="font-normal text-muted-foreground/50">
+                                —
+                            </span>
                         )}
                     </div>
                 );
@@ -388,7 +421,8 @@ export default function TeacherAttendanceIndex() {
         {
             id: 'status',
             header: 'Status',
-            cell: ({ row }) => renderStatusBadge(row.original.attendance_status),
+            cell: ({ row }) =>
+                renderStatusBadge(row.original.attendance_status),
         },
         {
             id: 'remarks',
@@ -396,13 +430,16 @@ export default function TeacherAttendanceIndex() {
             cell: ({ row }) => {
                 const remarks = row.original.remarks;
                 return remarks ? (
-                    <div className="flex items-center gap-1.5 max-w-[220px]">
-                        <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate bg-muted/60 px-2 py-1 rounded-md border border-border/40" title={remarks}>
+                    <div className="flex max-w-[220px] items-center gap-1.5">
+                        <span
+                            className="truncate rounded-md border border-border/40 bg-muted/60 px-2 py-1 text-xs text-zinc-600 dark:text-zinc-400"
+                            title={remarks}
+                        >
                             {remarks}
                         </span>
                     </div>
                 ) : (
-                    <span className="text-muted-foreground/40 text-xs">—</span>
+                    <span className="text-xs text-muted-foreground/40">—</span>
                 );
             },
         },
@@ -417,7 +454,7 @@ export default function TeacherAttendanceIndex() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditModal(item)}
-                            className="h-8 gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-all"
+                            className="h-8 gap-1.5 rounded-lg text-xs font-semibold text-zinc-600 transition-all hover:bg-emerald-50 hover:text-emerald-700 dark:text-zinc-300 dark:hover:bg-emerald-950/50"
                         >
                             <Edit3 className="size-3.5" />
                             Update
@@ -434,9 +471,7 @@ export default function TeacherAttendanceIndex() {
 
             <div className="dash-fade-up space-y-5 p-4 md:p-6 lg:p-8">
                 {/* ── Header banner — matches Sections Management style ── */}
-                <div
-                    className="relative overflow-hidden rounded-xl border bg-linear-to-r from-emerald-500/[0.08] via-teal-500/[0.05] to-transparent p-5 dark:from-emerald-500/[0.12] dark:via-teal-500/[0.07]"
-                >
+                <div className="relative overflow-hidden rounded-xl border bg-linear-to-r from-emerald-500/[0.08] via-teal-500/[0.05] to-transparent p-5 dark:from-emerald-500/[0.12] dark:via-teal-500/[0.07]">
                     <div className="absolute inset-y-0 left-0 w-1 bg-emerald-500" />
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
@@ -444,7 +479,8 @@ export default function TeacherAttendanceIndex() {
                                 Teacher Attendance
                             </h1>
                             <p className="text-sm text-muted-foreground">
-                                Daily attendance records, time tracking, and leave management for teachers.
+                                Daily attendance records, time tracking, and
+                                leave management for teachers.
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -464,8 +500,8 @@ export default function TeacherAttendanceIndex() {
                             {formattedDisplayDate}
                         </span>
                         {isToday && (
-                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-semibold text-[11px]">
-                                <Sparkles className="size-3 mr-1" />
+                            <Badge className="border-emerald-500/30 bg-emerald-500/15 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                <Sparkles className="mr-1 size-3" />
                                 Today
                             </Badge>
                         )}
@@ -487,8 +523,10 @@ export default function TeacherAttendanceIndex() {
                             <Input
                                 type="date"
                                 value={selectedDate}
-                                onChange={(e) => handleDateChange(e.target.value)}
-                                className="h-9 w-[160px] pl-9 text-xs font-semibold rounded-lg border-muted bg-background focus-visible:ring-emerald-500"
+                                onChange={(e) =>
+                                    handleDateChange(e.target.value)
+                                }
+                                className="h-9 w-[160px] rounded-lg border-muted bg-background pl-9 text-xs font-semibold focus-visible:ring-emerald-500"
                             />
                         </div>
 
@@ -507,10 +545,10 @@ export default function TeacherAttendanceIndex() {
                             size="sm"
                             onClick={handleToday}
                             className={cn(
-                                'h-9 px-3 text-xs font-semibold rounded-lg transition-all',
+                                'h-9 rounded-lg px-3 text-xs font-semibold transition-all',
                                 isToday
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                                    : 'hover:bg-muted'
+                                    ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                                    : 'hover:bg-muted',
                             )}
                         >
                             Today
@@ -524,37 +562,49 @@ export default function TeacherAttendanceIndex() {
                         const Icon = card.icon;
                         const isSelected =
                             statusFilter === card.key ||
-                            (card.key === 'all' && (!statusFilter || statusFilter === 'all'));
+                            (card.key === 'all' &&
+                                (!statusFilter || statusFilter === 'all'));
 
                         return (
                             <Card
                                 key={card.key}
-                                onClick={() => handleStatusFilterChange(card.key)}
+                                onClick={() =>
+                                    handleStatusFilterChange(card.key)
+                                }
                                 className={cn(
-                                    'group relative cursor-pointer overflow-hidden rounded-2xl border py-0 gap-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
+                                    'group relative cursor-pointer gap-0 overflow-hidden rounded-2xl border py-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
                                     isSelected
-                                        ? 'ring-2 ring-emerald-500 border-emerald-500/60 bg-gradient-to-b from-card to-emerald-50/20 dark:to-emerald-950/20 shadow-md shadow-emerald-500/10'
-                                        : 'hover:border-zinc-300 dark:hover:border-zinc-700 bg-card'
+                                        ? 'border-emerald-500/60 bg-emerald-500/5 shadow-md ring-2 shadow-emerald-500/10 ring-emerald-500 dark:bg-emerald-500/10'
+                                        : 'bg-card hover:border-zinc-300 dark:hover:border-zinc-700',
                                 )}
                             >
-                                <div
-                                    className={cn(
-                                        'absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity group-hover:opacity-100',
-                                        card.glow
-                                    )}
-                                />
-                                <CardContent className="p-4 relative">
+                                <CardContent className="relative p-4">
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-1">
-                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                                 {card.label}
                                             </p>
-                                            <p className={cn('text-3xl font-extrabold tracking-tight', card.color)}>
+                                            <p
+                                                className={cn(
+                                                    'text-3xl font-extrabold tracking-tight',
+                                                    card.color,
+                                                )}
+                                            >
                                                 {card.value}
                                             </p>
                                         </div>
-                                        <div className={cn('flex size-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110 shadow-sm', card.bg)}>
-                                            <Icon className={cn('size-5', card.color)} />
+                                        <div
+                                            className={cn(
+                                                'flex size-10 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-110',
+                                                card.bg,
+                                            )}
+                                        >
+                                            <Icon
+                                                className={cn(
+                                                    'size-5',
+                                                    card.color,
+                                                )}
+                                            />
                                         </div>
                                     </div>
                                     <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
@@ -573,14 +623,17 @@ export default function TeacherAttendanceIndex() {
 
                 {/* Filters, Search & View Controls */}
                 <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <form onSubmit={handleSearchSubmit} className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <form
+                        onSubmit={handleSearchSubmit}
+                        className="flex flex-1 items-center gap-2"
+                    >
+                        <div className="relative max-w-md flex-1">
+                            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 placeholder="Search teacher by name, email, or RFID UID..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-10 pl-9 pr-8 text-sm rounded-xl border-muted bg-background focus-visible:ring-emerald-500"
+                                className="h-10 rounded-xl border-muted bg-background pr-8 pl-9 text-sm focus-visible:ring-emerald-500"
                             />
                             {searchQuery && (
                                 <button
@@ -589,13 +642,17 @@ export default function TeacherAttendanceIndex() {
                                         setSearchQuery('');
                                         applyFilters({ q: '' });
                                     }}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                                 >
                                     <X className="size-3.5" />
                                 </button>
                             )}
                         </div>
-                        <Button type="submit" variant="secondary" className="h-10 px-4 text-xs font-semibold rounded-xl">
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            className="h-10 rounded-xl px-4 text-xs font-semibold"
+                        >
                             Search
                         </Button>
                     </form>
@@ -603,30 +660,43 @@ export default function TeacherAttendanceIndex() {
                     <div className="flex items-center gap-2.5">
                         <div className="flex items-center gap-2">
                             <Filter className="size-4 text-muted-foreground" />
-                            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-                                <SelectTrigger className="w-[150px] h-10 text-xs font-semibold rounded-xl">
+                            <Select
+                                value={statusFilter}
+                                onValueChange={handleStatusFilterChange}
+                            >
+                                <SelectTrigger className="h-10 w-[150px] rounded-xl text-xs font-semibold">
                                     <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                    <SelectItem value="all">All Statuses ({summary.total})</SelectItem>
-                                    <SelectItem value="present">Present ({summary.present})</SelectItem>
-                                    <SelectItem value="late">Late ({summary.late})</SelectItem>
-                                    <SelectItem value="excused">Excused ({summary.excused})</SelectItem>
-                                    <SelectItem value="absent">Absent ({summary.absent})</SelectItem>
+                                    <SelectItem value="all">
+                                        All Statuses ({summary.total})
+                                    </SelectItem>
+                                    <SelectItem value="present">
+                                        Present ({summary.present})
+                                    </SelectItem>
+                                    <SelectItem value="late">
+                                        Late ({summary.late})
+                                    </SelectItem>
+                                    <SelectItem value="excused">
+                                        Excused ({summary.excused})
+                                    </SelectItem>
+                                    <SelectItem value="absent">
+                                        Absent ({summary.absent})
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* View Switcher: Table vs Grid */}
-                        <div className="flex items-center rounded-xl bg-muted/60 p-1 border">
+                        <div className="flex items-center rounded-xl border bg-muted/60 p-1">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('table')}
                                 className={cn(
                                     'flex size-8 items-center justify-center rounded-lg text-xs transition-all',
                                     viewMode === 'table'
-                                        ? 'bg-background text-foreground shadow-sm font-semibold'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                        ? 'bg-background font-semibold text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground',
                                 )}
                                 title="Table View"
                             >
@@ -638,8 +708,8 @@ export default function TeacherAttendanceIndex() {
                                 className={cn(
                                     'flex size-8 items-center justify-center rounded-lg text-xs transition-all',
                                     viewMode === 'grid'
-                                        ? 'bg-background text-foreground shadow-sm font-semibold'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                        ? 'bg-background font-semibold text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground',
                                 )}
                                 title="Card Grid View"
                             >
@@ -652,11 +722,13 @@ export default function TeacherAttendanceIndex() {
                 {/* Content View */}
                 {attendance.data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center">
-                        <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 mb-4">
+                        <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20">
                             <Users className="size-7" />
                         </div>
-                        <h3 className="text-lg font-bold text-foreground">No Teacher Attendance Records Found</h3>
-                        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                        <h3 className="text-lg font-bold text-foreground">
+                            No Teacher Attendance Records Found
+                        </h3>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                             {searchQuery || statusFilter !== 'all'
                                 ? 'No teachers match your search filters for this date. Try clearing your filters.'
                                 : 'No teacher records are available for the selected date.'}
@@ -670,7 +742,7 @@ export default function TeacherAttendanceIndex() {
                                     setStatusFilter('all');
                                     applyFilters({ q: '', status: 'all' });
                                 }}
-                                className="mt-4 gap-1.5 text-xs font-semibold rounded-xl"
+                                className="mt-4 gap-1.5 rounded-xl text-xs font-semibold"
                             >
                                 <RefreshCw className="size-3.5" />
                                 Clear All Filters
@@ -679,15 +751,22 @@ export default function TeacherAttendanceIndex() {
                     </div>
                 ) : viewMode === 'table' ? (
                     /* Table View */
-                    <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+                    <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
                         <DataTable columns={columns} data={attendance.data} />
 
                         {/* Pagination */}
                         {attendance.links && attendance.links.length > 3 && (
                             <div className="flex items-center justify-between border-t border-border/50 px-5 py-3.5">
                                 <p className="text-xs font-medium text-muted-foreground">
-                                    Showing <span className="font-bold text-foreground">{attendance.data.length}</span> of{' '}
-                                    <span className="font-bold text-foreground">{attendance.total}</span> teachers
+                                    Showing{' '}
+                                    <span className="font-bold text-foreground">
+                                        {attendance.data.length}
+                                    </span>{' '}
+                                    of{' '}
+                                    <span className="font-bold text-foreground">
+                                        {attendance.total}
+                                    </span>{' '}
+                                    teachers
                                 </p>
                                 <div className="flex items-center space-x-1.5">
                                     {attendance.links.map((link, index) => (
@@ -696,10 +775,12 @@ export default function TeacherAttendanceIndex() {
                                             href={link.url || '#'}
                                             preserveScroll
                                             preserveState
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                             className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                                                 link.active
-                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
                                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             } ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
                                         />
@@ -713,8 +794,15 @@ export default function TeacherAttendanceIndex() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {attendance.data.map((item) => {
-                                const initials = `${item.tch_fname?.[0] ?? ''}${item.tch_lname?.[0] ?? ''}`.toUpperCase();
-                                const fullName = [item.tch_fname, item.tch_mname, item.tch_lname].filter(Boolean).join(' ');
+                                const initials =
+                                    `${item.tch_fname?.[0] ?? ''}${item.tch_lname?.[0] ?? ''}`.toUpperCase();
+                                const fullName = [
+                                    item.tch_fname,
+                                    item.tch_mname,
+                                    item.tch_lname,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' ');
 
                                 return (
                                     <div
@@ -724,36 +812,49 @@ export default function TeacherAttendanceIndex() {
                                         <div className="space-y-3">
                                             <div className="flex items-start justify-between">
                                                 <Avatar className="size-12 rounded-2xl border-2 border-emerald-500/20 shadow-sm">
-                                                    <AvatarImage src={item.avatar} alt={fullName} />
-                                                    <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 text-sm dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
+                                                    <AvatarImage
+                                                        src={item.avatar}
+                                                        alt={fullName}
+                                                    />
+                                                    <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-sm text-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
                                                         {initials || 'TC'}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                {renderStatusBadge(item.attendance_status)}
+                                                {renderStatusBadge(
+                                                    item.attendance_status,
+                                                )}
                                             </div>
 
                                             <div>
-                                                <h3 className="font-bold text-foreground text-base tracking-tight group-hover:text-emerald-600 transition-colors">
+                                                <h3 className="text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-emerald-600">
                                                     {fullName}
                                                 </h3>
-                                                <p className="text-xs text-muted-foreground truncate">{item.tch_email}</p>
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {item.tch_email}
+                                                </p>
                                             </div>
 
-                                            <div className="rounded-xl bg-muted/40 p-2.5 space-y-1.5 text-xs">
+                                            <div className="space-y-1.5 rounded-xl bg-muted/40 p-2.5 text-xs">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-muted-foreground">RFID Card:</span>
+                                                    <span className="text-muted-foreground">
+                                                        RFID Card:
+                                                    </span>
                                                     <span className="font-mono font-medium text-foreground">
-                                                        {item.tch_rfid_uid || 'Not Assigned'}
+                                                        {item.tch_rfid_uid ||
+                                                            'Not Assigned'}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-muted-foreground">Time In:</span>
+                                                    <span className="text-muted-foreground">
+                                                        Time In:
+                                                    </span>
                                                     <span className="font-semibold text-foreground">
-                                                        {item.time_in_formatted || '—'}
+                                                        {item.time_in_formatted ||
+                                                            '—'}
                                                     </span>
                                                 </div>
                                                 {item.remarks && (
-                                                    <div className="pt-1 border-t border-border/40 text-[11px] text-muted-foreground italic truncate">
+                                                    <div className="truncate border-t border-border/40 pt-1 text-[11px] text-muted-foreground italic">
                                                         "{item.remarks}"
                                                     </div>
                                                 )}
@@ -764,9 +865,9 @@ export default function TeacherAttendanceIndex() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => openEditModal(item)}
-                                            className="mt-4 w-full h-8 text-xs font-semibold rounded-xl hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/50"
+                                            className="mt-4 h-8 w-full rounded-xl text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/50"
                                         >
-                                            <Edit3 className="size-3.5 mr-1.5" />
+                                            <Edit3 className="mr-1.5 size-3.5" />
                                             Update Status
                                         </Button>
                                     </div>
@@ -778,8 +879,15 @@ export default function TeacherAttendanceIndex() {
                         {attendance.links && attendance.links.length > 3 && (
                             <div className="flex items-center justify-between rounded-2xl border bg-card px-5 py-3.5 shadow-sm">
                                 <p className="text-xs font-medium text-muted-foreground">
-                                    Showing <span className="font-bold text-foreground">{attendance.data.length}</span> of{' '}
-                                    <span className="font-bold text-foreground">{attendance.total}</span> teachers
+                                    Showing{' '}
+                                    <span className="font-bold text-foreground">
+                                        {attendance.data.length}
+                                    </span>{' '}
+                                    of{' '}
+                                    <span className="font-bold text-foreground">
+                                        {attendance.total}
+                                    </span>{' '}
+                                    teachers
                                 </p>
                                 <div className="flex items-center space-x-1.5">
                                     {attendance.links.map((link, index) => (
@@ -788,10 +896,12 @@ export default function TeacherAttendanceIndex() {
                                             href={link.url || '#'}
                                             preserveScroll
                                             preserveState
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                             className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                                                 link.active
-                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
                                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             } ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
                                         />
@@ -804,67 +914,100 @@ export default function TeacherAttendanceIndex() {
             </div>
 
             {/* Edit / Update Status Modal */}
-            <Dialog open={editingTeacher !== null} onOpenChange={(open) => !open && setEditingTeacher(null)}>
-                <DialogContent className="sm:max-w-[480px] rounded-2xl p-6">
+            <Dialog
+                open={editingTeacher !== null}
+                onOpenChange={(open) => !open && setEditingTeacher(null)}
+            >
+                <DialogContent className="rounded-2xl p-6 sm:max-w-[480px]">
                     <DialogHeader className="space-y-2">
                         <div className="flex items-center gap-3">
                             <Avatar className="size-11 rounded-2xl border-2 border-emerald-500/20 shadow-sm">
                                 <AvatarImage src={editingTeacher?.avatar} />
-                                <AvatarFallback className="bg-emerald-100 text-emerald-800 text-xs">
+                                <AvatarFallback className="bg-emerald-100 text-xs text-emerald-800">
                                     {editingTeacher?.tch_fname?.[0]}
                                     {editingTeacher?.tch_lname?.[0]}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
-                                <DialogTitle className="text-lg font-bold">Update Attendance Status</DialogTitle>
+                                <DialogTitle className="text-lg font-bold">
+                                    Update Attendance Status
+                                </DialogTitle>
                                 <DialogDescription className="text-xs">
-                                    {editingTeacher?.tch_fname} {editingTeacher?.tch_lname} • {selectedDate}
+                                    {editingTeacher?.tch_fname}{' '}
+                                    {editingTeacher?.tch_lname} • {selectedDate}
                                 </DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <form onSubmit={handleSaveStatus} className="space-y-4 py-2">
+                    <form
+                        onSubmit={handleSaveStatus}
+                        className="space-y-4 py-2"
+                    >
                         <div className="space-y-1.5">
-                            <Label htmlFor="status" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                            <Label
+                                htmlFor="status"
+                                className="text-xs font-bold tracking-wider text-muted-foreground uppercase"
+                            >
                                 Attendance Status
                             </Label>
                             <Select
                                 value={editStatus}
-                                onValueChange={(val: AttendanceStatus) => setEditStatus(val)}
+                                onValueChange={(val: AttendanceStatus) =>
+                                    setEditStatus(val)
+                                }
                             >
-                                <SelectTrigger id="status" className="h-10 rounded-xl">
+                                <SelectTrigger
+                                    id="status"
+                                    className="h-10 rounded-xl"
+                                >
                                     <SelectValue placeholder="Select Status" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                    <SelectItem value="present">Present (On Time)</SelectItem>
-                                    <SelectItem value="late">Late Arrival</SelectItem>
-                                    <SelectItem value="excused">Excused (Leave / Official Business)</SelectItem>
-                                    <SelectItem value="absent">Absent</SelectItem>
+                                    <SelectItem value="present">
+                                        Present (On Time)
+                                    </SelectItem>
+                                    <SelectItem value="late">
+                                        Late Arrival
+                                    </SelectItem>
+                                    <SelectItem value="excused">
+                                        Excused (Leave / Official Business)
+                                    </SelectItem>
+                                    <SelectItem value="absent">
+                                        Absent
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {editStatus !== 'absent' && (
                             <div className="space-y-1.5">
-                                <Label htmlFor="time_in" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                <Label
+                                    htmlFor="time_in"
+                                    className="text-xs font-bold tracking-wider text-muted-foreground uppercase"
+                                >
                                     Time In
                                 </Label>
                                 <div className="relative">
-                                    <Clock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                                    <Clock className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         id="time_in"
                                         type="time"
                                         value={editTimeIn}
-                                        onChange={(e) => setEditTimeIn(e.target.value)}
-                                        className="h-10 pl-9 rounded-xl font-medium"
+                                        onChange={(e) =>
+                                            setEditTimeIn(e.target.value)
+                                        }
+                                        className="h-10 rounded-xl pl-9 font-medium"
                                     />
                                 </div>
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="remarks" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                            <Label
+                                htmlFor="remarks"
+                                className="text-xs font-bold tracking-wider text-muted-foreground uppercase"
+                            >
                                 Remarks / Reason
                             </Label>
                             <Input
@@ -883,10 +1026,10 @@ export default function TeacherAttendanceIndex() {
                                         type="button"
                                         onClick={() => setEditRemarks(preset)}
                                         className={cn(
-                                            'text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all',
+                                            'rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all',
                                             editRemarks === preset
-                                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                                : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border-border/50'
+                                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                : 'border-border/50 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground',
                                         )}
                                     >
                                         {preset}
@@ -895,7 +1038,7 @@ export default function TeacherAttendanceIndex() {
                             </div>
                         </div>
 
-                        <DialogFooter className="pt-4 gap-2">
+                        <DialogFooter className="gap-2 pt-4">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -908,9 +1051,11 @@ export default function TeacherAttendanceIndex() {
                             <Button
                                 type="submit"
                                 disabled={isSaving}
-                                className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-md shadow-emerald-600/20"
+                                className="h-10 rounded-xl bg-emerald-600 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700"
                             >
-                                {isSaving ? 'Saving Changes...' : 'Save Attendance'}
+                                {isSaving
+                                    ? 'Saving Changes...'
+                                    : 'Save Attendance'}
                             </Button>
                         </DialogFooter>
                     </form>

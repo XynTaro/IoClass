@@ -205,11 +205,15 @@ export default function SF2ReportsIndex() {
             query.sy_id = nextSy;
         }
 
-        router.get(sf2Routes.index.url({ query }), {}, {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.get(
+            sf2Routes.index.url({ query }),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     const [isExporting, setIsExporting] = useState(false);
@@ -247,7 +251,11 @@ export default function SF2ReportsIndex() {
             });
 
             // If session expired or redirected to login
-            if (response.redirected || response.status === 401 || response.status === 419) {
+            if (
+                response.redirected ||
+                response.status === 401 ||
+                response.status === 419
+            ) {
                 window.location.href = response.url || '/login';
                 return;
             }
@@ -262,7 +270,11 @@ export default function SF2ReportsIndex() {
                             errorMessage = parsed.message;
                         }
                     } catch {
-                        if (text && text.length < 250 && !text.includes('<!DOCTYPE')) {
+                        if (
+                            text &&
+                            text.length < 250 &&
+                            !text.includes('<!DOCTYPE')
+                        ) {
                             errorMessage = text;
                         }
                     }
@@ -275,12 +287,16 @@ export default function SF2ReportsIndex() {
 
             // Extract filename from Content-Disposition header if provided
             const disposition = response.headers.get('content-disposition');
-            const gradeClean = (sectionInfo?.gr_level ?? '').replace(/^(?:grade\s*)+/i, '').trim();
+            const gradeClean = (sectionInfo?.gr_level ?? '')
+                .replace(/^(?:grade\s*)+/i, '')
+                .trim();
             const defaultFilename = `SF2_${(sectionInfo?.sect_name ?? 'Section').replace(/\s+/g, '_')}_Grade${gradeClean}_${MONTHS[selectedMonth - 1] ?? 'Month'}_${schoolYearLabel ? schoolYearLabel.replace(/[\s/]+/g, '-') : selectedYear}.xlsx`;
             let filename = defaultFilename;
 
             if (disposition) {
-                const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+                const match = disposition.match(
+                    /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i,
+                );
                 if (match?.[1]) {
                     filename = decodeURIComponent(match[1].trim());
                 }
@@ -297,7 +313,9 @@ export default function SF2ReportsIndex() {
             window.URL.revokeObjectURL(blobUrl);
         } catch (error: unknown) {
             console.error('SF2 export error:', error);
-            setExportError(error instanceof Error ? error.message : 'Export failed.');
+            setExportError(
+                error instanceof Error ? error.message : 'Export failed.',
+            );
         } finally {
             setIsExporting(false);
         }
@@ -357,8 +375,8 @@ export default function SF2ReportsIndex() {
             value: rows.length,
             description: `${maleRows.length} Male · ${femaleRows.length} Female`,
             icon: Users,
-            bgGradient: 'from-blue-500/5 to-indigo-500/5 dark:from-blue-500/10 dark:to-indigo-500/10',
-            borderClass: 'border-blue-500/10 hover:border-blue-500/30 dark:border-blue-500/20 dark:hover:border-blue-500/40',
+            borderClass:
+                'border-blue-500/10 hover:border-blue-500/30 dark:border-blue-500/20 dark:hover:border-blue-500/40',
             iconStyle:
                 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 ring-4 ring-blue-500/5',
             valueStyle: 'text-blue-600 dark:text-blue-400',
@@ -367,8 +385,8 @@ export default function SF2ReportsIndex() {
             label: 'Present Check-ins',
             value: monthTotals.present,
             icon: CheckCircle2,
-            bgGradient: 'from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/10 dark:to-teal-500/10',
-            borderClass: 'border-emerald-500/10 hover:border-emerald-500/30 dark:border-emerald-500/20 dark:hover:border-emerald-500/40',
+            borderClass:
+                'border-emerald-500/10 hover:border-emerald-500/30 dark:border-emerald-500/20 dark:hover:border-emerald-500/40',
             iconStyle:
                 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 ring-4 ring-emerald-500/5',
             valueStyle: 'text-emerald-600 dark:text-emerald-400',
@@ -377,8 +395,8 @@ export default function SF2ReportsIndex() {
             label: 'Late Check-ins',
             value: monthTotals.late,
             icon: Clock,
-            bgGradient: 'from-amber-500/5 to-orange-500/5 dark:from-amber-500/10 dark:to-orange-500/10',
-            borderClass: 'border-amber-500/10 hover:border-amber-500/30 dark:border-amber-500/20 dark:hover:border-amber-500/40',
+            borderClass:
+                'border-amber-500/10 hover:border-amber-500/30 dark:border-amber-500/20 dark:hover:border-amber-500/40',
             iconStyle:
                 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 ring-4 ring-amber-500/5',
             valueStyle: 'text-amber-600 dark:text-amber-400',
@@ -387,8 +405,8 @@ export default function SF2ReportsIndex() {
             label: 'Excused Absences',
             value: monthTotals.excused,
             icon: ShieldCheck,
-            bgGradient: 'from-sky-500/5 to-cyan-500/5 dark:from-sky-500/10 dark:to-cyan-500/10',
-            borderClass: 'border-sky-500/10 hover:border-sky-500/30 dark:border-sky-500/20 dark:hover:border-sky-500/40',
+            borderClass:
+                'border-sky-500/10 hover:border-sky-500/30 dark:border-sky-500/20 dark:hover:border-sky-500/40',
             iconStyle:
                 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400 ring-4 ring-sky-500/5',
             valueStyle: 'text-sky-600 dark:text-sky-400',
@@ -397,8 +415,8 @@ export default function SF2ReportsIndex() {
             label: 'Absent Days',
             value: monthTotals.absent,
             icon: UserX,
-            bgGradient: 'from-rose-500/5 to-red-500/5 dark:from-rose-500/10 dark:to-red-500/10',
-            borderClass: 'border-rose-500/10 hover:border-rose-500/30 dark:border-rose-500/20 dark:hover:border-rose-500/40',
+            borderClass:
+                'border-rose-500/10 hover:border-rose-500/30 dark:border-rose-500/20 dark:hover:border-rose-500/40',
             iconStyle:
                 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400 ring-4 ring-rose-500/5',
             valueStyle: 'text-rose-600 dark:text-rose-400',
@@ -409,16 +427,18 @@ export default function SF2ReportsIndex() {
         return (
             <TeacherLayout>
                 <Head title="SF2 Reports" />
-                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center max-w-md mx-auto">
-                    <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 shadow-inner ring-8 ring-amber-500/5">
+                <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 p-8 text-center">
+                    <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 shadow-inner ring-8 ring-amber-500/5 dark:bg-amber-500/15 dark:text-amber-400">
                         <FileSpreadsheet className="size-8" aria-hidden />
                     </div>
                     <div className="space-y-2">
                         <h2 className="text-xl font-bold tracking-tight">
                             Access Restricted
                         </h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            SF2 reports are reserved for section advisers. You are not assigned as an adviser for the selected school year.
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                            SF2 reports are reserved for section advisers. You
+                            are not assigned as an adviser for the selected
+                            school year.
                         </p>
                     </div>
                 </div>
@@ -432,34 +452,36 @@ export default function SF2ReportsIndex() {
 
             <div className="space-y-6 p-4 md:p-6 lg:p-8">
                 {/* Top panel: title + filters + export */}
-                <section className="relative overflow-hidden rounded-2xl border bg-card/60 backdrop-blur-md shadow-xs">
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
-                    
+                <section className="relative overflow-hidden rounded-2xl border bg-card/60 shadow-xs backdrop-blur-md">
+                    <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+
                     <div className="flex flex-col gap-6 p-6 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
-                                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 shadow-inner">
+                                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 shadow-inner dark:bg-blue-500/15 dark:text-blue-400">
                                     <FileSpreadsheet
                                         className="size-5.5"
                                         aria-hidden
                                     />
                                 </div>
                                 <div>
-                                    <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-foreground via-foreground/95 to-foreground/80 bg-clip-text">
+                                    <h1 className="bg-gradient-to-r from-foreground via-foreground/95 to-foreground/80 bg-clip-text text-2xl font-black tracking-tight">
                                         SF2 Reports
                                     </h1>
-                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                         School Form 2 · Daily Attendance
                                     </p>
                                 </div>
                             </div>
                             <p className="max-w-xl text-sm text-muted-foreground">
-                                View, filter, and export the official monthly daily attendance log for your advisory learners.
+                                View, filter, and export the official monthly
+                                daily attendance log for your advisory learners.
                             </p>
                             <div className="flex flex-wrap items-center gap-2 pt-1">
                                 {sectionInfo && (
                                     <span className="inline-flex items-center rounded-lg border border-blue-500/20 bg-blue-500/8 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                                        {formatGradeLevel(sectionInfo.gr_level)} – {sectionInfo.sect_name}
+                                        {formatGradeLevel(sectionInfo.gr_level)}{' '}
+                                        – {sectionInfo.sect_name}
                                     </span>
                                 )}
                                 {schoolYearLabel && (
@@ -478,28 +500,37 @@ export default function SF2ReportsIndex() {
                         </div>
 
                         {rows.length > 0 ? (
-                            <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex shrink-0 flex-col items-end gap-2">
                                 <button
                                     type="button"
                                     onClick={handleExport}
                                     disabled={isExporting}
-                                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:shadow-md cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-blue-700 hover:opacity-95 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {isExporting ? (
                                         <>
-                                            <Loader2 className="size-4 animate-spin" aria-hidden />
+                                            <Loader2
+                                                className="size-4 animate-spin"
+                                                aria-hidden
+                                            />
                                             <span>Exporting...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Download className="size-4" aria-hidden />
+                                            <Download
+                                                className="size-4"
+                                                aria-hidden
+                                            />
                                             <span>Export Excel</span>
                                         </>
                                     )}
                                 </button>
                                 {exportError && (
-                                    <p className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                                        <AlertCircle className="size-3.5" aria-hidden />
+                                    <p className="flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">
+                                        <AlertCircle
+                                            className="size-3.5"
+                                            aria-hidden
+                                        />
                                         {exportError}
                                     </p>
                                 )}
@@ -509,7 +540,7 @@ export default function SF2ReportsIndex() {
 
                     <div className="grid gap-4 border-t bg-muted/20 p-6 sm:grid-cols-2">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                 School Year
                             </label>
                             <Select
@@ -520,7 +551,7 @@ export default function SF2ReportsIndex() {
                                 }}
                                 disabled={schoolYears.length === 0}
                             >
-                                <SelectTrigger className="h-10 w-full rounded-xl bg-background border-muted hover:bg-muted/10 transition-colors">
+                                <SelectTrigger className="h-10 w-full rounded-xl border-muted bg-background transition-colors hover:bg-muted/10">
                                     <SelectValue placeholder="Select school year" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
@@ -539,7 +570,7 @@ export default function SF2ReportsIndex() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                 Report Month
                             </label>
                             <Select
@@ -549,7 +580,7 @@ export default function SF2ReportsIndex() {
                                     navigate({ month: v });
                                 }}
                             >
-                                <SelectTrigger className="h-10 w-full rounded-xl bg-background border-muted hover:bg-muted/10 transition-colors">
+                                <SelectTrigger className="h-10 w-full rounded-xl border-muted bg-background transition-colors hover:bg-muted/10">
                                     <SelectValue placeholder="Month" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
@@ -575,16 +606,19 @@ export default function SF2ReportsIndex() {
                         return (
                             <div
                                 key={card.label}
-                                className={`group flex flex-col justify-between rounded-2xl border bg-card p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-gradient-to-br ${card.bgGradient} ${card.borderClass}`}
+                                className={`group flex flex-col justify-between rounded-2xl border bg-card p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${card.borderClass}`}
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                         {card.label}
                                     </span>
                                     <div
                                         className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 ${card.iconStyle}`}
                                     >
-                                        <Icon className="size-4.5" aria-hidden />
+                                        <Icon
+                                            className="size-4.5"
+                                            aria-hidden
+                                        />
                                     </div>
                                 </div>
                                 <div>
@@ -611,7 +645,7 @@ export default function SF2ReportsIndex() {
                             <h2 className="text-sm font-semibold tracking-tight uppercase">
                                 Daily Attendance Grid
                             </h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="mt-0.5 text-xs text-muted-foreground">
                                 {rows.length > 0
                                     ? `${rows.length} learner${rows.length === 1 ? '' : 's'} · ${daysInMonth} days in ${periodLabel}`
                                     : `No records for ${periodLabel}`}
@@ -624,7 +658,7 @@ export default function SF2ReportsIndex() {
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold ring-1 ${cls}`}
                                 >
                                     <span className="font-bold">{abbr}</span>
-                                    <span className="hidden opacity-90 sm:inline text-[11px]">
+                                    <span className="hidden text-[11px] opacity-90 sm:inline">
                                         {label}
                                     </span>
                                 </span>
@@ -642,22 +676,23 @@ export default function SF2ReportsIndex() {
                                     No records found
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                    Try selecting another school year or report month.
+                                    Try selecting another school year or report
+                                    month.
                                 </p>
                             </div>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent pb-1">
+                        <div className="scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-x-auto pb-1">
                             <table className="w-full min-w-max border-collapse text-sm select-none">
                                 <thead>
                                     <tr className="border-b bg-muted/30">
-                                        <th className="sticky left-0 z-20 min-w-10 border-r border-muted-foreground/10 bg-muted/60 px-2 py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider shadow-[2px_0_4px_rgba(0,0,0,0.03)]">
+                                        <th className="sticky left-0 z-20 min-w-10 border-r border-muted-foreground/10 bg-muted/60 px-2 py-3 text-center text-xs font-bold tracking-wider text-muted-foreground uppercase shadow-[2px_0_4px_rgba(0,0,0,0.03)]">
                                             #
                                         </th>
-                                        <th className="sticky left-10 z-20 min-w-48 border-r border-muted-foreground/10 bg-muted/60 px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider shadow-[2px_0_4px_rgba(0,0,0,0.03)]">
+                                        <th className="sticky left-10 z-20 min-w-48 border-r border-muted-foreground/10 bg-muted/60 px-4 py-3 text-left text-xs font-bold tracking-wider text-muted-foreground uppercase shadow-[2px_0_4px_rgba(0,0,0,0.03)]">
                                             Learner Name
                                         </th>
-                                        <th className="min-w-32 border-r border-muted/20 px-3 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                        <th className="min-w-32 border-r border-muted/20 px-3 py-3 text-left text-xs font-bold tracking-wider text-muted-foreground uppercase">
                                             LRN
                                         </th>
                                         {dayNumbers.map((d) => {
@@ -669,7 +704,7 @@ export default function SF2ReportsIndex() {
                                             return (
                                                 <th
                                                     key={d}
-                                                    className={`w-8 px-0.5 py-3 text-center text-[11px] font-bold border-r border-muted/20 last:border-r-0 ${
+                                                    className={`w-8 border-r border-muted/20 px-0.5 py-3 text-center text-[11px] font-bold last:border-r-0 ${
                                                         weekend
                                                             ? 'bg-muted/40 text-muted-foreground/35'
                                                             : 'text-muted-foreground/80'
@@ -700,7 +735,7 @@ export default function SF2ReportsIndex() {
                                             <tr className="border-b border-blue-500/20 bg-blue-500/[0.08] dark:bg-blue-500/[0.12]">
                                                 <td
                                                     colSpan={daysInMonth + 7}
-                                                    className="px-4 py-2 text-left text-xs font-black uppercase tracking-wider text-blue-700 dark:text-blue-300"
+                                                    className="px-4 py-2 text-left text-xs font-black tracking-wider text-blue-700 uppercase dark:text-blue-300"
                                                 >
                                                     MALE ({maleRows.length})
                                                 </td>
@@ -708,58 +743,71 @@ export default function SF2ReportsIndex() {
                                             {maleRows.map((row, index) => (
                                                 <tr
                                                     key={row.stu_id}
-                                                    className="group/row border-b last:border-b-0 transition-colors hover:bg-blue-500/[0.03] dark:hover:bg-blue-500/[0.05]"
+                                                    className="group/row border-b transition-colors last:border-b-0 hover:bg-blue-500/[0.03] dark:hover:bg-blue-500/[0.05]"
                                                 >
-                                                    <td className="sticky left-0 z-10 border-r border-muted-foreground/10 bg-card px-2 py-2.5 text-center text-xs text-muted-foreground font-semibold shadow-[1px_0_3px_rgba(0,0,0,0.03)] group-hover/row:bg-blue-500/[0.04] dark:group-hover/row:bg-blue-500/[0.06] transition-colors">
+                                                    <td className="sticky left-0 z-10 border-r border-muted-foreground/10 bg-card px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground shadow-[1px_0_3px_rgba(0,0,0,0.03)] transition-colors group-hover/row:bg-blue-500/[0.04] dark:group-hover/row:bg-blue-500/[0.06]">
                                                         {index + 1}
                                                     </td>
-                                                    <td className="sticky left-10 z-10 border-r border-muted-foreground/10 bg-card px-4 py-2.5 font-bold text-foreground/90 whitespace-nowrap shadow-[2px_0_4px_rgba(0,0,0,0.03)] group-hover/row:bg-blue-500/[0.04] dark:group-hover/row:bg-blue-500/[0.06] transition-colors">
+                                                    <td className="sticky left-10 z-10 border-r border-muted-foreground/10 bg-card px-4 py-2.5 font-bold whitespace-nowrap text-foreground/90 shadow-[2px_0_4px_rgba(0,0,0,0.03)] transition-colors group-hover/row:bg-blue-500/[0.04] dark:group-hover/row:bg-blue-500/[0.06]">
                                                         {row.name}
                                                     </td>
-                                                    <td className="px-3 py-2.5 font-mono text-xs tabular-nums text-muted-foreground/80 border-r border-muted/20">
+                                                    <td className="border-r border-muted/20 px-3 py-2.5 font-mono text-xs text-muted-foreground/80 tabular-nums">
                                                         {row.lrn ?? '—'}
                                                     </td>
                                                     {dayNumbers.map((d) => {
-                                                        const weekend = isWeekendDay(
-                                                            selectedYear,
-                                                            selectedMonth,
-                                                            d,
-                                                        );
+                                                        const weekend =
+                                                            isWeekendDay(
+                                                                selectedYear,
+                                                                selectedMonth,
+                                                                d,
+                                                            );
                                                         return (
                                                             <td
                                                                 key={d}
-                                                                className={`px-0.5 py-1.5 border-r border-muted/20 last:border-r-0 text-center relative align-middle ${
-                                                                    weekend ? 'bg-muted/10' : ''
+                                                                className={`relative border-r border-muted/20 px-0.5 py-1.5 text-center align-middle last:border-r-0 ${
+                                                                    weekend
+                                                                        ? 'bg-muted/10'
+                                                                        : ''
                                                                 }`}
                                                                 style={
                                                                     weekend
                                                                         ? {
                                                                               backgroundImage:
                                                                                   'repeating-linear-gradient(135deg, rgba(120, 120, 120, 0.08) 0px, rgba(120, 120, 120, 0.08) 1px, transparent 1px, transparent 6px)',
-                                                                              backgroundSize: '6px 6px',
+                                                                              backgroundSize:
+                                                                                  '6px 6px',
                                                                           }
                                                                         : undefined
                                                                 }
                                                                 title={
                                                                     row.days[d]
-                                                                        ? String(row.days[d])
+                                                                        ? String(
+                                                                              row
+                                                                                  .days[
+                                                                                  d
+                                                                              ],
+                                                                          )
                                                                         : undefined
                                                                 }
                                                             >
-                                                                {statusCell(row.days[d] ?? null)}
+                                                                {statusCell(
+                                                                    row.days[
+                                                                        d
+                                                                    ] ?? null,
+                                                                )}
                                                             </td>
                                                         );
                                                     })}
-                                                    <td className="border-l border-emerald-500/20 bg-emerald-500/[0.01] px-2 py-2 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums shadow-inner group-hover/row:bg-emerald-500/5 transition-colors">
+                                                    <td className="border-l border-emerald-500/20 bg-emerald-500/[0.01] px-2 py-2 text-center text-xs font-bold text-emerald-600 tabular-nums shadow-inner transition-colors group-hover/row:bg-emerald-500/5 dark:text-emerald-400">
                                                         {row.totals.present}
                                                     </td>
-                                                    <td className="bg-amber-500/[0.01] px-2 py-2 text-center text-xs font-bold text-amber-600 dark:text-amber-400 tabular-nums group-hover/row:bg-amber-500/5 transition-colors">
+                                                    <td className="bg-amber-500/[0.01] px-2 py-2 text-center text-xs font-bold text-amber-600 tabular-nums transition-colors group-hover/row:bg-amber-500/5 dark:text-amber-400">
                                                         {row.totals.late}
                                                     </td>
-                                                    <td className="bg-sky-500/[0.01] px-2 py-2 text-center text-xs font-bold text-sky-600 dark:text-sky-400 tabular-nums group-hover/row:bg-sky-500/5 transition-colors">
+                                                    <td className="bg-sky-500/[0.01] px-2 py-2 text-center text-xs font-bold text-sky-600 tabular-nums transition-colors group-hover/row:bg-sky-500/5 dark:text-sky-400">
                                                         {row.totals.excused}
                                                     </td>
-                                                    <td className="bg-rose-500/[0.01] px-2 py-2 text-center text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums group-hover/row:bg-rose-500/5 transition-colors">
+                                                    <td className="bg-rose-500/[0.01] px-2 py-2 text-center text-xs font-bold text-rose-600 tabular-nums transition-colors group-hover/row:bg-rose-500/5 dark:text-rose-400">
                                                         {row.totals.absent}
                                                     </td>
                                                 </tr>
@@ -768,43 +816,51 @@ export default function SF2ReportsIndex() {
                                             <tr className="border-y border-blue-500/20 bg-blue-500/[0.04] font-semibold">
                                                 <td
                                                     colSpan={3}
-                                                    className="sticky left-0 z-10 border-r border-blue-500/20 bg-blue-50/90 dark:bg-blue-950/90 px-4 py-2.5 text-xs font-bold text-blue-800 dark:text-blue-200"
+                                                    className="sticky left-0 z-10 border-r border-blue-500/20 bg-blue-50/90 px-4 py-2.5 text-xs font-bold text-blue-800 dark:bg-blue-950/90 dark:text-blue-200"
                                                 >
-                                                    &lt;=== MALE | TOTAL Per Day ===&gt;
+                                                    &lt;=== MALE | TOTAL Per Day
+                                                    ===&gt;
                                                 </td>
                                                 {dayNumbers.map((d) => {
-                                                    const s = maleSummaryByDay?.[d];
-                                                    const absent = s?.absent ?? 0;
-                                                    const weekend = isWeekendDay(
-                                                        selectedYear,
-                                                        selectedMonth,
-                                                        d,
-                                                    );
+                                                    const s =
+                                                        maleSummaryByDay?.[d];
+                                                    const absent =
+                                                        s?.absent ?? 0;
+                                                    const weekend =
+                                                        isWeekendDay(
+                                                            selectedYear,
+                                                            selectedMonth,
+                                                            d,
+                                                        );
                                                     return (
                                                         <td
                                                             key={d}
-                                                            className={`px-0.5 py-2 text-center text-[10px] font-bold border-r border-muted/20 last:border-r-0 tabular-nums ${
+                                                            className={`border-r border-muted/20 px-0.5 py-2 text-center text-[10px] font-bold tabular-nums last:border-r-0 ${
                                                                 weekend
                                                                     ? 'bg-muted/20 text-muted-foreground/30'
                                                                     : absent > 0
-                                                                    ? 'text-rose-600 dark:text-rose-400 font-extrabold'
-                                                                    : 'text-muted-foreground/35'
+                                                                      ? 'font-extrabold text-rose-600 dark:text-rose-400'
+                                                                      : 'text-muted-foreground/35'
                                                             }`}
                                                         >
-                                                            {weekend ? '' : absent > 0 ? absent : '—'}
+                                                            {weekend
+                                                                ? ''
+                                                                : absent > 0
+                                                                  ? absent
+                                                                  : '—'}
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="border-l border-emerald-500/20 bg-emerald-500/[0.04] px-2 py-2 text-center text-xs font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                                                <td className="border-l border-emerald-500/20 bg-emerald-500/[0.04] px-2 py-2 text-center text-xs font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
                                                     {maleTotals.present}
                                                 </td>
-                                                <td className="bg-amber-500/[0.04] px-2 py-2 text-center text-xs font-bold text-amber-700 dark:text-amber-300 tabular-nums">
+                                                <td className="bg-amber-500/[0.04] px-2 py-2 text-center text-xs font-bold text-amber-700 tabular-nums dark:text-amber-300">
                                                     {maleTotals.late}
                                                 </td>
-                                                <td className="bg-sky-500/[0.04] px-2 py-2 text-center text-xs font-bold text-sky-700 dark:text-sky-300 tabular-nums">
+                                                <td className="bg-sky-500/[0.04] px-2 py-2 text-center text-xs font-bold text-sky-700 tabular-nums dark:text-sky-300">
                                                     {maleTotals.excused}
                                                 </td>
-                                                <td className="bg-rose-500/[0.04] px-2 py-2 text-center text-xs font-bold text-rose-700 dark:text-rose-300 tabular-nums">
+                                                <td className="bg-rose-500/[0.04] px-2 py-2 text-center text-xs font-bold text-rose-700 tabular-nums dark:text-rose-300">
                                                     {maleTotals.absent}
                                                 </td>
                                             </tr>
@@ -817,7 +873,7 @@ export default function SF2ReportsIndex() {
                                             <tr className="border-b border-rose-500/20 bg-rose-500/[0.08] dark:bg-rose-500/[0.12]">
                                                 <td
                                                     colSpan={daysInMonth + 7}
-                                                    className="px-4 py-2 text-left text-xs font-black uppercase tracking-wider text-rose-700 dark:text-rose-300"
+                                                    className="px-4 py-2 text-left text-xs font-black tracking-wider text-rose-700 uppercase dark:text-rose-300"
                                                 >
                                                     FEMALE ({femaleRows.length})
                                                 </td>
@@ -825,58 +881,71 @@ export default function SF2ReportsIndex() {
                                             {femaleRows.map((row, index) => (
                                                 <tr
                                                     key={row.stu_id}
-                                                    className="group/row border-b last:border-b-0 transition-colors hover:bg-rose-500/[0.03] dark:hover:bg-rose-500/[0.05]"
+                                                    className="group/row border-b transition-colors last:border-b-0 hover:bg-rose-500/[0.03] dark:hover:bg-rose-500/[0.05]"
                                                 >
-                                                    <td className="sticky left-0 z-10 border-r border-muted-foreground/10 bg-card px-2 py-2.5 text-center text-xs text-muted-foreground font-semibold shadow-[1px_0_3px_rgba(0,0,0,0.03)] group-hover/row:bg-rose-500/[0.04] dark:group-hover/row:bg-rose-500/[0.06] transition-colors">
+                                                    <td className="sticky left-0 z-10 border-r border-muted-foreground/10 bg-card px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground shadow-[1px_0_3px_rgba(0,0,0,0.03)] transition-colors group-hover/row:bg-rose-500/[0.04] dark:group-hover/row:bg-rose-500/[0.06]">
                                                         {index + 1}
                                                     </td>
-                                                    <td className="sticky left-10 z-10 border-r border-muted-foreground/10 bg-card px-4 py-2.5 font-bold text-foreground/90 whitespace-nowrap shadow-[2px_0_4px_rgba(0,0,0,0.03)] group-hover/row:bg-rose-500/[0.04] dark:group-hover/row:bg-rose-500/[0.06] transition-colors">
+                                                    <td className="sticky left-10 z-10 border-r border-muted-foreground/10 bg-card px-4 py-2.5 font-bold whitespace-nowrap text-foreground/90 shadow-[2px_0_4px_rgba(0,0,0,0.03)] transition-colors group-hover/row:bg-rose-500/[0.04] dark:group-hover/row:bg-rose-500/[0.06]">
                                                         {row.name}
                                                     </td>
-                                                    <td className="px-3 py-2.5 font-mono text-xs tabular-nums text-muted-foreground/80 border-r border-muted/20">
+                                                    <td className="border-r border-muted/20 px-3 py-2.5 font-mono text-xs text-muted-foreground/80 tabular-nums">
                                                         {row.lrn ?? '—'}
                                                     </td>
                                                     {dayNumbers.map((d) => {
-                                                        const weekend = isWeekendDay(
-                                                            selectedYear,
-                                                            selectedMonth,
-                                                            d,
-                                                        );
+                                                        const weekend =
+                                                            isWeekendDay(
+                                                                selectedYear,
+                                                                selectedMonth,
+                                                                d,
+                                                            );
                                                         return (
                                                             <td
                                                                 key={d}
-                                                                className={`px-0.5 py-1.5 border-r border-muted/20 last:border-r-0 text-center relative align-middle ${
-                                                                    weekend ? 'bg-muted/10' : ''
+                                                                className={`relative border-r border-muted/20 px-0.5 py-1.5 text-center align-middle last:border-r-0 ${
+                                                                    weekend
+                                                                        ? 'bg-muted/10'
+                                                                        : ''
                                                                 }`}
                                                                 style={
                                                                     weekend
                                                                         ? {
                                                                               backgroundImage:
                                                                                   'repeating-linear-gradient(135deg, rgba(120, 120, 120, 0.08) 0px, rgba(120, 120, 120, 0.08) 1px, transparent 1px, transparent 6px)',
-                                                                              backgroundSize: '6px 6px',
+                                                                              backgroundSize:
+                                                                                  '6px 6px',
                                                                           }
                                                                         : undefined
                                                                 }
                                                                 title={
                                                                     row.days[d]
-                                                                        ? String(row.days[d])
+                                                                        ? String(
+                                                                              row
+                                                                                  .days[
+                                                                                  d
+                                                                              ],
+                                                                          )
                                                                         : undefined
                                                                 }
                                                             >
-                                                                {statusCell(row.days[d] ?? null)}
+                                                                {statusCell(
+                                                                    row.days[
+                                                                        d
+                                                                    ] ?? null,
+                                                                )}
                                                             </td>
                                                         );
                                                     })}
-                                                    <td className="border-l border-emerald-500/20 bg-emerald-500/[0.01] px-2 py-2 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums shadow-inner group-hover/row:bg-emerald-500/5 transition-colors">
+                                                    <td className="border-l border-emerald-500/20 bg-emerald-500/[0.01] px-2 py-2 text-center text-xs font-bold text-emerald-600 tabular-nums shadow-inner transition-colors group-hover/row:bg-emerald-500/5 dark:text-emerald-400">
                                                         {row.totals.present}
                                                     </td>
-                                                    <td className="bg-amber-500/[0.01] px-2 py-2 text-center text-xs font-bold text-amber-600 dark:text-amber-400 tabular-nums group-hover/row:bg-amber-500/5 transition-colors">
+                                                    <td className="bg-amber-500/[0.01] px-2 py-2 text-center text-xs font-bold text-amber-600 tabular-nums transition-colors group-hover/row:bg-amber-500/5 dark:text-amber-400">
                                                         {row.totals.late}
                                                     </td>
-                                                    <td className="bg-sky-500/[0.01] px-2 py-2 text-center text-xs font-bold text-sky-600 dark:text-sky-400 tabular-nums group-hover/row:bg-sky-500/5 transition-colors">
+                                                    <td className="bg-sky-500/[0.01] px-2 py-2 text-center text-xs font-bold text-sky-600 tabular-nums transition-colors group-hover/row:bg-sky-500/5 dark:text-sky-400">
                                                         {row.totals.excused}
                                                     </td>
-                                                    <td className="bg-rose-500/[0.01] px-2 py-2 text-center text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums group-hover/row:bg-rose-500/5 transition-colors">
+                                                    <td className="bg-rose-500/[0.01] px-2 py-2 text-center text-xs font-bold text-rose-600 tabular-nums transition-colors group-hover/row:bg-rose-500/5 dark:text-rose-400">
                                                         {row.totals.absent}
                                                     </td>
                                                 </tr>
@@ -885,43 +954,51 @@ export default function SF2ReportsIndex() {
                                             <tr className="border-y border-rose-500/20 bg-rose-500/[0.04] font-semibold">
                                                 <td
                                                     colSpan={3}
-                                                    className="sticky left-0 z-10 border-r border-rose-500/20 bg-rose-50/90 dark:bg-rose-950/90 px-4 py-2.5 text-xs font-bold text-rose-800 dark:text-rose-200"
+                                                    className="sticky left-0 z-10 border-r border-rose-500/20 bg-rose-50/90 px-4 py-2.5 text-xs font-bold text-rose-800 dark:bg-rose-950/90 dark:text-rose-200"
                                                 >
-                                                    &lt;=== FEMALE | TOTAL Per Day ===&gt;
+                                                    &lt;=== FEMALE | TOTAL Per
+                                                    Day ===&gt;
                                                 </td>
                                                 {dayNumbers.map((d) => {
-                                                    const s = femaleSummaryByDay?.[d];
-                                                    const absent = s?.absent ?? 0;
-                                                    const weekend = isWeekendDay(
-                                                        selectedYear,
-                                                        selectedMonth,
-                                                        d,
-                                                    );
+                                                    const s =
+                                                        femaleSummaryByDay?.[d];
+                                                    const absent =
+                                                        s?.absent ?? 0;
+                                                    const weekend =
+                                                        isWeekendDay(
+                                                            selectedYear,
+                                                            selectedMonth,
+                                                            d,
+                                                        );
                                                     return (
                                                         <td
                                                             key={d}
-                                                            className={`px-0.5 py-2 text-center text-[10px] font-bold border-r border-muted/20 last:border-r-0 tabular-nums ${
+                                                            className={`border-r border-muted/20 px-0.5 py-2 text-center text-[10px] font-bold tabular-nums last:border-r-0 ${
                                                                 weekend
                                                                     ? 'bg-muted/20 text-muted-foreground/30'
                                                                     : absent > 0
-                                                                    ? 'text-rose-600 dark:text-rose-400 font-extrabold'
-                                                                    : 'text-muted-foreground/35'
+                                                                      ? 'font-extrabold text-rose-600 dark:text-rose-400'
+                                                                      : 'text-muted-foreground/35'
                                                             }`}
                                                         >
-                                                            {weekend ? '' : absent > 0 ? absent : '—'}
+                                                            {weekend
+                                                                ? ''
+                                                                : absent > 0
+                                                                  ? absent
+                                                                  : '—'}
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="border-l border-emerald-500/20 bg-emerald-500/[0.04] px-2 py-2 text-center text-xs font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                                                <td className="border-l border-emerald-500/20 bg-emerald-500/[0.04] px-2 py-2 text-center text-xs font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
                                                     {femaleTotals.present}
                                                 </td>
-                                                <td className="bg-amber-500/[0.04] px-2 py-2 text-center text-xs font-bold text-amber-700 dark:text-amber-300 tabular-nums">
+                                                <td className="bg-amber-500/[0.04] px-2 py-2 text-center text-xs font-bold text-amber-700 tabular-nums dark:text-amber-300">
                                                     {femaleTotals.late}
                                                 </td>
-                                                <td className="bg-sky-500/[0.04] px-2 py-2 text-center text-xs font-bold text-sky-700 dark:text-sky-300 tabular-nums">
+                                                <td className="bg-sky-500/[0.04] px-2 py-2 text-center text-xs font-bold text-sky-700 tabular-nums dark:text-sky-300">
                                                     {femaleTotals.excused}
                                                 </td>
-                                                <td className="bg-rose-500/[0.04] px-2 py-2 text-center text-xs font-bold text-rose-700 dark:text-rose-300 tabular-nums">
+                                                <td className="bg-rose-500/[0.04] px-2 py-2 text-center text-xs font-bold text-rose-700 tabular-nums dark:text-rose-300">
                                                     {femaleTotals.absent}
                                                 </td>
                                             </tr>
@@ -932,7 +1009,7 @@ export default function SF2ReportsIndex() {
                                     <tr className="border-t-2 border-muted-foreground/20 bg-muted/40 font-semibold select-none">
                                         <td
                                             colSpan={3}
-                                            className="sticky left-0 z-10 border-r border-muted-foreground/10 bg-muted/90 px-4 py-3.5 text-xs font-bold text-foreground/80 tracking-wide uppercase shadow-[2px_0_4px_rgba(0,0,0,0.03)]"
+                                            className="sticky left-0 z-10 border-r border-muted-foreground/10 bg-muted/90 px-4 py-3.5 text-xs font-bold tracking-wide text-foreground/80 uppercase shadow-[2px_0_4px_rgba(0,0,0,0.03)]"
                                         >
                                             Combined TOTAL Per Day
                                         </td>
@@ -952,19 +1029,20 @@ export default function SF2ReportsIndex() {
                                             return (
                                                 <td
                                                     key={d}
-                                                    className={`px-0.5 py-3 text-center text-[10px] font-bold border-r border-muted/20 last:border-r-0 tabular-nums ${
+                                                    className={`border-r border-muted/20 px-0.5 py-3 text-center text-[10px] font-bold tabular-nums last:border-r-0 ${
                                                         weekend
                                                             ? 'bg-muted/20 text-muted-foreground/30'
                                                             : total > 0
-                                                            ? 'text-blue-600 dark:text-blue-400 font-extrabold bg-blue-500/5'
-                                                            : 'text-muted-foreground/35'
+                                                              ? 'bg-blue-500/5 font-extrabold text-blue-600 dark:text-blue-400'
+                                                              : 'text-muted-foreground/35'
                                                     }`}
                                                     style={
                                                         weekend
                                                             ? {
                                                                   backgroundImage:
                                                                       'repeating-linear-gradient(135deg, rgba(120, 120, 120, 0.05) 0px, rgba(120, 120, 120, 0.05) 1px, transparent 1px, transparent 6px)',
-                                                                  backgroundSize: '6px 6px',
+                                                                  backgroundSize:
+                                                                      '6px 6px',
                                                               }
                                                             : undefined
                                                     }
@@ -978,16 +1056,16 @@ export default function SF2ReportsIndex() {
                                                 </td>
                                             );
                                         })}
-                                        <td className="border-l border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                                        <td className="border-l border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-emerald-700 tabular-nums dark:text-emerald-300">
                                             {monthTotals.present}
                                         </td>
-                                        <td className="bg-amber-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-amber-700 dark:text-amber-300 tabular-nums">
+                                        <td className="bg-amber-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-amber-700 tabular-nums dark:text-amber-300">
                                             {monthTotals.late}
                                         </td>
-                                        <td className="bg-sky-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-sky-700 dark:text-sky-300 tabular-nums">
+                                        <td className="bg-sky-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-sky-700 tabular-nums dark:text-sky-300">
                                             {monthTotals.excused}
                                         </td>
-                                        <td className="bg-rose-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-rose-700 dark:text-rose-300 tabular-nums">
+                                        <td className="bg-rose-500/[0.06] px-2 py-3 text-center text-xs font-extrabold text-rose-700 tabular-nums dark:text-rose-300">
                                             {monthTotals.absent}
                                         </td>
                                     </tr>

@@ -84,7 +84,6 @@ const summaryCards = [
         color: 'text-zinc-900 dark:text-zinc-100',
         bg: 'bg-zinc-100 dark:bg-zinc-800',
         accent: 'border-zinc-300 dark:border-zinc-700',
-        glow: 'from-zinc-500/10 to-transparent',
     },
     {
         label: 'Present',
@@ -94,7 +93,6 @@ const summaryCards = [
         color: 'text-emerald-600 dark:text-emerald-400',
         bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
         accent: 'border-emerald-500/30',
-        glow: 'from-emerald-500/10 to-transparent',
     },
     {
         label: 'Late',
@@ -104,7 +102,6 @@ const summaryCards = [
         color: 'text-amber-600 dark:text-amber-400',
         bg: 'bg-amber-500/10 dark:bg-amber-500/15',
         accent: 'border-amber-500/30',
-        glow: 'from-amber-500/10 to-transparent',
     },
     {
         label: 'Excused',
@@ -114,7 +111,6 @@ const summaryCards = [
         color: 'text-blue-600 dark:text-blue-400',
         bg: 'bg-blue-500/10 dark:bg-blue-500/15',
         accent: 'border-blue-500/30',
-        glow: 'from-blue-500/10 to-transparent',
     },
     {
         label: 'Absent',
@@ -124,7 +120,6 @@ const summaryCards = [
         color: 'text-rose-600 dark:text-rose-400',
         bg: 'bg-rose-500/10 dark:bg-rose-500/15',
         accent: 'border-rose-500/30',
-        glow: 'from-rose-500/10 to-transparent',
     },
 ];
 
@@ -160,7 +155,7 @@ function statusBadge(status: AttendanceStatus) {
     return (
         <span
             className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 border transition-all',
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ring-1 transition-all',
                 item.style,
             )}
         >
@@ -182,11 +177,14 @@ export default function MyAttendanceIndex() {
     );
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
-    const isFilterActive = search !== '' || selectedDate !== '' || attendanceFilter !== 'all';
+    const isFilterActive =
+        search !== '' || selectedDate !== '' || attendanceFilter !== 'all';
 
     const attendanceRate = useMemo(() => {
         if (!summary.total) return 0;
-        return Math.round(((summary.present + summary.late) / summary.total) * 100);
+        return Math.round(
+            ((summary.present + summary.late) / summary.total) * 100,
+        );
     }, [summary]);
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -220,7 +218,9 @@ export default function MyAttendanceIndex() {
         setAttendanceFilter(filters?.attendance ?? 'all');
     }, [filters?.q, filters?.date, filters?.attendance]);
 
-    function applyFilters(next?: Partial<{ q: string; date: string; attendance: string }>) {
+    function applyFilters(
+        next?: Partial<{ q: string; date: string; attendance: string }>,
+    ) {
         const q = (next?.q ?? search).trim();
         const nextDate = next?.date ?? selectedDate;
         const nextAttendance = next?.attendance ?? attendanceFilter;
@@ -292,8 +292,9 @@ export default function MyAttendanceIndex() {
                     <div className="flex size-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                         <CalendarIcon className="size-4" />
                     </div>
-                    <span className="font-semibold text-sm text-foreground tracking-tight">
-                        {row.original.att_date_formatted || row.original.att_date}
+                    <span className="text-sm font-semibold tracking-tight text-foreground">
+                        {row.original.att_date_formatted ||
+                            row.original.att_date}
                     </span>
                 </div>
             ),
@@ -315,10 +316,14 @@ export default function MyAttendanceIndex() {
                                 <div className="rounded-md bg-zinc-100 p-1 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                                     <Clock className="size-3.5" />
                                 </div>
-                                <span className="text-foreground tracking-tight tabular-nums">{time}</span>
+                                <span className="tracking-tight text-foreground tabular-nums">
+                                    {time}
+                                </span>
                             </>
                         ) : (
-                            <span className="text-muted-foreground/50 font-normal">—</span>
+                            <span className="font-normal text-muted-foreground/50">
+                                —
+                            </span>
                         )}
                     </div>
                 );
@@ -331,13 +336,13 @@ export default function MyAttendanceIndex() {
                 const remarks = row.original.remarks;
                 return remarks ? (
                     <span
-                        className="text-xs text-zinc-600 dark:text-zinc-400 truncate bg-muted/60 px-2 py-1 rounded-md border border-border/40 inline-block max-w-[220px]"
+                        className="inline-block max-w-[220px] truncate rounded-md border border-border/40 bg-muted/60 px-2 py-1 text-xs text-zinc-600 dark:text-zinc-400"
                         title={remarks}
                     >
                         {remarks}
                     </span>
                 ) : (
-                    <span className="text-muted-foreground/40 text-xs">—</span>
+                    <span className="text-xs text-muted-foreground/40">—</span>
                 );
             },
         },
@@ -359,23 +364,29 @@ export default function MyAttendanceIndex() {
                                 My Attendance
                             </h1>
                             <p className="text-sm text-muted-foreground">
-                                View your daily check-in records, leave history, and attendance summary.
+                                View your daily check-in records, leave history,
+                                and attendance summary.
                             </p>
                         </div>
                         <div className="inline-flex w-fit items-center gap-2 rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur-sm">
-                            <CalendarIcon className="size-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                            <CalendarIcon
+                                className="size-4 shrink-0 text-blue-600 dark:text-blue-400"
+                                aria-hidden
+                            />
                             <span className="font-medium text-foreground">
                                 {summary.total} records total
                             </span>
                             <span className="text-border">|</span>
-                            <span className={cn(
-                                'font-semibold',
-                                attendanceRate >= 90
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : attendanceRate >= 80
-                                      ? 'text-amber-600 dark:text-amber-400'
-                                      : 'text-red-600 dark:text-red-400',
-                            )}>
+                            <span
+                                className={cn(
+                                    'font-semibold',
+                                    attendanceRate >= 90
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : attendanceRate >= 80
+                                          ? 'text-amber-600 dark:text-amber-400'
+                                          : 'text-red-600 dark:text-red-400',
+                                )}
+                            >
                                 {attendanceRate}% rate
                             </span>
                         </div>
@@ -400,7 +411,9 @@ export default function MyAttendanceIndex() {
                             <Input
                                 type="date"
                                 value={selectedDate}
-                                onChange={(e) => handleDateChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleDateChange(e.target.value)
+                                }
                                 className="h-9 w-[160px] rounded-lg border-muted bg-background pl-9 text-xs font-semibold focus-visible:ring-blue-500"
                             />
                         </div>
@@ -421,7 +434,8 @@ export default function MyAttendanceIndex() {
                             onClick={() => handleDateChange('')}
                             className={cn(
                                 'h-9 rounded-lg px-3 text-xs font-semibold transition-all',
-                                isToday && 'bg-blue-600 text-white shadow-sm hover:bg-blue-700',
+                                isToday &&
+                                    'bg-blue-600 text-white shadow-sm hover:bg-blue-700',
                             )}
                         >
                             All Dates
@@ -430,7 +444,9 @@ export default function MyAttendanceIndex() {
 
                     <p className="text-xs text-muted-foreground">
                         Showing records for{' '}
-                        <span className="font-semibold text-foreground">{formattedDisplayDate}</span>
+                        <span className="font-semibold text-foreground">
+                            {formattedDisplayDate}
+                        </span>
                     </p>
                 </div>
 
@@ -440,10 +456,14 @@ export default function MyAttendanceIndex() {
                         const Icon = card.icon;
                         const isSelected =
                             attendanceFilter === card.key ||
-                            (card.key === 'all' && (!attendanceFilter || attendanceFilter === 'all'));
+                            (card.key === 'all' &&
+                                (!attendanceFilter ||
+                                    attendanceFilter === 'all'));
                         const subtextMap: Record<string, string> = {
                             all: `${attendanceRate}% Present`,
-                            present: summary.total ? `${Math.round((summary.present / summary.total) * 100)}% of total` : '0%',
+                            present: summary.total
+                                ? `${Math.round((summary.present / summary.total) * 100)}% of total`
+                                : '0%',
                             late: 'After cutoff time',
                             excused: 'Official leaves',
                             absent: 'No check-in',
@@ -452,27 +472,28 @@ export default function MyAttendanceIndex() {
                         return (
                             <Card
                                 key={card.key}
-                                onClick={() => handleStatusFilterChange(card.key)}
+                                onClick={() =>
+                                    handleStatusFilterChange(card.key)
+                                }
                                 className={cn(
-                                    'group relative cursor-pointer overflow-hidden rounded-2xl border py-0 gap-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
+                                    'group relative cursor-pointer gap-0 overflow-hidden rounded-2xl border py-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
                                     isSelected
-                                        ? 'ring-2 ring-blue-500 border-blue-500/60 bg-gradient-to-b from-card to-blue-50/20 shadow-md shadow-blue-500/10 dark:to-blue-950/20'
+                                        ? 'border-blue-500/60 bg-blue-500/5 shadow-md ring-2 shadow-blue-500/10 ring-blue-500 dark:bg-blue-500/10'
                                         : 'bg-card hover:border-zinc-300 dark:hover:border-zinc-700',
                                 )}
                             >
-                                <div
-                                    className={cn(
-                                        'absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity group-hover:opacity-100',
-                                        card.glow,
-                                    )}
-                                />
                                 <CardContent className="relative p-4">
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-1">
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                                 {card.label}
                                             </p>
-                                            <p className={cn('text-3xl font-extrabold tracking-tight', card.color)}>
+                                            <p
+                                                className={cn(
+                                                    'text-3xl font-extrabold tracking-tight',
+                                                    card.color,
+                                                )}
+                                            >
                                                 {summary[card.summaryKey]}
                                             </p>
                                         </div>
@@ -482,7 +503,12 @@ export default function MyAttendanceIndex() {
                                                 card.bg,
                                             )}
                                         >
-                                            <Icon className={cn('size-5', card.color)} />
+                                            <Icon
+                                                className={cn(
+                                                    'size-5',
+                                                    card.color,
+                                                )}
+                                            />
                                         </div>
                                     </div>
                                     <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
@@ -501,14 +527,17 @@ export default function MyAttendanceIndex() {
 
                 {/* Filters, Search & View Controls */}
                 <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <form onSubmit={handleSearchSubmit} className="flex flex-1 items-center gap-2">
+                    <form
+                        onSubmit={handleSearchSubmit}
+                        className="flex flex-1 items-center gap-2"
+                    >
                         <div className="relative max-w-md flex-1">
-                            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 placeholder="Search by date or remarks..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="h-10 rounded-xl border-muted bg-background pl-9 pr-8 text-sm focus-visible:ring-blue-500"
+                                className="h-10 rounded-xl border-muted bg-background pr-8 pl-9 text-sm focus-visible:ring-blue-500"
                             />
                             {search && (
                                 <button
@@ -517,13 +546,17 @@ export default function MyAttendanceIndex() {
                                         setSearch('');
                                         applyFilters({ q: '' });
                                     }}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                                 >
                                     <X className="size-3.5" />
                                 </button>
                             )}
                         </div>
-                        <Button type="submit" variant="secondary" className="h-10 rounded-xl px-4 text-xs font-semibold">
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            className="h-10 rounded-xl px-4 text-xs font-semibold"
+                        >
                             Search
                         </Button>
                     </form>
@@ -531,16 +564,29 @@ export default function MyAttendanceIndex() {
                     <div className="flex items-center gap-2.5">
                         <div className="flex items-center gap-2">
                             <Filter className="size-4 text-muted-foreground" />
-                            <Select value={attendanceFilter} onValueChange={handleStatusFilterChange}>
+                            <Select
+                                value={attendanceFilter}
+                                onValueChange={handleStatusFilterChange}
+                            >
                                 <SelectTrigger className="h-10 w-[150px] rounded-xl text-xs font-semibold">
                                     <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                    <SelectItem value="all">All Statuses ({summary.total})</SelectItem>
-                                    <SelectItem value="present">Present ({summary.present})</SelectItem>
-                                    <SelectItem value="late">Late ({summary.late})</SelectItem>
-                                    <SelectItem value="excused">Excused ({summary.excused})</SelectItem>
-                                    <SelectItem value="absent">Absent ({summary.absent})</SelectItem>
+                                    <SelectItem value="all">
+                                        All Statuses ({summary.total})
+                                    </SelectItem>
+                                    <SelectItem value="present">
+                                        Present ({summary.present})
+                                    </SelectItem>
+                                    <SelectItem value="late">
+                                        Late ({summary.late})
+                                    </SelectItem>
+                                    <SelectItem value="excused">
+                                        Excused ({summary.excused})
+                                    </SelectItem>
+                                    <SelectItem value="absent">
+                                        Absent ({summary.absent})
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -583,7 +629,9 @@ export default function MyAttendanceIndex() {
                         <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20">
                             <Users className="size-7" />
                         </div>
-                        <h3 className="text-lg font-bold text-foreground">No Attendance Records Found</h3>
+                        <h3 className="text-lg font-bold text-foreground">
+                            No Attendance Records Found
+                        </h3>
                         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                             {isFilterActive
                                 ? 'No records match your search filters. Try clearing your filters.'
@@ -611,7 +659,9 @@ export default function MyAttendanceIndex() {
                             <div className="flex items-center justify-between border-t border-border/50 px-5 py-3.5">
                                 <p className="text-xs font-medium text-muted-foreground">
                                     Showing{' '}
-                                    <span className="font-bold text-foreground">{list.length}</span>{' '}
+                                    <span className="font-bold text-foreground">
+                                        {list.length}
+                                    </span>{' '}
                                     records
                                 </p>
                                 <div className="flex items-center space-x-1.5">
@@ -621,7 +671,9 @@ export default function MyAttendanceIndex() {
                                             href={link.url || '#'}
                                             preserveScroll
                                             preserveState
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                             className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                                                 link.active
                                                     ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
@@ -640,7 +692,12 @@ export default function MyAttendanceIndex() {
                             {list.map((record) => {
                                 const statusStyles: Record<
                                     AttendanceStatus,
-                                    { border: string; dot: string; text: string; bg: string }
+                                    {
+                                        border: string;
+                                        dot: string;
+                                        text: string;
+                                        bg: string;
+                                    }
                                 > = {
                                     present: {
                                         border: 'border-emerald-200 dark:border-emerald-800/40 hover:border-emerald-500',
@@ -668,7 +725,8 @@ export default function MyAttendanceIndex() {
                                     },
                                 };
 
-                                const currentStyles = statusStyles[record.status ?? 'absent'];
+                                const currentStyles =
+                                    statusStyles[record.status ?? 'absent'];
 
                                 return (
                                     <div
@@ -683,7 +741,8 @@ export default function MyAttendanceIndex() {
                                                     </div>
                                                     <div>
                                                         <h3 className="text-sm font-bold tracking-tight text-foreground">
-                                                            {record.att_date_formatted || record.att_date}
+                                                            {record.att_date_formatted ||
+                                                                record.att_date}
                                                         </h3>
                                                     </div>
                                                 </div>
@@ -692,14 +751,18 @@ export default function MyAttendanceIndex() {
 
                                             <div className="space-y-1.5 rounded-xl bg-muted/40 p-2.5 text-xs">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-muted-foreground">Time In:</span>
+                                                    <span className="text-muted-foreground">
+                                                        Time In:
+                                                    </span>
                                                     <span className="font-semibold text-foreground tabular-nums">
-                                                        {record.time_in_formatted || '—'}
+                                                        {record.time_in_formatted ||
+                                                            '—'}
                                                     </span>
                                                 </div>
                                                 {record.remarks && (
-                                                    <div className="truncate border-t border-border/40 pt-1 text-[11px] italic text-muted-foreground">
-                                                        &quot;{record.remarks}&quot;
+                                                    <div className="truncate border-t border-border/40 pt-1 text-[11px] text-muted-foreground italic">
+                                                        &quot;{record.remarks}
+                                                        &quot;
                                                     </div>
                                                 )}
                                             </div>
@@ -714,7 +777,9 @@ export default function MyAttendanceIndex() {
                             <div className="flex items-center justify-between rounded-2xl border bg-card px-5 py-3.5 shadow-sm">
                                 <p className="text-xs font-medium text-muted-foreground">
                                     Showing{' '}
-                                    <span className="font-bold text-foreground">{list.length}</span>{' '}
+                                    <span className="font-bold text-foreground">
+                                        {list.length}
+                                    </span>{' '}
                                     records
                                 </p>
                                 <div className="flex items-center space-x-1.5">
@@ -724,7 +789,9 @@ export default function MyAttendanceIndex() {
                                             href={link.url || '#'}
                                             preserveScroll
                                             preserveState
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                             className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                                                 link.active
                                                     ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
