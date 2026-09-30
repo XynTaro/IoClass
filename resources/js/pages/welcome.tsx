@@ -147,13 +147,7 @@ export default function Welcome() {
         <>
             <Head title="IoClass — Puro National High School" />
 
-            <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-white to-emerald-50/30 font-sans text-neutral-900 antialiased dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 dark:text-zinc-100">
-                {/* Background ambient lighting */}
-                <div className="pointer-events-none fixed inset-0 overflow-hidden">
-                    <div className="absolute -top-40 right-0 h-[500px] w-[500px] rounded-full bg-emerald-400/15 blur-3xl dark:bg-emerald-600/10" />
-                    <div className="absolute top-1/3 -left-40 h-[600px] w-[600px] rounded-full bg-teal-400/10 blur-3xl dark:bg-teal-600/10" />
-                </div>
-
+            <div className="min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
                 {/* ── Navbar ── */}
                 <header className="sticky top-0 z-50 border-b border-emerald-100/80 bg-white/80 backdrop-blur-md dark:border-emerald-950/50 dark:bg-zinc-950/80">
                     <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -167,8 +161,8 @@ export default function Welcome() {
                                     className="relative h-10 w-10 rounded-full border-2 border-emerald-400 object-cover shadow-sm dark:border-emerald-500"
                                 />
                             </div>
-                            <div>
-                                <div className="text-sm font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
+                            <div className="-translate-y-0.5">
+                                <div className="text-sm leading-tight font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
                                     Puro National High School
                                 </div>
                                 <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
@@ -231,7 +225,7 @@ export default function Welcome() {
                 {/* ── Hero Section ── */}
                 <section
                     id="home"
-                    className="relative mx-auto max-w-7xl px-4 pt-12 pb-20 sm:px-6 lg:px-8 lg:pt-20 lg:pb-28"
+                    className="relative mx-auto max-w-7xl px-4 pt-4 pb-16 sm:px-6 lg:px-8 lg:pt-8 lg:pb-24"
                 >
                     <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
                         {/* Left Content */}
@@ -241,12 +235,12 @@ export default function Welcome() {
                                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
                                 </span>
-                                IoT-Powered Attendance Monitoring
+                                Smart RFID Attendance & SF2 Automation
                             </div>
 
                             <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-emerald-950 sm:text-5xl lg:text-6xl dark:text-white">
-                                Modern Class Attendance for{' '}
-                                <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent dark:from-emerald-400 dark:to-teal-300">
+                                IoT-Based Class Monitoring System for{' '}
+                                <span className="text-emerald-600 dark:text-emerald-400">
                                     Puro National High School
                                 </span>
                             </h1>
@@ -301,7 +295,7 @@ export default function Welcome() {
                             <div className="mt-8 flex flex-wrap items-center gap-4">
                                 <Link
                                     href={login.url()}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] hover:from-emerald-700 hover:to-teal-700 active:scale-[0.98]"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all hover:scale-[1.02] hover:bg-emerald-700 active:scale-[0.98] dark:bg-emerald-500 dark:hover:bg-emerald-600"
                                 >
                                     <span>Get Started →</span>
                                 </Link>
@@ -325,12 +319,12 @@ export default function Welcome() {
                             <div className="relative mx-auto w-full max-w-sm">
                                 {/* Glow backdrop - shifts color dynamically */}
                                 <div
-                                    className={`absolute -inset-2 rounded-3xl bg-gradient-to-tr opacity-25 blur-2xl transition-all duration-700 dark:opacity-40 ${
+                                    className={`absolute -inset-2 rounded-3xl opacity-20 blur-2xl transition-all duration-700 dark:opacity-30 ${
                                         scanState === 'scanning'
-                                            ? 'from-amber-400 to-yellow-300'
+                                            ? 'bg-amber-400'
                                             : scanState === 'success'
-                                              ? 'from-emerald-400 to-green-300 shadow-[0_0_30px_rgba(16,185,129,0.3)]'
-                                              : 'from-emerald-400 to-teal-300'
+                                              ? 'bg-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.3)]'
+                                              : 'bg-emerald-500'
                                     }`}
                                 />
 
@@ -373,7 +367,7 @@ export default function Welcome() {
                                     />
 
                                     <div
-                                        className={`relative w-full overflow-hidden rounded-3xl border-2 bg-gradient-to-b from-zinc-800 via-zinc-900 to-zinc-950 p-6 shadow-2xl transition-colors duration-500 ${
+                                        className={`relative w-full overflow-hidden rounded-3xl border-2 bg-zinc-900 p-6 shadow-2xl transition-colors duration-500 ${
                                             scanState === 'scanning'
                                                 ? 'border-amber-500/50'
                                                 : scanState === 'success'
@@ -386,9 +380,6 @@ export default function Welcome() {
                                         <div className="absolute top-3 right-3 h-2 w-2 rounded-full border border-zinc-600 bg-zinc-700 shadow-inner" />
                                         <div className="absolute bottom-3 left-3 h-2 w-2 rounded-full border border-zinc-600 bg-zinc-700 shadow-inner" />
                                         <div className="absolute right-3 bottom-3 h-2 w-2 rounded-full border border-zinc-600 bg-zinc-700 shadow-inner" />
-
-                                        {/* Glass reflection overlay */}
-                                        <div className="pointer-events-none absolute -inset-y-1/2 left-0 w-1/2 -rotate-12 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
 
                                         {/* Status LED & Logo */}
                                         <div className="relative z-10 mb-5 flex items-center justify-between px-1">
@@ -443,11 +434,11 @@ export default function Welcome() {
                                         >
                                             {/* Scan beam */}
                                             <div
-                                                className={`pointer-events-none absolute right-0 left-0 h-[1.5px] animate-[ioclass-scan-beam_2.5s_infinite_linear] bg-gradient-to-r from-transparent ${
+                                                className={`pointer-events-none absolute right-0 left-0 h-[1.5px] animate-[ioclass-scan-beam_2.5s_infinite_linear] ${
                                                     scanState === 'scanning'
-                                                        ? 'via-amber-400'
-                                                        : 'via-emerald-400'
-                                                } to-transparent`}
+                                                        ? 'bg-amber-400/80 shadow-[0_0_8px_#f59e0b]'
+                                                        : 'bg-emerald-400/80 shadow-[0_0_8px_#34d399]'
+                                                }`}
                                             />
                                             {/* Screen Grid lines */}
                                             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.05)_1px,transparent_1px)] bg-[size:100%_4px]" />
@@ -534,7 +525,7 @@ export default function Welcome() {
 
                                             {/* Card Tap Animation overlay */}
                                             <div
-                                                className="absolute -right-6 -bottom-6 flex h-24 w-36 flex-col justify-between rounded-2xl border border-white/20 bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 p-3 shadow-2xl transition-all duration-500"
+                                                className="absolute -right-6 -bottom-6 flex h-24 w-36 flex-col justify-between rounded-2xl border border-emerald-400/30 bg-emerald-600 p-3 shadow-2xl transition-all duration-500"
                                                 style={
                                                     scanState === 'ready'
                                                         ? {
@@ -652,7 +643,7 @@ export default function Welcome() {
 
                                         <div className="relative z-10">
                                             {/* Icon box */}
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-600 transition-all duration-300 group-hover:from-emerald-600 group-hover:to-teal-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-600/20 dark:from-emerald-950/40 dark:to-teal-950/40 dark:text-emerald-400">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition-all duration-300 group-hover:bg-emerald-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-emerald-600/20 dark:bg-emerald-950/50 dark:text-emerald-400 dark:group-hover:bg-emerald-600 dark:group-hover:text-white">
                                                 <IconComponent className="h-6 w-6 transition-transform duration-500 group-hover:scale-110" />
                                             </div>
 
@@ -713,7 +704,7 @@ export default function Welcome() {
                                         <div className="absolute -top-10 -left-10 h-32 w-32 rounded-full bg-teal-400/5 blur-3xl transition-all duration-500 group-hover:scale-150 group-hover:bg-teal-400/10 dark:bg-teal-500/5 dark:group-hover:bg-teal-500/10" />
 
                                         <div className="relative z-10 flex flex-col items-center">
-                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 transition-transform duration-500 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald-600/30">
+                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 transition-all duration-500 group-hover:scale-110 group-hover:bg-emerald-700 group-hover:shadow-lg group-hover:shadow-emerald-600/30 dark:bg-emerald-500 dark:group-hover:bg-emerald-600">
                                                 <StepIcon className="h-7 w-7" />
                                             </div>
                                             <div className="mt-4 text-xs font-extrabold tracking-widest text-emerald-600 uppercase dark:text-emerald-400">
@@ -734,8 +725,7 @@ export default function Welcome() {
                 </section>
 
                 {/* ── CTA Banner ── */}
-                <section className="relative overflow-hidden bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 py-16 text-white dark:from-zinc-950 dark:via-emerald-950 dark:to-zinc-950">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
+                <section className="relative overflow-hidden bg-emerald-900 py-16 text-white dark:border-t dark:border-zinc-800 dark:bg-zinc-950">
                     <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
                         <img
                             src="/puro.png"
@@ -784,7 +774,7 @@ export default function Welcome() {
                                     </div>
                                 </div>
                                 <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-                                    IoT-powered smart attendance recording and
+                                    IoT-powered class monitoring system and
                                     administrative dashboard for modern
                                     classrooms.
                                 </p>

@@ -4,11 +4,7 @@ import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { home } from '@/routes';
 
-export default function AuthSplitShell({
-    children,
-}: {
-    children: ReactNode;
-}) {
+export default function AuthSplitShell({ children }: { children: ReactNode }) {
     return (
         <div className="flex min-h-screen">
             <div
@@ -48,7 +44,9 @@ export default function AuthSplitShell({
                         className="gap-1.5 text-emerald-200/80 hover:bg-white/10 hover:text-white"
                         asChild
                     >
-                        <Link href={home.url({ query: { landing: 1 } })}>← Home</Link>
+                        <Link href={home.url({ query: { landing: 1 } })}>
+                            ← Home
+                        </Link>
                     </Button>
                 </div>
 
@@ -68,9 +66,9 @@ export default function AuthSplitShell({
                         </span>
 
                         <h1 className="text-3xl leading-snug font-bold text-white">
-                            An IoT-Based Class
+                            An IoT-Based
                             <br />
-                            Attendance Monitoring
+                            Class Monitoring
                             <br />
                             System
                         </h1>
@@ -104,7 +102,9 @@ export default function AuthSplitShell({
                         </span>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                        <Link href={home.url({ query: { landing: 1 } })}>← Home</Link>
+                        <Link href={home.url({ query: { landing: 1 } })}>
+                            ← Home
+                        </Link>
                     </Button>
                 </div>
 

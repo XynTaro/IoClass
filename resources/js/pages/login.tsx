@@ -1,5 +1,13 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { AlertCircle, Clock, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import {
+    AlertCircle,
+    Clock,
+    Eye,
+    EyeOff,
+    Loader2,
+    Lock,
+    Mail,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { inputErrorClass } from '@/components/form-field-error';
@@ -61,7 +69,9 @@ export default function Login({ status }: { status?: string }) {
                             className="gap-1.5 text-emerald-200/80 hover:bg-white/10 hover:text-white"
                             asChild
                         >
-                            <Link href={home.url({ query: { landing: 1 } })}>← Home</Link>
+                            <Link href={home.url({ query: { landing: 1 } })}>
+                                ← Home
+                            </Link>
                         </Button>
                     </div>
 
@@ -84,9 +94,9 @@ export default function Login({ status }: { status?: string }) {
                             </span>
 
                             <h1 className="text-3xl leading-snug font-bold text-white">
-                                An IoT-Based Class
+                                An IoT-Based
                                 <br />
-                                Attendance Monitoring
+                                Class Monitoring
                                 <br />
                                 System
                             </h1>
@@ -127,7 +137,9 @@ export default function Login({ status }: { status?: string }) {
                             </span>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href={home.url({ query: { landing: 1 } })}>← Home</Link>
+                            <Link href={home.url({ query: { landing: 1 } })}>
+                                ← Home
+                            </Link>
                         </Button>
                     </div>
 
@@ -160,8 +172,7 @@ export default function Login({ status }: { status?: string }) {
                                     Welcome Back
                                 </h2>
                                 <p className="text-xs leading-relaxed text-zinc-400">
-                                    An IoT-Based Class Attendance Monitoring
-                                    System
+                                    An IoT-Based Class Monitoring System
                                     <br />
                                     for Puro National High School
                                 </p>
@@ -169,8 +180,10 @@ export default function Login({ status }: { status?: string }) {
 
                             {/* Form card */}
                             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-zinc-300/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700/80">
-                                {status && (
-                                    status.toLowerCase().includes('inactivity') ? (
+                                {status &&
+                                    (status
+                                        .toLowerCase()
+                                        .includes('inactivity') ? (
                                         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-left dark:border-amber-900/50 dark:bg-amber-950/30">
                                             <div className="flex items-center gap-2.5">
                                                 <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -183,27 +196,39 @@ export default function Login({ status }: { status?: string }) {
                                         <p className="mb-4 text-center text-sm font-medium text-emerald-600">
                                             {status}
                                         </p>
-                                    )
-                                )}
+                                    ))}
 
-                                <Form action="/login" method="post" className="space-y-5">
+                                <Form
+                                    action="/login"
+                                    method="post"
+                                    className="space-y-5"
+                                >
                                     {({ processing, errors, clearErrors }) => (
                                         <>
-                                            {errors.email && (errors.email.includes('records') || errors.email.includes('Invalid email')) && (
-                                                <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                                                    <div className="flex gap-2.5">
-                                                        <AlertCircle className="size-5 shrink-0 text-red-600 dark:text-red-400" />
-                                                        <div>
-                                                            <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
-                                                                Invalid Credentials
-                                                            </h3>
-                                                            <p className="mt-1 text-xs text-red-700 dark:text-red-400">
-                                                                {errors.email}
-                                                            </p>
+                                            {errors.email &&
+                                                (errors.email.includes(
+                                                    'records',
+                                                ) ||
+                                                    errors.email.includes(
+                                                        'Invalid email',
+                                                    )) && (
+                                                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                                                        <div className="flex gap-2.5">
+                                                            <AlertCircle className="size-5 shrink-0 text-red-600 dark:text-red-400" />
+                                                            <div>
+                                                                <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                                                                    Invalid
+                                                                    Credentials
+                                                                </h3>
+                                                                <p className="mt-1 text-xs text-red-700 dark:text-red-400">
+                                                                    {
+                                                                        errors.email
+                                                                    }
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
 
                                             <div className="space-y-4">
                                                 {/* Email */}
@@ -224,14 +249,22 @@ export default function Login({ status }: { status?: string }) {
                                                             aria-invalid={Boolean(
                                                                 errors.email,
                                                             )}
-                                                            onChange={() => clearErrors('email')}
+                                                            onChange={() =>
+                                                                clearErrors(
+                                                                    'email',
+                                                                )
+                                                            }
                                                             className={cn(
                                                                 'h-11 rounded-xl border-zinc-200 pl-10 focus-visible:ring-emerald-500 dark:border-zinc-700',
                                                                 inputErrorClass(
                                                                     Boolean(
                                                                         errors.email &&
-                                                                        !errors.email.includes('records') &&
-                                                                        !errors.email.includes('Invalid email')
+                                                                        !errors.email.includes(
+                                                                            'records',
+                                                                        ) &&
+                                                                        !errors.email.includes(
+                                                                            'Invalid email',
+                                                                        ),
                                                                     ),
                                                                 ),
                                                             )}
@@ -240,8 +273,12 @@ export default function Login({ status }: { status?: string }) {
                                                     <InputError
                                                         message={
                                                             errors.email &&
-                                                                !errors.email.includes('records') &&
-                                                                !errors.email.includes('Invalid email')
+                                                            !errors.email.includes(
+                                                                'records',
+                                                            ) &&
+                                                            !errors.email.includes(
+                                                                'Invalid email',
+                                                            )
                                                                 ? errors.email
                                                                 : undefined
                                                         }
@@ -271,9 +308,21 @@ export default function Login({ status }: { status?: string }) {
                                                                 errors.password,
                                                             )}
                                                             onChange={() => {
-                                                                clearErrors('password');
-                                                                if (errors.email && (errors.email.includes('records') || errors.email.includes('Invalid email'))) {
-                                                                    clearErrors('email');
+                                                                clearErrors(
+                                                                    'password',
+                                                                );
+                                                                if (
+                                                                    errors.email &&
+                                                                    (errors.email.includes(
+                                                                        'records',
+                                                                    ) ||
+                                                                        errors.email.includes(
+                                                                            'Invalid email',
+                                                                        ))
+                                                                ) {
+                                                                    clearErrors(
+                                                                        'email',
+                                                                    );
                                                                 }
                                                             }}
                                                             className={cn(
