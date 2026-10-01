@@ -342,6 +342,9 @@ export default function SectionScheduleModal({
             const errors: Record<string, string> = {};
             if (!form.data.tch_id) errors.tch_id = 'Teacher is required.';
             if (!form.data.subj_id) errors.subj_id = 'Subject is required.';
+            if (!firstSlot.buildingFilter || firstSlot.buildingFilter === 'all-buildings') {
+                errors.buildingFilter = 'Building is required.';
+            }
             if (!firstSlot.room_id) errors.room_id = 'Room is required.';
             if (!firstSlot.days || firstSlot.days.length === 0)
                 errors.days = 'Day is required.';
@@ -397,6 +400,37 @@ export default function SectionScheduleModal({
             );
             return;
         }
+
+        const createErrors: Record<string, string> = {};
+        if (!form.data.tch_id) createErrors.tch_id = 'Teacher is required.';
+        if (!form.data.subj_id) createErrors['schedules.0.subj_id'] = 'Subject is required.';
+
+        slots.forEach((s, idx) => {
+            if (!s.buildingFilter || s.buildingFilter === 'all-buildings') {
+                createErrors[`schedules.${idx}.buildingFilter`] = 'Building is required.';
+            }
+            if (!s.room_id) {
+                createErrors[`schedules.${idx}.room_id`] = 'Room is required.';
+            }
+            if (!s.days || s.days.length === 0) {
+                createErrors[`schedules.${idx}.days`] = 'Day is required.';
+            }
+            if (!s.start_time) {
+                createErrors[`schedules.${idx}.start_time`] = 'Start time is required.';
+            }
+            if (!s.end_time) {
+                createErrors[`schedules.${idx}.end_time`] = 'End time is required.';
+            } else if (s.start_time && s.end_time <= s.start_time) {
+                createErrors[`schedules.${idx}.end_time`] = 'End time must be after start time.';
+            }
+        });
+
+        if (Object.keys(createErrors).length > 0) {
+            form.setError(createErrors as any);
+            setSubmitError('Please fix the validation errors before saving.');
+            return;
+        }
+        setSubmitError(null);
 
         form.transform((data) => ({
             tch_id: data.tch_id,
@@ -464,11 +498,11 @@ export default function SectionScheduleModal({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-xl">
+            <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
                 <div className="space-y-4 p-6 pt-4">
                     <ModalHeader
                         icon={CalendarClock}
-                        tone="sky"
+                        tone="emerald"
                         title={
                             mode === 'edit'
                                 ? 'Edit Schedule Slot'
@@ -516,7 +550,7 @@ export default function SectionScheduleModal({
                                                 'h-9.5 rounded-xl',
                                                 (errors['schedules.0.tch_id'] ||
                                                     errors.tch_id) &&
-                                                    'border-red-500 focus:ring-red-500/20',
+                                                'border-red-500 focus:ring-red-500/20',
                                             )}
                                         >
                                             <SelectValue placeholder="Select teacher" />
@@ -563,7 +597,7 @@ export default function SectionScheduleModal({
                                             className={cn(
                                                 'h-9.5 rounded-xl',
                                                 errors['schedules.0.subj_id'] &&
-                                                    'border-red-500 focus:ring-red-500/20',
+                                                'border-red-500 focus:ring-red-500/20',
                                             )}
                                         >
                                             <SelectValue placeholder="Select subject" />
@@ -629,7 +663,7 @@ export default function SectionScheduleModal({
                                             : undefined);
                                     const startTimeError =
                                         errors[
-                                            `schedules.${index}.start_time`
+                                        `schedules.${index}.start_time`
                                         ] ??
                                         (mode === 'edit'
                                             ? errors.start_time
@@ -638,6 +672,12 @@ export default function SectionScheduleModal({
                                         errors[`schedules.${index}.end_time`] ??
                                         (mode === 'edit'
                                             ? errors.end_time
+                                            : undefined);
+                                    const buildingError =
+                                        errors[`schedules.${index}.buildingFilter`] ??
+                                        errors[`schedules.${index}.building_id`] ??
+                                        (mode === 'edit'
+                                            ? errors.buildingFilter ?? errors.building_id
                                             : undefined);
                                     const roomError =
                                         errors[`schedules.${index}.room_id`] ??
@@ -677,9 +717,8 @@ export default function SectionScheduleModal({
                                     return (
                                         <div
                                             key={index}
-                                            className="relative space-y-4 overflow-hidden rounded-xl border border-border bg-card/40 py-4 pr-4 pl-6 shadow-xs transition-all duration-200 hover:shadow-md dark:bg-card/10"
+                                            className="space-y-4 rounded-xl border border-border bg-card/40 p-4 shadow-xs transition-all duration-200 hover:shadow-md dark:bg-card/10"
                                         >
-                                            <div className="absolute inset-y-0 left-0 w-1 bg-linear-to-b from-emerald-500 to-teal-500" />
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="flex items-center gap-1.5 text-xs font-bold text-foreground/80">
@@ -719,30 +758,45 @@ export default function SectionScheduleModal({
                                             <div className="grid gap-3 sm:grid-cols-2">
                                                 <div className="space-y-1.5">
                                                     <Label className="text-xs font-semibold text-foreground/80">
-                                                        Building
+                                                        Building{' '}
+                                                        <span className="text-destructive">
+                                                            *
+                                                        </span>
                                                     </Label>
                                                     <Select
                                                         value={
-                                                            slot.buildingFilter ||
-                                                            'all-buildings'
+                                                            slot.buildingFilter || ''
                                                         }
                                                         onValueChange={(
                                                             value,
-                                                        ) =>
+                                                        ) => {
                                                             updateSlot(index, {
                                                                 buildingFilter:
                                                                     value,
                                                                 room_id: '',
-                                                            })
-                                                        }
+                                                            });
+                                                            form.clearErrors(
+                                                                `schedules.${index}.buildingFilter` as never,
+                                                            );
+                                                            form.clearErrors(
+                                                                `schedules.${index}.building_id` as never,
+                                                            );
+                                                            if (mode === 'edit') {
+                                                                form.clearErrors('buildingFilter' as never);
+                                                                form.clearErrors('building_id' as never);
+                                                            }
+                                                        }}
                                                     >
-                                                        <SelectTrigger className="h-9.5 rounded-xl">
-                                                            <SelectValue placeholder="All Buildings" />
+                                                        <SelectTrigger
+                                                            className={cn(
+                                                                'h-9.5 rounded-xl',
+                                                                buildingError &&
+                                                                    'border-red-500 focus:ring-red-500/20',
+                                                            )}
+                                                        >
+                                                            <SelectValue placeholder="Select Building" />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
-                                                            <SelectItem value="all-buildings">
-                                                                All Buildings
-                                                            </SelectItem>
                                                             {buildings.map(
                                                                 (b) => (
                                                                     <SelectItem
@@ -761,6 +815,10 @@ export default function SectionScheduleModal({
                                                             )}
                                                         </SelectContent>
                                                     </Select>
+                                                    <FormFieldError
+                                                        label="Building"
+                                                        message={buildingError}
+                                                    />
                                                 </div>
 
                                                 <div className="space-y-1.5">
@@ -775,41 +833,52 @@ export default function SectionScheduleModal({
                                                             slot.room_id === ''
                                                                 ? ''
                                                                 : String(
-                                                                      slot.room_id,
-                                                                  )
+                                                                    slot.room_id,
+                                                                )
                                                         }
+                                                        disabled={!slot.buildingFilter || slot.buildingFilter === 'all-buildings'}
                                                         onValueChange={(
                                                             value,
-                                                        ) =>
+                                                        ) => {
                                                             updateSlot(index, {
                                                                 room_id:
                                                                     Number(
                                                                         value,
                                                                     ),
-                                                            })
-                                                        }
+                                                            });
+                                                            form.clearErrors(`schedules.${index}.room_id` as never);
+                                                            if (mode === 'edit') {
+                                                                form.clearErrors('room_id' as never);
+                                                            }
+                                                        }}
                                                     >
                                                         <SelectTrigger
                                                             className={cn(
                                                                 'h-9.5 rounded-xl',
                                                                 roomError &&
-                                                                    'border-red-500 focus:ring-red-500/20',
+                                                                'border-red-500 focus:ring-red-500/20',
                                                             )}
                                                         >
-                                                            <SelectValue placeholder="Select Room" />
+                                                            <SelectValue
+                                                                placeholder={
+                                                                    !slot.buildingFilter || slot.buildingFilter === 'all-buildings'
+                                                                        ? 'Select building first'
+                                                                        : 'Select Room'
+                                                                }
+                                                            />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
                                                             {(slot.buildingFilter &&
                                                             slot.buildingFilter !==
                                                                 'all-buildings'
                                                                 ? rooms.filter(
-                                                                      (r) =>
-                                                                          r.building_id ===
-                                                                          Number(
-                                                                              slot.buildingFilter,
-                                                                          ),
-                                                                  )
-                                                                : rooms
+                                                                    (r) =>
+                                                                        r.building_id ===
+                                                                        Number(
+                                                                            slot.buildingFilter,
+                                                                        ),
+                                                                )
+                                                                : []
                                                             ).map((r) => (
                                                                 <SelectItem
                                                                     key={
@@ -1018,11 +1087,11 @@ export default function SectionScheduleModal({
                                                                         ? '1h'
                                                                         : mins ===
                                                                             90
-                                                                          ? '1.5h'
-                                                                          : mins ===
-                                                                              120
-                                                                            ? '2h'
-                                                                            : `${mins}m`;
+                                                                            ? '1.5h'
+                                                                            : mins ===
+                                                                                120
+                                                                                ? '2h'
+                                                                                : `${mins}m`;
                                                                 return (
                                                                     <button
                                                                         key={
@@ -1048,7 +1117,7 @@ export default function SectionScheduleModal({
                                                                             );
                                                                             date.setMinutes(
                                                                                 m +
-                                                                                    mins,
+                                                                                mins,
                                                                             );
                                                                             const newH =
                                                                                 String(
@@ -1128,8 +1197,8 @@ export default function SectionScheduleModal({
                             {form.processing
                                 ? 'Saving…'
                                 : mode === 'edit'
-                                  ? 'Save changes'
-                                  : 'Add slot'}
+                                    ? 'Save changes'
+                                    : 'Add slot'}
                         </Button>
                     </DialogFooter>
                 </div>

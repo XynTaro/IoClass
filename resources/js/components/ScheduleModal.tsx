@@ -3,14 +3,17 @@ import {
     CalendarDays,
     Check,
     ChevronLeft,
+    MapPin,
     Plus,
     Trash2,
+    UserRound,
     WifiOff,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import type { AddressFormData, PendingTeacherData } from '@/components/Address';
-import { ModalHeader } from '@/components/modal-header';
+import { ModalHeader, ModalStepIndicator } from '@/components/modal-header';
+import { cn } from '@/lib/utils';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,6 +28,12 @@ import {
 } from '@/components/ui/select';
 
 import { FormFieldError } from '@/components/form-field-error';
+
+const CREATE_STEPS = [
+    { label: 'Teacher', icon: UserRound },
+    { label: 'Address', icon: MapPin },
+    { label: 'Schedule', icon: CalendarDays },
+];
 
 export type PendingTeacherWithAddressData = PendingTeacherData &
     AddressFormData;
@@ -186,7 +195,7 @@ function ScheduleSlotEditor({
     const filteredRooms =
         slot.buildingFilter && slot.buildingFilter !== 'all'
             ? rooms.filter((r) => r.building_id === Number(slot.buildingFilter))
-            : rooms;
+            : [];
 
     const updateSlot = (patch: Partial<ScheduleSlotState>) => {
         onChange(index, { ...slot, ...patch });
@@ -210,6 +219,12 @@ function ScheduleSlotEditor({
     };
 
     const sectError = slotFieldError(errors, index, 'sect_id', isEditMode);
+    const buildingError = slotFieldError(
+        errors,
+        index,
+        'buildingFilter',
+        isEditMode,
+    );
     const roomError = slotFieldError(errors, index, 'room_id', isEditMode);
     const subjError = slotFieldError(errors, index, 'subj_id', isEditMode);
     const startTimeError = slotFieldError(
@@ -227,32 +242,60 @@ function ScheduleSlotEditor({
         : (errors[`schedules.${index}.days`] ??
           errors[`schedules.${index}.days.0`]);
 
+    const durationText = (() => {
+        const start = slot.start_time;
+        const end = slot.end_time;
+        if (!start || !end || end <= start) return null;
+        const [startH, startM] = start.split(':').map(Number);
+        const [endH, endM] = end.split(':').map(Number);
+        const totalMinutes = endH * 60 + endM - (startH * 60 + startM);
+        if (totalMinutes <= 0) return null;
+
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        const parts = [];
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+        return parts.join(' ');
+    })();
+
     return (
-        <div className="space-y-4 rounded-xl border border-l-4 border-l-indigo-400 bg-card p-4 shadow-sm dark:border-l-indigo-600">
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">
-                    {singleDayOnly
-                        ? 'Schedule slot'
-                        : `Schedule slot ${index + 1}`}
-                </p>
+        <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4 shadow-xs transition-all duration-200 hover:shadow-md dark:bg-card/10">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-foreground/80">
+                        <span className="flex size-7 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                            {index + 1}
+                        </span>
+                        {singleDayOnly
+                            ? 'Schedule Slot'
+                            : `Time Slot ${index + 1}`}
+                    </span>
+                    {durationText && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/10 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                            ⏱️ {durationText}
+                        </span>
+                    )}
+                </div>
                 {canRemove && (
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 text-destructive hover:text-destructive"
+                        className="h-7.5 rounded-lg px-2 text-xs text-destructive transition-all duration-150 hover:bg-destructive/10 hover:text-destructive active:scale-95"
                         onClick={() => onRemove(index)}
                     >
-                        <Trash2 className="mr-1 h-4 w-4" />
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
                         Remove
                     </Button>
                 )}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                    <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                        Grade level
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground/80">
+                        Grade Level
                     </Label>
                     <Select
                         value={slot.gradeFilter || 'all'}
@@ -263,10 +306,10 @@ function ScheduleSlotEditor({
                             })
                         }
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-9.5 rounded-xl">
                             <SelectValue placeholder="All grade levels" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl">
                             <SelectItem value="all">
                                 All grade levels
                             </SelectItem>
@@ -279,8 +322,8 @@ function ScheduleSlotEditor({
                     </Select>
                 </div>
 
-                <div>
-                    <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
+                <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground/80">
                         Section <span className="text-destructive">*</span>
                     </Label>
                     <Select
@@ -290,11 +333,14 @@ function ScheduleSlotEditor({
                         }
                     >
                         <SelectTrigger
-                            className={sectError ? 'border-red-500' : ''}
+                            className={cn(
+                                'h-9.5 rounded-xl',
+                                sectError && 'border-red-500 focus:ring-red-500/20',
+                            )}
                         >
                             <SelectValue placeholder="Select section" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl">
                             {filteredSections.map((s) => (
                                 <SelectItem
                                     key={s.sect_id}
@@ -312,13 +358,13 @@ function ScheduleSlotEditor({
                 </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                    <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                        Building
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground/80">
+                        Building <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                        value={slot.buildingFilter || 'all'}
+                        value={slot.buildingFilter || ''}
                         onValueChange={(value) =>
                             updateSlot({
                                 buildingFilter: value === 'all' ? '' : value,
@@ -326,11 +372,15 @@ function ScheduleSlotEditor({
                             })
                         }
                     >
-                        <SelectTrigger>
-                            <SelectValue placeholder="All buildings" />
+                        <SelectTrigger
+                            className={cn(
+                                'h-9.5 rounded-xl',
+                                buildingError && 'border-red-500 focus:ring-red-500/20',
+                            )}
+                        >
+                            <SelectValue placeholder="Select building" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All buildings</SelectItem>
+                        <SelectContent className="rounded-xl">
                             {buildings.map((b) => (
                                 <SelectItem
                                     key={b.building_id}
@@ -341,33 +391,41 @@ function ScheduleSlotEditor({
                             ))}
                         </SelectContent>
                     </Select>
+                    <FormFieldError label="Building" message={buildingError} />
                 </div>
 
-                <div>
-                    <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                        Room number <span className="text-destructive">*</span>
+                <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground/80">
+                        Room <span className="text-destructive">*</span>
                     </Label>
                     <Select
                         value={slot.room_id === '' ? '' : String(slot.room_id)}
+                        disabled={!slot.buildingFilter || slot.buildingFilter === 'all'}
                         onValueChange={(v) =>
                             updateSlot({ room_id: Number(v) })
                         }
                     >
                         <SelectTrigger
-                            className={roomError ? 'border-red-500' : ''}
+                            className={cn(
+                                'h-9.5 rounded-xl',
+                                roomError && 'border-red-500 focus:ring-red-500/20',
+                            )}
                         >
-                            <SelectValue placeholder="Select room" />
+                            <SelectValue
+                                placeholder={
+                                    !slot.buildingFilter || slot.buildingFilter === 'all'
+                                        ? 'Select building first'
+                                        : 'Select room'
+                                }
+                            />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl">
                             {filteredRooms.map((r) => (
                                 <SelectItem
                                     key={r.room_id}
                                     value={String(r.room_id)}
                                 >
-                                    {slot.buildingFilter &&
-                                    slot.buildingFilter !== 'all'
-                                        ? r.room_no
-                                        : `${r.building?.building_name ?? '—'} — ${r.room_no}`}
+                                    {r.room_no}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -376,8 +434,8 @@ function ScheduleSlotEditor({
                 </div>
             </div>
 
-            <div>
-                <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
+            <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground/80">
                     Subject <span className="text-destructive">*</span>
                 </Label>
                 <Select
@@ -385,11 +443,14 @@ function ScheduleSlotEditor({
                     onValueChange={(v) => updateSlot({ subj_id: Number(v) })}
                 >
                     <SelectTrigger
-                        className={subjError ? 'border-red-500' : ''}
+                        className={cn(
+                            'h-9.5 rounded-xl',
+                            subjError && 'border-red-500 focus:ring-red-500/20',
+                        )}
                     >
                         <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                         {subjects.map((s) => (
                             <SelectItem
                                 key={s.subj_id}
@@ -403,75 +464,100 @@ function ScheduleSlotEditor({
                 <FormFieldError label="Subject" message={subjError} />
             </div>
 
-            <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                        Days <span className="text-destructive">*</span>
+            <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-foreground/80">
+                        Meeting Day(s) <span className="text-destructive">*</span>
                     </Label>
                     {!singleDayOnly && (
-                        <div className="flex flex-wrap gap-1">
-                            <Button
+                        <div className="flex items-center gap-1.5">
+                            <button
                                 type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs"
+                                onClick={() =>
+                                    selectDays([
+                                        'Monday',
+                                        'Wednesday',
+                                        'Friday',
+                                    ])
+                                }
+                                className="cursor-pointer rounded-md bg-emerald-500/5 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 transition-all hover:bg-emerald-500/10 active:scale-95 dark:text-emerald-400"
+                            >
+                                MWF
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    selectDays(['Tuesday', 'Thursday'])
+                                }
+                                className="cursor-pointer rounded-md bg-emerald-500/5 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 transition-all hover:bg-emerald-500/10 active:scale-95 dark:text-emerald-400"
+                            >
+                                TTh
+                            </button>
+                            <button
+                                type="button"
                                 onClick={() => selectDays(WEEKDAYS)}
+                                className="cursor-pointer rounded-md bg-emerald-500/5 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 transition-all hover:bg-emerald-500/10 active:scale-95 dark:text-emerald-400"
                             >
                                 Weekdays
-                            </Button>
-                            <Button
+                            </button>
+                            <button
                                 type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs"
                                 onClick={() => selectDays([])}
+                                className="cursor-pointer rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-all hover:bg-muted/80 active:scale-95"
                             >
                                 Clear
-                            </Button>
+                            </button>
                         </div>
                     )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                    {WEEKDAYS.map((day) => (
-                        <label
-                            key={day}
-                            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
-                                slot.days.includes(day)
-                                    ? 'border-emerald-500 bg-emerald-50 font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                    : 'border-input hover:bg-muted/50'
-                            }`}
-                        >
-                            <Checkbox
-                                checked={slot.days.includes(day)}
-                                onCheckedChange={() => toggleDay(day)}
-                            />
-                            <span>{day.slice(0, 3)}</span>
-                        </label>
-                    ))}
+                <div className="flex flex-wrap gap-2 pt-1">
+                    {WEEKDAYS.map((day) => {
+                        const isChecked = slot.days.includes(day);
+                        return (
+                            <button
+                                key={day}
+                                type="button"
+                                onClick={() => toggleDay(day)}
+                                className={cn(
+                                    'relative flex h-9.5 min-w-[56px] cursor-pointer items-center justify-center rounded-xl border px-3 text-xs font-medium transition-all duration-200 select-none active:scale-95',
+                                    isChecked
+                                        ? 'border-emerald-500 bg-emerald-500/10 font-bold text-emerald-700 shadow-xs shadow-emerald-500/10 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                        : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                                )}
+                            >
+                                {day.slice(0, 3)}
+                                {isChecked && (
+                                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500 ring-2 ring-background" />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
                 <FormFieldError label="Days" message={dayError} />
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-                <div>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
                     <Label
                         htmlFor={`start_time_${index}`}
-                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                        className="text-xs font-semibold text-foreground/80"
                     >
                         Start time <span className="text-destructive">*</span>
                     </Label>
                     <input
                         id={`start_time_${index}`}
                         type="time"
-                        step="60"
                         value={slot.start_time}
                         onChange={(e) =>
                             updateSlot({ start_time: e.target.value })
                         }
-                        className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none ${
-                            startTimeError ? 'border-red-500' : 'border-input'
-                        }`}
+                        className={cn(
+                            'flex h-12 w-full rounded-xl border bg-background px-4 py-2.5 text-base font-semibold shadow-xs transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden',
+                            startTimeError
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-border',
+                        )}
                     />
                     <FormFieldError
                         label="Start time"
@@ -479,25 +565,69 @@ function ScheduleSlotEditor({
                     />
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                     <Label
                         htmlFor={`end_time_${index}`}
-                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                        className="text-xs font-semibold text-foreground/80"
                     >
                         End time <span className="text-destructive">*</span>
                     </Label>
                     <input
                         id={`end_time_${index}`}
                         type="time"
-                        step="60"
                         value={slot.end_time}
                         onChange={(e) =>
                             updateSlot({ end_time: e.target.value })
                         }
-                        className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none ${
-                            endTimeError ? 'border-red-500' : 'border-input'
-                        }`}
+                        className={cn(
+                            'flex h-12 w-full rounded-xl border bg-background px-4 py-2.5 text-base font-semibold shadow-xs transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden',
+                            endTimeError
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                : 'border-border',
+                        )}
                     />
+
+                    {/* Quick Duration Presets below End Time */}
+                    {slot.start_time && (
+                        <div className="flex flex-wrap items-center gap-1 pt-1">
+                            {[45, 60, 90, 120].map((mins) => {
+                                const label =
+                                    mins === 60
+                                        ? '1h'
+                                        : mins === 90
+                                            ? '1.5h'
+                                            : mins === 120
+                                                ? '2h'
+                                                : `${mins}m`;
+                                return (
+                                    <button
+                                        key={mins}
+                                        type="button"
+                                        onClick={() => {
+                                            const [h, m] = slot.start_time
+                                                .split(':')
+                                                .map(Number);
+                                            const date = new Date();
+                                            date.setHours(h);
+                                            date.setMinutes(m + mins);
+                                            const newH = String(
+                                                date.getHours(),
+                                            ).padStart(2, '0');
+                                            const newM = String(
+                                                date.getMinutes(),
+                                            ).padStart(2, '0');
+                                            updateSlot({
+                                                end_time: `${newH}:${newM}`,
+                                            });
+                                        }}
+                                        className="cursor-pointer rounded-md bg-emerald-500/5 px-2 py-0.5 text-[10px] font-bold text-emerald-600 transition-all hover:bg-emerald-500/10 active:scale-95 dark:text-emerald-400"
+                                    >
+                                        +{label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                     <FormFieldError label="End time" message={endTimeError} />
                 </div>
             </div>
@@ -630,6 +760,11 @@ export default function ScheduleModal({
                     delete next[key];
                 }
             });
+            if (isEditMode) {
+                delete next.buildingFilter;
+                delete next.building_id;
+                delete next.room_id;
+            }
             return next;
         });
     };
@@ -648,6 +783,7 @@ export default function ScheduleModal({
     const isSlotEmpty = (slot: ScheduleSlotState): boolean => {
         return (
             !slot.sect_id &&
+            !slot.buildingFilter &&
             !slot.room_id &&
             !slot.subj_id &&
             (!slot.days || slot.days.length === 0) &&
@@ -663,6 +799,13 @@ export default function ScheduleModal({
         const errs: Record<string, string> = {};
         if (!slot.sect_id)
             errs[`schedules.${index}.sect_id`] = 'Please select a section.';
+        if (!slot.buildingFilter || slot.buildingFilter === 'all') {
+            errs[`schedules.${index}.buildingFilter`] =
+                'Please select a building.';
+            if (isEditMode) {
+                errs.buildingFilter = 'Please select a building.';
+            }
+        }
         if (!slot.room_id)
             errs[`schedules.${index}.room_id`] = 'Please select a room.';
         if (!slot.subj_id)
@@ -839,6 +982,18 @@ export default function ScheduleModal({
             return;
         }
 
+        let newErrors: Record<string, string> = {};
+        slots.forEach((slot, index) => {
+            const slotErrs = validateSlot(slot, index);
+            newErrors = { ...newErrors, ...slotErrs };
+        });
+
+        if (Object.keys(newErrors).length > 0) {
+            setClientErrors(newErrors);
+            return;
+        }
+        setClientErrors({});
+
         submitForm.transform(() => ({
             tch_id: teacherId,
             schedules: schedulePayload,
@@ -874,16 +1029,26 @@ export default function ScheduleModal({
                 <div className="space-y-4 p-6 pt-4">
                     <ModalHeader
                         icon={CalendarDays}
-                        tone="indigo"
+                        tone="emerald"
                         title={
-                            mode === 'edit' ? 'Edit Schedule' : 'Add Schedule'
+                            teacherData
+                                ? 'Teacher Schedule'
+                                : mode === 'edit'
+                                  ? 'Edit Schedule'
+                                  : 'Add Schedule'
                         }
                         description={
-                            mode === 'edit'
-                                ? 'Update schedule slot details, room, and time'
-                                : 'Add one or more slots — select multiple days when the same class repeats'
+                            teacherData
+                                ? 'Step 3 of 3: Add teaching schedule slots and optional advisory section'
+                                : mode === 'edit'
+                                  ? 'Update schedule slot details, room, and time'
+                                  : 'Add one or more slots — select multiple days when the same class repeats'
                         }
                     />
+
+                    {teacherData && (
+                        <ModalStepIndicator steps={CREATE_STEPS} current={3} />
+                    )}
 
                     {!isOnline && (
                         <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
@@ -936,6 +1101,14 @@ export default function ScheduleModal({
                                 </div>
                             ))}
 
+                        {/* Weekly Schedule Slots Header */}
+                        <div className="flex items-center gap-2 border-b border-border/20 pb-2">
+                            <CalendarDays className="size-4 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                Weekly Schedule Slots
+                            </span>
+                        </div>
+
                         <div className="space-y-4">
                             {slots.map((slot, index) => (
                                 <ScheduleSlotEditor
@@ -961,17 +1134,23 @@ export default function ScheduleModal({
                             <Button
                                 type="button"
                                 variant="outline"
-                                size="sm"
                                 onClick={addSlot}
-                                className="w-full"
+                                className="w-full cursor-pointer rounded-xl border-dashed border-emerald-500/40 bg-emerald-500/5 py-4 text-xs font-semibold text-emerald-600 transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-500/10 active:scale-[0.99] dark:text-emerald-400"
                             >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add another slot
+                                <Plus className="mr-1.5 h-4 w-4" />
+                                Add Another Time Slot
                             </Button>
                         )}
 
                         {showAdviser && (
-                            <div className="rounded-md border px-4 py-3">
+                            <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4 shadow-xs transition-all duration-200 dark:bg-card/10">
+                                <div className="flex items-center gap-2 border-b border-border/20 pb-2">
+                                    <UserRound className="size-4 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                        Advisory Assignment
+                                    </span>
+                                </div>
+
                                 <div className="flex items-start gap-3">
                                     <Checkbox
                                         id="is_adviser"
@@ -994,7 +1173,7 @@ export default function ScheduleModal({
                                     <div>
                                         <Label
                                             htmlFor="is_adviser"
-                                            className="cursor-pointer text-sm font-medium"
+                                            className="cursor-pointer text-sm font-semibold text-foreground/90"
                                         >
                                             This teacher is an adviser
                                         </Label>
@@ -1006,10 +1185,10 @@ export default function ScheduleModal({
                                 </div>
 
                                 {adviserForm.data.is_adviser && (
-                                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                        <div>
-                                            <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                                                Advisory grade level
+                                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold text-foreground/80">
+                                                Advisory Grade Level
                                             </Label>
                                             <Select
                                                 value={
@@ -1027,10 +1206,10 @@ export default function ScheduleModal({
                                                     );
                                                 }}
                                             >
-                                                <SelectTrigger>
+                                                <SelectTrigger className="h-9.5 rounded-xl">
                                                     <SelectValue placeholder="All grade levels" />
                                                 </SelectTrigger>
-                                                <SelectContent>
+                                                <SelectContent className="rounded-xl">
                                                     <SelectItem value="all">
                                                         All grade levels
                                                     </SelectItem>
@@ -1046,9 +1225,9 @@ export default function ScheduleModal({
                                             </Select>
                                         </div>
 
-                                        <div>
-                                            <Label className="mb-1 inline-block text-xs font-medium text-muted-foreground">
-                                                Advisory section{' '}
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold text-foreground/80">
+                                                Advisory Section{' '}
                                                 <span className="text-destructive">
                                                     *
                                                 </span>
@@ -1071,15 +1250,15 @@ export default function ScheduleModal({
                                                 }}
                                             >
                                                 <SelectTrigger
-                                                    className={
-                                                        errors.adviser_sect_id
-                                                            ? 'border-red-500'
-                                                            : ''
-                                                    }
+                                                    className={cn(
+                                                        'h-9.5 rounded-xl',
+                                                        errors.adviser_sect_id &&
+                                                            'border-red-500 focus:ring-red-500/20',
+                                                    )}
                                                 >
                                                     <SelectValue placeholder="Select section" />
                                                 </SelectTrigger>
-                                                <SelectContent>
+                                                <SelectContent className="rounded-xl">
                                                     {adviserSections.map(
                                                         (s) => (
                                                             <SelectItem
@@ -1107,7 +1286,7 @@ export default function ScheduleModal({
                         )}
                     </form>
 
-                    <DialogFooter className="flex justify-end gap-2">
+                    <DialogFooter className="flex justify-end gap-2 border-t border-border/20 pt-4">
                         {teacherData ? (
                             <>
                                 <Button
@@ -1135,7 +1314,7 @@ export default function ScheduleModal({
                                     type="submit"
                                     onClick={handleSubmit}
                                     disabled={isProcessing || isSkipping}
-                                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                    className="rounded-xl bg-emerald-600 text-white shadow-xs transition-all duration-150 hover:bg-emerald-700 active:scale-95"
                                 >
                                     <Check className="mr-1 size-4" />
                                     {isProcessing
@@ -1158,7 +1337,7 @@ export default function ScheduleModal({
                                     type="submit"
                                     disabled={isProcessing}
                                     onClick={handleSubmit}
-                                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                                    className="rounded-xl bg-emerald-600 text-white shadow-xs transition-all duration-150 hover:bg-emerald-700 active:scale-95"
                                 >
                                     {isProcessing
                                         ? 'Saving…'
