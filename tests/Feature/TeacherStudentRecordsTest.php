@@ -8,19 +8,7 @@ test('guests cannot access teacher student records index', function () {
         ->assertUnauthorized();
 });
 
-test('authenticated teacher can view student records index with attendance counts', function () {
-    $syId = DB::table('school_year')->insertGetId([
-        'sy_label' => '2025-2026',
-        'is_active' => true,
-        'is_deleted' => false,
-    ], 'sy_id');
-
-    $sectId = DB::table('section')->insertGetId([
-        'sect_name' => 'Mars',
-        'gr_level' => 'Grade 7',
-        'is_deleted' => false,
-    ], 'sect_id');
-
+test('authenticated teacher is redirected from student records index to students index', function () {
     $teacher = Teacher::create([
         'tch_fname' => 'Ana',
         'tch_lname' => 'Reyes',
@@ -30,63 +18,9 @@ test('authenticated teacher can view student records index with attendance count
         'must_change_password' => false,
     ]);
 
-    DB::table('adviser')->insert([
-        'tch_id' => $teacher->tch_id,
-        'sect_id' => $sectId,
-        'sy_id' => $syId,
-        'is_active' => true,
-    ]);
-
-    $stuId = DB::table('student')->insertGetId([
-        'lrn' => '123456789013',
-        'stu_fname' => 'Juan',
-        'stu_lname' => 'Cruz',
-        'status' => 'active',
-        'is_deleted' => false,
-    ], 'stu_id');
-
-    DB::table('student_section')->insert([
-        'stu_id' => $stuId,
-        'sect_id' => $sectId,
-        'sy_id' => $syId,
-    ]);
-
-    DB::table('attendance')->insert([
-        [
-            'stu_id' => $stuId,
-            'sect_id' => $sectId,
-            'sy_id' => $syId,
-            'att_date' => '2026-06-10',
-            'status' => 'present',
-            'time_in' => '2026-06-10 07:45:00',
-        ],
-        [
-            'stu_id' => $stuId,
-            'sect_id' => $sectId,
-            'sy_id' => $syId,
-            'att_date' => '2026-06-11',
-            'status' => 'late',
-            'time_in' => '2026-06-11 08:20:00',
-        ],
-        [
-            'stu_id' => $stuId,
-            'sect_id' => $sectId,
-            'sy_id' => $syId,
-            'att_date' => '2026-06-12',
-            'status' => 'absent',
-            'time_in' => null,
-        ],
-    ]);
-
     $this->actingAs($teacher, 'teacher')
         ->get(route('teacher.student-records.index'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('Teacher/Student Records/index')
-            ->has('students.data', 1)
-            ->where('students.data.0.stu_fname', 'Juan')
-            ->where('students.data.0.attendance_count', 2)
-        );
+        ->assertRedirect(route('teacher.students.index'));
 });
 
 test('teacher can view a student record detail page with attendance logs', function () {

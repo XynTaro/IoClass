@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import TeacherLayout from '@/layouts/teacher/teacher-layout';
 import { cn } from '@/lib/utils';
+import teacher from '@/routes/teacher';
 import studentRecords from '@/routes/teacher/student-records';
 
 type Status = 'active' | 'inactive';
@@ -276,7 +277,7 @@ export default function TeacherStudentRecordView() {
                                 variant="outline"
                                 size="icon"
                                 className="h-9 w-9 shrink-0 cursor-pointer shadow-xs rounded-lg"
-                                onClick={() => router.visit(studentRecords.index.url())}
+                                onClick={() => router.visit(teacher.students.index.url())}
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 <span className="sr-only">Back</span>

@@ -121,3 +121,76 @@ test('teacher students index can filter by search query', function () {
             ->where('students.data.0.stu_fname', 'Maria')
         );
 });
+
+test('teacher students index displays attendance counts and advisory flags', function () {
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2025-2026',
+        'is_active' => true,
+        'is_deleted' => false,
+    ], 'sy_id');
+
+    $sectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Jupiter',
+        'gr_level' => 'Grade 9',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $teacher = Teacher::create([
+        'tch_fname' => 'Clara',
+        'tch_lname' => 'Luna',
+        'tch_email' => 'clara.luna@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+    ]);
+
+    DB::table('adviser')->insert([
+        'tch_id' => $teacher->tch_id,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+        'is_active' => true,
+    ]);
+
+    $stuId = DB::table('student')->insertGetId([
+        'lrn' => '999999999999',
+        'stu_fname' => 'Leo',
+        'stu_lname' => 'Valdez',
+        'status' => 'active',
+        'is_deleted' => false,
+    ], 'stu_id');
+
+    DB::table('student_section')->insert([
+        'stu_id' => $stuId,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    DB::table('attendance')->insert([
+        [
+            'stu_id' => $stuId,
+            'sect_id' => $sectId,
+            'sy_id' => $syId,
+            'att_date' => '2026-06-10',
+            'status' => 'present',
+            'time_in' => '2026-06-10 07:45:00',
+        ],
+        [
+            'stu_id' => $stuId,
+            'sect_id' => $sectId,
+            'sy_id' => $syId,
+            'att_date' => '2026-06-11',
+            'status' => 'late',
+            'time_in' => '2026-06-11 08:20:00',
+        ],
+    ]);
+
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.students.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Teacher/My Students/index')
+            ->has('students.data', 1)
+            ->where('students.data.0.stu_fname', 'Leo')
+            ->where('students.data.0.attendance_count', 2)
+            ->where('students.data.0.is_advisory', true)
+        );
+});
