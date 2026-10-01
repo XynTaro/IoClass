@@ -7,6 +7,7 @@ import { route } from 'ziggy-js';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { DataTable } from '@/components/DataTable';
 import SubjectModal from '@/components/SubjectModal';
+import SubjectViewModal from '@/components/SubjectViewModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,8 @@ export default function Index() {
     const [addOpen, setAddOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+    const [viewOpen, setViewOpen] = useState(false);
+    const [viewSubjectId, setViewSubjectId] = useState<number | null>(null);
     const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
     const [itemToArchive, setItemToArchive] = useState<Subject | null>(null);
     const [isArchiving, setIsArchiving] = useState(false);
@@ -204,14 +207,17 @@ export default function Index() {
                         </>
                     ) : (
                         <>
-                            <Link
-                                href={route('admin.subject.show', { id: row.original.subj_id })}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    setViewSubjectId(row.original.subj_id);
+                                    setViewOpen(true);
+                                }}
                             >
-                                <Button size="sm" variant="outline">
-                                    <Eye className="h-4 w-4" />
-                                    View
-                                </Button>
-                            </Link>
+                                <Eye className="h-4 w-4" />
+                                View
+                            </Button>
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -435,6 +441,22 @@ export default function Index() {
                 }
                 type="restore"
                 isLoading={isRestoring}
+            />
+
+            <SubjectViewModal
+                open={viewOpen}
+                onClose={() => {
+                    setViewOpen(false);
+                    setViewSubjectId(null);
+                }}
+                subjectId={viewSubjectId}
+                onEdit={(subj) => {
+                    setSelectedSubject(subj);
+                    setEditOpen(true);
+                }}
+                onDataUpdated={() => {
+                    router.reload();
+                }}
             />
         </AdminLayout>
     );

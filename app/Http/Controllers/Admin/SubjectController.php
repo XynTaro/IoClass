@@ -36,7 +36,7 @@ class SubjectController extends Controller
         ]);
     }
 
-    public function show(int $id)
+    public function show(Request $request, int $id)
     {
         $subject = Subject::findOrFail($id);
 
@@ -83,13 +83,19 @@ class SubjectController extends Controller
             ])
             ->values();
 
-        return inertia('Admin/Subject/Show', [
+        $data = [
             'subject' => $subject,
             'teachers' => $teachers,
             'enrolledStudents' => $enrolledStudents,
             'sections' => $sections,
             'gradeLevels' => $this->getAvailableGradeLevels(),
-        ]);
+        ];
+
+        if ($request->wantsJson()) {
+            return response()->json($data);
+        }
+
+        return inertia('Admin/Subject/Show', $data);
     }
 
     /**
@@ -145,11 +151,18 @@ class SubjectController extends Controller
 
         DB::table('student_subject')->insertOrIgnore($rows);
 
-        return redirect()->route('admin.subject.show', $id)
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => count($rows).' student(s) enrolled successfully.',
+            ]);
+        }
+
+        return redirect()->back()
             ->with('success', count($rows).' student(s) enrolled successfully.');
     }
 
-    public function detachStudent(int $id, int $studentId)
+    public function detachStudent(Request $request, int $id, int $studentId)
     {
         Subject::findOrFail($id);
 
@@ -158,7 +171,14 @@ class SubjectController extends Controller
             ->where('stu_id', $studentId)
             ->delete();
 
-        return redirect()->route('admin.subject.show', $id)
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Student removed from subject.',
+            ]);
+        }
+
+        return redirect()->back()
             ->with('success', 'Student removed from subject.');
     }
 
