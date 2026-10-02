@@ -10,8 +10,6 @@ import type { ColumnDef } from '@tanstack/react-table';
 import {
     Calendar as CalendarIcon,
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     Filter,
     LayoutGrid,
@@ -187,23 +185,7 @@ export default function MyAttendanceIndex() {
         );
     }, [summary]);
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isToday = selectedDate === todayStr || selectedDate === '';
 
-    const formattedDisplayDate = useMemo(() => {
-        if (!selectedDate) return 'All Dates';
-        try {
-            const d = new Date(`${selectedDate}T00:00:00`);
-            return d.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-            });
-        } catch {
-            return selectedDate;
-        }
-    }, [selectedDate]);
 
     function clearFilters() {
         setSearch('');
@@ -243,21 +225,7 @@ export default function MyAttendanceIndex() {
         applyFilters({ date: newDate });
     };
 
-    const handlePrevDay = () => {
-        const base = selectedDate || todayStr;
-        const d = new Date(`${base}T00:00:00`);
-        d.setDate(d.getDate() - 1);
-        const prev = d.toISOString().split('T')[0];
-        handleDateChange(prev);
-    };
 
-    const handleNextDay = () => {
-        const base = selectedDate || todayStr;
-        const d = new Date(`${base}T00:00:00`);
-        d.setDate(d.getDate() + 1);
-        const next = d.toISOString().split('T')[0];
-        handleDateChange(next);
-    };
 
     const handleStatusFilterChange = (status: string) => {
         setAttendanceFilter(status);
@@ -393,62 +361,6 @@ export default function MyAttendanceIndex() {
                     </div>
                 </div>
 
-                {/* Date Navigation Toolbar */}
-                <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handlePrevDay}
-                            className="size-9 rounded-lg"
-                            title="Previous Day"
-                        >
-                            <ChevronLeft className="size-4" />
-                        </Button>
-
-                        <div className="relative flex items-center">
-                            <CalendarIcon className="pointer-events-none absolute left-3 size-4 text-blue-600 dark:text-blue-400" />
-                            <Input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) =>
-                                    handleDateChange(e.target.value)
-                                }
-                                className="h-9 w-[160px] rounded-lg border-muted bg-background pl-9 text-xs font-semibold focus-visible:ring-blue-500"
-                            />
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handleNextDay}
-                            className="size-9 rounded-lg"
-                            title="Next Day"
-                        >
-                            <ChevronRight className="size-4" />
-                        </Button>
-
-                        <Button
-                            variant={isToday ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => handleDateChange('')}
-                            className={cn(
-                                'h-9 rounded-lg px-3 text-xs font-semibold transition-all',
-                                isToday &&
-                                    'bg-blue-600 text-white shadow-sm hover:bg-blue-700',
-                            )}
-                        >
-                            All Dates
-                        </Button>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground">
-                        Showing records for{' '}
-                        <span className="font-semibold text-foreground">
-                            {formattedDisplayDate}
-                        </span>
-                    </p>
-                </div>
 
                 {/* Summary KPI Cards */}
                 <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
@@ -525,53 +437,110 @@ export default function MyAttendanceIndex() {
                     })}
                 </div>
 
-                {/* Filters, Search & View Controls */}
-                <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <form
-                        onSubmit={handleSearchSubmit}
-                        className="flex flex-1 items-center gap-2"
-                    >
-                        <div className="relative max-w-md flex-1">
-                            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by date or remarks..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="h-10 rounded-xl border-muted bg-background pr-8 pl-9 text-sm focus-visible:ring-blue-500"
-                            />
-                            {search && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSearch('');
-                                        applyFilters({ q: '' });
-                                    }}
-                                    className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                >
-                                    <X className="size-3.5" />
-                                </button>
-                            )}
-                        </div>
-                        <Button
-                            type="submit"
-                            variant="secondary"
-                            className="h-10 rounded-xl px-4 text-xs font-semibold"
-                        >
-                            Search
-                        </Button>
-                    </form>
-
-                    <div className="flex items-center gap-2.5">
+                {/* Filters Control Center — matches Teacher side design */}
+                <div className="rounded-xl border bg-card p-4 shadow-sm">
+                    <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 text-sm font-medium">
                         <div className="flex items-center gap-2">
-                            <Filter className="size-4 text-muted-foreground" />
+                            <Filter
+                                className="size-4 text-blue-600 dark:text-blue-400"
+                                aria-hidden
+                            />
+                            Filter Controls
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {isFilterActive && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearFilters}
+                                    className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                                >
+                                    <RefreshCw className="size-3" />
+                                    Reset Filters
+                                </Button>
+                            )}
+
+                            {/* View Switcher Toggle */}
+                            <div className="flex items-center gap-1.5 rounded-lg border bg-muted/30 p-1">
+                                <Button
+                                    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs gap-1"
+                                    onClick={() => setViewMode('table')}
+                                >
+                                    <List className="size-3.5" />
+                                    Table
+                                </Button>
+                                <Button
+                                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs gap-1"
+                                    onClick={() => setViewMode('grid')}
+                                >
+                                    <LayoutGrid className="size-3.5" />
+                                    Grid
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <label
+                                htmlFor="my-attendance-date"
+                                className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                            >
+                                Date
+                            </label>
+                            <Input
+                                id="my-attendance-date"
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) =>
+                                    handleDateChange(e.target.value)
+                                }
+                                className="h-9 focus-visible:ring-1"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                                Search
+                            </label>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search by remarks..."
+                                    className="h-9 pr-8 pl-9 focus-visible:ring-1"
+                                />
+                                {search && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearch('');
+                                            applyFilters({ q: '' });
+                                        }}
+                                        className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    >
+                                        <X className="size-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                                Status
+                            </label>
                             <Select
                                 value={attendanceFilter}
                                 onValueChange={handleStatusFilterChange}
                             >
-                                <SelectTrigger className="h-10 w-[150px] rounded-xl text-xs font-semibold">
+                                <SelectTrigger className="h-9 w-full">
                                     <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl">
+                                <SelectContent>
                                     <SelectItem value="all">
                                         All Statuses ({summary.total})
                                     </SelectItem>
@@ -589,36 +558,6 @@ export default function MyAttendanceIndex() {
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
-
-                        {/* View Switcher */}
-                        <div className="flex items-center rounded-xl border bg-muted/60 p-1">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('table')}
-                                className={cn(
-                                    'flex size-8 items-center justify-center rounded-lg text-xs transition-all',
-                                    viewMode === 'table'
-                                        ? 'bg-background font-semibold text-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground',
-                                )}
-                                title="Table View"
-                            >
-                                <List className="size-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('grid')}
-                                className={cn(
-                                    'flex size-8 items-center justify-center rounded-lg text-xs transition-all',
-                                    viewMode === 'grid'
-                                        ? 'bg-background font-semibold text-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground',
-                                )}
-                                title="Card Grid View"
-                            >
-                                <LayoutGrid className="size-4" />
-                            </button>
                         </div>
                     </div>
                 </div>

@@ -1,10 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
-    Calendar as CalendarIcon,
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     Edit3,
     Filter,
@@ -14,13 +11,12 @@ import {
     Search,
     ShieldAlert,
     ShieldCheck,
-    Sparkles,
     UserCheck,
     Users,
     UserX,
     X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import { DataTable } from '@/components/DataTable';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -125,24 +121,39 @@ export default function TeacherAttendanceIndex() {
     const [editTimeIn, setEditTimeIn] = useState<string>('');
     const [editRemarks, setEditRemarks] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
+    const today = new Date().toISOString().split('T')[0];
+    const isFilterActive =
+        searchQuery.trim() !== '' ||
+        statusFilter !== 'all' ||
+        selectedDate !== today;
 
-    const isToday = useMemo(() => {
-        return selectedDate === new Date().toISOString().split('T')[0];
-    }, [selectedDate]);
+    const clearFilters = () => {
+        setSearchQuery('');
+        setSelectedDate(today);
+        setStatusFilter('all');
+        applyFilters({ q: '', date: today, status: 'all' });
+    };
 
-    const formattedDisplayDate = useMemo(() => {
-        try {
-            const d = new Date(`${selectedDate}T00:00:00`);
-            return d.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-            });
-        } catch {
-            return selectedDate;
-        }
-    }, [selectedDate]);
+    useEffect(() => {
+        setSearchQuery(filters.q ?? '');
+        setSelectedDate(filters.date ?? today);
+        setStatusFilter(filters.status ?? 'all');
+    }, [filters.q, filters.date, filters.status]);
+
+    useEffect(() => {
+        const normalized = searchQuery.trim();
+        const current = (filters.q ?? '').trim();
+        if (normalized === current) return;
+
+        const timeout = window.setTimeout(() => {
+            applyFilters({ q: searchQuery });
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [searchQuery, filters.q]);
+
+
+
 
     const attendanceRate = useMemo(() => {
         if (!summary.total) return 0;
@@ -180,24 +191,7 @@ export default function TeacherAttendanceIndex() {
         applyFilters({ date: newDate });
     };
 
-    const handlePrevDay = () => {
-        const d = new Date(`${selectedDate}T00:00:00`);
-        d.setDate(d.getDate() - 1);
-        const prev = d.toISOString().split('T')[0];
-        handleDateChange(prev);
-    };
 
-    const handleNextDay = () => {
-        const d = new Date(`${selectedDate}T00:00:00`);
-        d.setDate(d.getDate() + 1);
-        const next = d.toISOString().split('T')[0];
-        handleDateChange(next);
-    };
-
-    const handleToday = () => {
-        const today = new Date().toISOString().split('T')[0];
-        handleDateChange(today);
-    };
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -492,69 +486,6 @@ export default function TeacherAttendanceIndex() {
                     </div>
                 </div>
 
-                {/* ── Date Navigation Toolbar Card ── */}
-                <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Showing records for</span>
-                        <span className="font-semibold text-foreground underline decoration-emerald-500/40 underline-offset-4">
-                            {formattedDisplayDate}
-                        </span>
-                        {isToday && (
-                            <Badge className="border-emerald-500/30 bg-emerald-500/15 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                <Sparkles className="mr-1 size-3" />
-                                Today
-                            </Badge>
-                        )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handlePrevDay}
-                            className="size-9 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/50"
-                            title="Previous Day"
-                        >
-                            <ChevronLeft className="size-4" />
-                        </Button>
-
-                        <div className="relative flex items-center">
-                            <CalendarIcon className="pointer-events-none absolute left-3 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <Input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) =>
-                                    handleDateChange(e.target.value)
-                                }
-                                className="h-9 w-[160px] rounded-lg border-muted bg-background pl-9 text-xs font-semibold focus-visible:ring-emerald-500"
-                            />
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handleNextDay}
-                            className="size-9 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/50"
-                            title="Next Day"
-                        >
-                            <ChevronRight className="size-4" />
-                        </Button>
-
-                        <Button
-                            variant={isToday ? 'default' : 'secondary'}
-                            size="sm"
-                            onClick={handleToday}
-                            className={cn(
-                                'h-9 rounded-lg px-3 text-xs font-semibold transition-all',
-                                isToday
-                                    ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
-                                    : 'hover:bg-muted',
-                            )}
-                        >
-                            Today
-                        </Button>
-                    </div>
-                </div>
 
                 {/* Summary Metric KPI Cards */}
                 <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
@@ -621,53 +552,112 @@ export default function TeacherAttendanceIndex() {
                     })}
                 </div>
 
-                {/* Filters, Search & View Controls */}
-                <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <form
-                        onSubmit={handleSearchSubmit}
-                        className="flex flex-1 items-center gap-2"
-                    >
-                        <div className="relative max-w-md flex-1">
-                            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search teacher by name, email, or RFID UID..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-10 rounded-xl border-muted bg-background pr-8 pl-9 text-sm focus-visible:ring-emerald-500"
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSearchQuery('');
-                                        applyFilters({ q: '' });
-                                    }}
-                                    className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                >
-                                    <X className="size-3.5" />
-                                </button>
-                            )}
-                        </div>
-                        <Button
-                            type="submit"
-                            variant="secondary"
-                            className="h-10 rounded-xl px-4 text-xs font-semibold"
-                        >
-                            Search
-                        </Button>
-                    </form>
-
-                    <div className="flex items-center gap-2.5">
+                {/* Filters Control Center — matches Teacher side design */}
+                <div className="rounded-xl border bg-card p-4 shadow-sm">
+                    <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 text-sm font-medium">
                         <div className="flex items-center gap-2">
-                            <Filter className="size-4 text-muted-foreground" />
+                            <Filter
+                                className="size-4 text-emerald-600 dark:text-emerald-400"
+                                aria-hidden
+                            />
+                            Filter Controls
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {isFilterActive && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearFilters}
+                                    className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                                >
+                                    <RefreshCw className="size-3" />
+                                    Reset Filters
+                                </Button>
+                            )}
+
+                            {/* View Switcher Toggle */}
+                            <div className="flex items-center gap-1.5 rounded-lg border bg-muted/30 p-1">
+                                <Button
+                                    variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs gap-1"
+                                    onClick={() => setViewMode('table')}
+                                >
+                                    <List className="size-3.5" />
+                                    Table
+                                </Button>
+                                <Button
+                                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs gap-1"
+                                    onClick={() => setViewMode('grid')}
+                                >
+                                    <LayoutGrid className="size-3.5" />
+                                    Grid
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <label
+                                htmlFor="attendance-date"
+                                className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                            >
+                                Date
+                            </label>
+                            <Input
+                                id="attendance-date"
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) =>
+                                    handleDateChange(e.target.value)
+                                }
+                                className="h-9 focus-visible:ring-1"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                                Search
+                            </label>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={searchQuery}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
+                                    placeholder="Name, email, or RFID UID..."
+                                    className="h-9 pr-8 pl-9 focus-visible:ring-1"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            applyFilters({ q: '' });
+                                        }}
+                                        className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    >
+                                        <X className="size-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                                Status
+                            </label>
                             <Select
                                 value={statusFilter}
                                 onValueChange={handleStatusFilterChange}
                             >
-                                <SelectTrigger className="h-10 w-[150px] rounded-xl text-xs font-semibold">
+                                <SelectTrigger className="h-9 w-full">
                                     <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl">
+                                <SelectContent>
                                     <SelectItem value="all">
                                         All Statuses ({summary.total})
                                     </SelectItem>
@@ -685,36 +675,6 @@ export default function TeacherAttendanceIndex() {
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
-
-                        {/* View Switcher: Table vs Grid */}
-                        <div className="flex items-center rounded-xl border bg-muted/60 p-1">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('table')}
-                                className={cn(
-                                    'flex size-8 items-center justify-center rounded-lg text-xs transition-all',
-                                    viewMode === 'table'
-                                        ? 'bg-background font-semibold text-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground',
-                                )}
-                                title="Table View"
-                            >
-                                <List className="size-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('grid')}
-                                className={cn(
-                                    'flex size-8 items-center justify-center rounded-lg text-xs transition-all',
-                                    viewMode === 'grid'
-                                        ? 'bg-background font-semibold text-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground',
-                                )}
-                                title="Card Grid View"
-                            >
-                                <LayoutGrid className="size-4" />
-                            </button>
                         </div>
                     </div>
                 </div>
