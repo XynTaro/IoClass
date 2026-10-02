@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,16 +31,89 @@ class TeacherDashboardController extends Controller
             ->value('sy_id');
 
         $sectionIds = $this->sectionIdsForTeacher($tchId, $activeSyId);
+        $studentIds = $this->studentIdsForTeacher($sectionIds, $activeSyId);
 
-        $studentsCount = $this->studentsCount($sectionIds, $activeSyId);
+        $studentsCount = $studentIds->count();
         $subjectsCount = $this->subjectsCount($tchId, $activeSyId);
-        $analytics = $this->buildAnalytics($sectionIds, $activeSyId, $range);
+
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        if ($studentIds->isNotEmpty()) {
+            $presentToday = DB::table('attendance')
+                ->whereIn('stu_id', $studentIds)
+                ->whereDate('att_date', $today)
+                ->where('status', 'present')
+                ->distinct('stu_id')
+                ->count('stu_id');
+
+            $lateToday = DB::table('attendance')
+                ->whereIn('stu_id', $studentIds)
+                ->whereDate('att_date', $today)
+                ->where('status', 'late')
+                ->distinct('stu_id')
+                ->count('stu_id');
+
+            $checkedInToday = $presentToday + $lateToday;
+
+            $presentYesterday = DB::table('attendance')
+                ->whereIn('stu_id', $studentIds)
+                ->whereDate('att_date', $yesterday)
+                ->whereIn('status', ['present', 'late'])
+                ->distinct('stu_id')
+                ->count('stu_id');
+
+            $activeRfid = DB::table('student')
+                ->whereIn('stu_id', $studentIds)
+                ->where('is_deleted', false)
+                ->whereNotNull('rfid_uid')
+                ->where('rfid_uid', '!=', '')
+                ->count();
+
+            $absentToday = max(0, $studentsCount - $checkedInToday);
+
+            $avgRateToday = $studentsCount > 0
+                ? round(($checkedInToday / $studentsCount) * 100, 1)
+                : 0.0;
+
+            $avgRateYesterday = $studentsCount > 0
+                ? round(($presentYesterday / $studentsCount) * 100, 1)
+                : 0.0;
+
+            $presentChange = $presentYesterday > 0
+                ? round((($checkedInToday - $presentYesterday) / $presentYesterday) * 100, 1)
+                : 0.0;
+
+            $avgChange = round($avgRateToday - $avgRateYesterday, 1);
+        } else {
+            $presentToday = 0;
+            $lateToday = 0;
+            $checkedInToday = 0;
+            $presentYesterday = 0;
+            $activeRfid = 0;
+            $absentToday = 0;
+            $avgRateToday = 0.0;
+            $presentChange = 0.0;
+            $avgChange = 0.0;
+        }
+
+        $analytics = $this->buildAnalytics($sectionIds, $studentIds, $activeSyId, $range);
 
         return Inertia::render('Teacher/Dashboard', [
             'stats' => [
+                'totalStudents' => $studentsCount,
+                'checkedInToday' => $checkedInToday,
+                'presentToday' => $presentToday,
+                'lateToday' => $lateToday,
+                'absentToday' => $absentToday,
+                'activeRfid' => $activeRfid,
+                'avgRateToday' => $avgRateToday,
+                'presentChange' => $presentChange,
+                'avgChange' => $avgChange,
                 'studentsCount' => $studentsCount,
                 'subjectsCount' => $subjectsCount,
             ],
+            'nonSchoolDay' => CalendarEvent::nonSchoolDayInfo($today),
             'analytics' => $analytics,
         ]);
     }
@@ -72,20 +146,29 @@ class TeacherDashboardController extends Controller
 
     /**
      * @param  Collection<int, int>  $sectionIds
+     * @return Collection<int, int>
      */
-    private function studentsCount(Collection $sectionIds, ?int $activeSyId): int
+    private function studentIdsForTeacher(Collection $sectionIds, ?int $activeSyId): Collection
     {
         if ($sectionIds->isEmpty() || ! $activeSyId) {
-            return 0;
+            return collect();
         }
 
-        return (int) DB::table('student as s')
+        return DB::table('student as s')
             ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
             ->where('s.is_deleted', false)
             ->where('ss.sy_id', $activeSyId)
             ->whereIn('ss.sect_id', $sectionIds)
             ->distinct()
-            ->count('s.stu_id');
+            ->pluck('s.stu_id');
+    }
+
+    /**
+     * @param  Collection<int, int>  $sectionIds
+     */
+    private function studentsCount(Collection $sectionIds, ?int $activeSyId): int
+    {
+        return $this->studentIdsForTeacher($sectionIds, $activeSyId)->count();
     }
 
     private function subjectsCount(int $tchId, ?int $activeSyId): int
@@ -103,18 +186,21 @@ class TeacherDashboardController extends Controller
 
     /**
      * @param  Collection<int, int>  $sectionIds
+     * @param  Collection<int, int>  $studentIds
      * @return array{
      *     range: string,
      *     statusTotals: array{present: int, late: int, absent: int},
-     *     statusTrend: list<array{date: string, present: int, late: int, absent: int}>
+     *     statusTrend: list<array{date: string, present: int, late: int, absent: int}>,
+     *     atRiskStudents: list<array{stu_id: int, name: string, section: string, absent_count: int, attendance_rate: int}>,
+     *     sectionAttendance: list<array{sect_id: int, name: string, attendance_rate: int, total_records: int}>
      * }
      */
-    private function buildAnalytics(Collection $sectionIds, ?int $activeSyId, string $range): array
+    private function buildAnalytics(Collection $sectionIds, Collection $studentIds, ?int $activeSyId, string $range): array
     {
         $emptyTotals = ['present' => 0, 'late' => 0, 'absent' => 0];
         $buckets = $this->trendBuckets($range);
 
-        if ($sectionIds->isEmpty() || ! $activeSyId || $buckets->isEmpty()) {
+        if ($sectionIds->isEmpty() || $studentIds->isEmpty() || ! $activeSyId || $buckets->isEmpty()) {
             return [
                 'range' => $range,
                 'statusTotals' => $emptyTotals,
@@ -131,29 +217,6 @@ class TeacherDashboardController extends Controller
 
         $startDate = $buckets->first()['start']->toDateString();
         $endDate = $buckets->last()['end']->toDateString();
-
-        $studentIds = DB::table('student as s')
-            ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
-            ->where('s.is_deleted', false)
-            ->where('ss.sy_id', $activeSyId)
-            ->whereIn('ss.sect_id', $sectionIds)
-            ->distinct()
-            ->pluck('s.stu_id');
-
-        if ($studentIds->isEmpty()) {
-            return [
-                'range' => $range,
-                'statusTotals' => $emptyTotals,
-                'statusTrend' => $buckets->map(fn (array $bucket) => [
-                    'date' => $bucket['date'],
-                    'present' => 0,
-                    'late' => 0,
-                    'absent' => 0,
-                ])->all(),
-                'atRiskStudents' => [],
-                'sectionAttendance' => [],
-            ];
-        }
 
         $records = DB::table('attendance')
             ->whereIn('stu_id', $studentIds)

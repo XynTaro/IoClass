@@ -1,4 +1,14 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    Activity,
+    ArrowRight,
+    CalendarDays,
+    CalendarOff,
+    TrendingDown,
+    TrendingUp,
+    Users,
+    UserCheck,
+} from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import {
     Card,
@@ -14,9 +24,8 @@ import {
     type ChartConfig,
 } from '@/components/ui/chart';
 import TeacherLayout from '@/layouts/teacher/teacher-layout';
+import { cn } from '@/lib/utils';
 import teacher from '@/routes/teacher';
-import teacherSchedule from '@/routes/teacher/schedule/index';
-import sf2Reports from '@/routes/teacher/sf2-reports';
 import studentRecords from '@/routes/teacher/student-records';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
@@ -26,21 +35,6 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: teacher.dashboard.url(),
     },
 ];
-import {
-    ArrowRight,
-    BookOpen,
-    CalendarDays,
-    GraduationCap,
-    TrendingUp,
-    UserCheck,
-} from 'lucide-react';
-
-/** Fixed row height so trend bars align on a common baseline above labels */
-const TREND_CHART_HEIGHT_PX = 168;
-/** Headroom inside the chart area reserved for the per-bar total / tooltip */
-const TREND_BAR_LABEL_SPACE_PX = 28;
-/** Minimum visible candle height (empty stub or tiny totals) */
-const TREND_MIN_BAR_PX = 6;
 
 function parseLocalDate(dateStr: string): Date {
     const parts = dateStr.split('-').map(Number);
@@ -50,7 +44,18 @@ function parseLocalDate(dateStr: string): Date {
     return new Date(dateStr);
 }
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface DashboardStats {
+    totalStudents?: number | null;
+    checkedInToday?: number | null;
+    presentToday?: number | null;
+    lateToday?: number | null;
+    absentToday?: number | null;
+    activeRfid?: number | null;
+    avgRateToday?: number | null;
+    presentChange?: number | null;
+    avgChange?: number | null;
     studentsCount?: number | null;
     subjectsCount?: number | null;
 }
@@ -86,77 +91,154 @@ type DashboardAnalytics = {
 type DashboardPageProps = SharedData & {
     stats?: DashboardStats;
     analytics?: DashboardAnalytics;
+    nonSchoolDay?: { title: string; type: string } | null;
 };
 
-const statCards = [
-    {
-        title: 'My Students',
-        icon: GraduationCap,
-        color: 'text-emerald-600 dark:text-emerald-400',
-        bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-        ring: 'ring-emerald-500/20',
-        accent: 'bg-emerald-500',
-        wash: 'bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06]',
-        valueStyle: 'text-emerald-600 dark:text-emerald-400',
-        hoverRing: 'hover:border-emerald-500/30 hover:shadow-emerald-500/10',
-        statKey: 'studentsCount' as const,
-        footnote: 'Total in system',
-        href: () => teacher.students.index.url(),
-    },
-    {
-        title: 'My Subjects',
-        icon: BookOpen,
-        color: 'text-blue-600 dark:text-blue-400',
-        bg: 'bg-blue-500/10 dark:bg-blue-500/15',
-        ring: 'ring-blue-500/20',
-        accent: 'bg-blue-500',
-        wash: 'bg-blue-500/[0.04] dark:bg-blue-500/[0.06]',
-        valueStyle: 'text-blue-600 dark:text-blue-400',
-        hoverRing: 'hover:border-blue-500/30 hover:shadow-blue-500/10',
-        statKey: 'subjectsCount' as const,
-        footnote: 'Active subjects',
-        href: () => teacherSchedule.index.url(),
-    },
-];
+// ─── Stat card ────────────────────────────────────────────────────────────────
 
-const quickActions = [
+type StatCardAccent = 'emerald' | 'blue' | 'violet' | 'amber';
+
+type StatCardProps = {
+    label: string;
+    value: string | number;
+    change?: number;
+    icon: React.ElementType;
+    accent: StatCardAccent;
+    suffix?: string;
+    hideChange?: boolean;
+    footnote?: string;
+    href?: string;
+    style?: React.CSSProperties;
+    className?: string;
+};
+
+const ACCENT_STYLES: Record<
+    StatCardAccent,
     {
-        label: 'Take Attendance',
-        description: 'Record today’s sessions',
-        icon: UserCheck,
-        href: () => teacher.attendance.index.url(),
-        iconStyle:
-            'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400',
-        hoverBorder: 'hover:border-emerald-500/30',
+        bar: string;
+        glow: string;
+        iconBg: string;
+        iconText: string;
+        changeBg: string;
+    }
+> = {
+    emerald: {
+        bar: 'bg-emerald-500',
+        glow: 'hover:shadow-lg hover:shadow-emerald-500/10 dark:hover:shadow-emerald-500/5',
+        iconBg: 'bg-emerald-100 dark:bg-emerald-950/40',
+        iconText: 'text-emerald-600 dark:text-emerald-400',
+        changeBg: 'bg-emerald-50 dark:bg-emerald-950/40',
     },
-    {
-        label: 'My Schedule',
-        description: 'See your class timetable',
-        icon: CalendarDays,
-        href: () => teacherSchedule.index.url(),
-        iconStyle:
-            'bg-blue-500/10 text-blue-600 ring-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400',
-        hoverBorder: 'hover:border-blue-500/30',
+    blue: {
+        bar: 'bg-blue-500',
+        glow: 'hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5',
+        iconBg: 'bg-blue-100 dark:bg-blue-950/40',
+        iconText: 'text-blue-600 dark:text-blue-400',
+        changeBg: 'bg-blue-50 dark:bg-blue-950/40',
     },
-    {
-        label: 'My Students',
-        description: 'Browse your class lists',
-        icon: GraduationCap,
-        href: () => teacher.students.index.url(),
-        iconStyle:
-            'bg-violet-500/10 text-violet-600 ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-400',
-        hoverBorder: 'hover:border-violet-500/30',
+    violet: {
+        bar: 'bg-violet-500',
+        glow: 'hover:shadow-lg hover:shadow-violet-500/10 dark:hover:shadow-violet-500/5',
+        iconBg: 'bg-violet-100 dark:bg-violet-950/40',
+        iconText: 'text-violet-600 dark:text-violet-400',
+        changeBg: 'bg-violet-50 dark:bg-violet-950/40',
     },
-    {
-        label: 'SF2 Reports',
-        description: 'Generate monthly reports',
-        icon: BookOpen,
-        href: () => sf2Reports.index.url(),
-        iconStyle:
-            'bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400',
-        hoverBorder: 'hover:border-amber-500/30',
+    amber: {
+        bar: 'bg-amber-500',
+        glow: 'hover:shadow-lg hover:shadow-amber-500/10 dark:hover:shadow-amber-500/5',
+        iconBg: 'bg-amber-100 dark:bg-amber-950/40',
+        iconText: 'text-amber-600 dark:text-amber-400',
+        changeBg: 'bg-amber-50 dark:bg-amber-950/40',
     },
-];
+};
+
+function StatCard({
+    label,
+    value,
+    change = 0,
+    icon: Icon,
+    accent,
+    suffix,
+    hideChange,
+    footnote,
+    href,
+    style,
+    className,
+}: StatCardProps) {
+    const positive = change >= 0;
+    const styles = ACCENT_STYLES[accent];
+
+    const cardContent = (
+        <Card
+            className={cn(
+                'group relative overflow-hidden rounded-xl border-border/60 py-0 shadow-sm transition-all duration-300 hover:-translate-y-0.5',
+                styles.glow,
+                href && 'cursor-pointer',
+                !href && className,
+            )}
+            style={!href ? style : undefined}
+        >
+            <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-xl', styles.bar)} />
+            <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                        {label}
+                    </span>
+                    <div
+                        className={cn(
+                            'flex size-8 items-center justify-center rounded-lg',
+                            styles.iconBg,
+                        )}
+                    >
+                        <Icon className={cn('size-4', styles.iconText)} />
+                    </div>
+                </div>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-foreground tabular-nums md:text-3xl">
+                    {typeof value === 'number' ? value.toLocaleString() : value}
+                    {suffix && (
+                        <span className="ml-0.5 text-lg font-semibold text-muted-foreground">
+                            {suffix}
+                        </span>
+                    )}
+                </p>
+                <div className="mt-2 flex min-h-[20px] items-center gap-1 text-[11px] text-muted-foreground">
+                    {!hideChange ? (
+                        <>
+                            <span
+                                className={cn(
+                                    'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold',
+                                    positive
+                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                        : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
+                                )}
+                            >
+                                {positive ? (
+                                    <TrendingUp className="size-3" />
+                                ) : (
+                                    <TrendingDown className="size-3" />
+                                )}
+                                {Math.abs(change)}%
+                            </span>
+                            <span>vs yesterday</span>
+                        </>
+                    ) : (
+                        <span>{footnote ?? 'Total in system'}</span>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+
+    if (href) {
+        return (
+            <Link href={href} className={cn('dash-fade-up block', className)} style={style}>
+                {cardContent}
+            </Link>
+        );
+    }
+
+    return cardContent;
+}
 
 const RANGE_OPTIONS = [
     { value: 'daily', label: 'Daily' },
@@ -233,6 +315,7 @@ export default function TeacherDashboard() {
         auth,
         stats: statsProp,
         analytics: analyticsProp,
+        nonSchoolDay,
     } = usePage<DashboardPageProps>().props;
     const stats: DashboardStats = statsProp ?? {};
     const analytics: DashboardAnalytics = analyticsProp ?? {};
@@ -253,16 +336,12 @@ export default function TeacherDashboard() {
         1,
         ...trend.map((d) => (d.present ?? 0) + (d.late ?? 0) + (d.absent ?? 0)),
     );
-    const attendanceRate =
-        totalAll > 0
-            ? Math.round((100 * (totals.present ?? 0)) / totalAll)
-            : null;
 
-    const todayLabel = new Date().toLocaleDateString(undefined, {
+    const dateLabel = new Date().toLocaleDateString('en-PH', {
         weekday: 'long',
+        year: 'numeric',
         month: 'long',
         day: 'numeric',
-        year: 'numeric',
     });
 
     const formatTrendLabel = (dateStr: string) => {
@@ -317,137 +396,89 @@ export default function TeacherDashboard() {
                             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
                                 {getGreeting()}, {displayName}
                             </h1>
-                            <p className="max-w-lg text-sm text-muted-foreground md:text-base">
-                                Here’s a quick overview of your classes and key
-                                numbers.
+                            <p className="text-sm text-muted-foreground md:text-base">
+                                Here’s a quick overview of your classes, students, and attendance stats.
                             </p>
                         </div>
                         <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-blue-500/15 bg-background/80 px-3 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur-sm">
+                            <span className="relative flex size-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                                <span className="relative inline-flex size-2 rounded-full bg-blue-500" />
+                            </span>
                             <CalendarDays
                                 className="size-4 shrink-0 text-blue-600 dark:text-blue-400"
                                 aria-hidden
                             />
-                            <span>{todayLabel}</span>
-                            <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                                Today
+                            <span className="font-medium text-foreground">
+                                {dateLabel}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Stat cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {statCards.map((item, index) => {
-                        const statValue = stats[item.statKey];
-                        const displayValue = formatStat(statValue ?? null);
-                        const Icon = item.icon;
-
-                        const cardContent = (
-                            <div className="flex flex-1 flex-col justify-between p-4">
-                                <div
-                                    className={`absolute inset-x-0 top-0 h-1 rounded-t-xl ${item.accent}`}
-                                />
-                                <div>
-                                    <div className="flex flex-row items-center justify-between space-y-0">
-                                        <span className="text-xs font-medium text-muted-foreground">
-                                            {item.title}
-                                        </span>
-                                        <div
-                                            className={`flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 transition-transform duration-300 group-hover:scale-110 ${item.bg} ${item.color} ${item.ring}`}
-                                        >
-                                            <Icon className="size-4" aria-hidden />
-                                        </div>
-                                    </div>
-                                    <div
-                                        className={`mt-1 text-2xl font-bold tracking-tight tabular-nums md:text-3xl ${item.valueStyle}`}
-                                    >
-                                        {displayValue}
-                                    </div>
-                                </div>
-                                <p className="mt-2 text-[11px] text-muted-foreground">
-                                    {item.footnote}
+                {/* Non-school-day banner */}
+                {nonSchoolDay && (
+                    <div
+                        className="dash-fade-up relative overflow-hidden rounded-xl border border-amber-500/20 bg-linear-to-r from-amber-500/[0.08] via-orange-500/[0.05] to-transparent p-4 dark:from-amber-500/[0.12] dark:via-orange-500/[0.07]"
+                        style={{ animationDelay: '25ms' }}
+                    >
+                        <div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
+                        <div className="relative z-10 flex items-center gap-3">
+                            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950/40">
+                                <CalendarOff className="size-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                    No Classes Today — {nonSchoolDay.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Today is a{' '}
+                                    <span className="font-medium capitalize">
+                                        {nonSchoolDay.type.replace('_', ' ')}
+                                    </span>
+                                    . Attendance tracking is paused and RFID scans will not be recorded.
                                 </p>
                             </div>
-                        );
+                        </div>
+                    </div>
+                )}
 
-                        const cardClass = `group relative flex flex-col justify-between h-full overflow-hidden rounded-xl border-border/60 py-0 gap-0 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${item.wash} ${item.hoverRing}`;
-
-                        if (item.href) {
-                            return (
-                                <Link
-                                    key={item.title}
-                                    href={item.href()}
-                                    className="dash-fade-up block"
-                                    style={{
-                                        animationDelay: `${80 + index * 70}ms`,
-                                    }}
-                                >
-                                    <Card className={cardClass}>
-                                        {cardContent}
-                                    </Card>
-                                </Link>
-                            );
-                        }
-
-                        return (
-                            <div
-                                key={item.title}
-                                className="dash-fade-up"
-                                style={{
-                                    animationDelay: `${80 + index * 70}ms`,
-                                }}
-                            >
-                                <Card className={cardClass}>{cardContent}</Card>
-                            </div>
-                        );
-                    })}
-
-                    <Link
+                {/* ── Stat cards ── */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <StatCard
+                        label="Total Students"
+                        value={stats.totalStudents ?? stats.studentsCount ?? 0}
+                        change={0}
+                        icon={Users}
+                        accent="blue"
+                        hideChange
+                        footnote="Enrolled in your sections"
+                        href={teacher.students.index.url()}
+                        className="dash-fade-up"
+                        style={{ animationDelay: '50ms' }}
+                    />
+                    <StatCard
+                        label="Checked In Today"
+                        value={stats.checkedInToday ?? 0}
+                        change={stats.presentChange ?? 0}
+                        icon={UserCheck}
+                        accent="emerald"
                         href={teacher.attendance.index.url()}
-                        className="dash-fade-up block"
-                        style={{ animationDelay: '220ms' }}
-                    >
-                        <Card className="group relative flex h-full flex-col justify-between overflow-hidden rounded-xl border-border/60 py-0 gap-0 bg-violet-500/[0.04] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-500/30 hover:shadow-md hover:shadow-violet-500/10 dark:bg-violet-500/[0.06]">
-                            <div className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-violet-500" />
-                            <div className="flex flex-1 flex-col justify-between p-4">
-                                <div>
-                                    <div className="flex flex-row items-center justify-between space-y-0">
-                                        <span className="text-xs font-medium text-muted-foreground">
-                                            Attendance Rate
-                                        </span>
-                                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 ring-1 ring-violet-500/20 transition-transform duration-300 group-hover:scale-110 dark:bg-violet-500/15 dark:text-violet-400">
-                                            <TrendingUp
-                                                className="size-4"
-                                                aria-hidden
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mt-1 text-2xl font-bold tracking-tight text-violet-600 tabular-nums md:text-3xl dark:text-violet-400">
-                                        {attendanceRate == null
-                                            ? '—'
-                                            : `${attendanceRate}%`}
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                                        <div
-                                            className="dash-width-grow h-full rounded-full bg-violet-500"
-                                            style={{
-                                                width: `${attendanceRate ?? 0}%`,
-                                                animationDelay: '350ms',
-                                            }}
-                                        />
-                                    </div>
-                                    <p className="mt-1 text-[11px] text-muted-foreground">
-                                        Present across the selected range
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                    </Link>
+                        className="dash-fade-up"
+                        style={{ animationDelay: '100ms' }}
+                    />
+                    <StatCard
+                        label="Attendance Rate"
+                        value={stats.avgRateToday ?? 0}
+                        change={stats.avgChange ?? 0}
+                        icon={Activity}
+                        accent="violet"
+                        suffix="%"
+                        href={teacher.attendance.index.url()}
+                        className="dash-fade-up"
+                        style={{ animationDelay: '150ms' }}
+                    />
                 </div>
-
-                {/* Quick actions */}
 
                 {/* Attendance analytics */}
                 <section
