@@ -26,6 +26,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { DataTable } from '@/components/DataTable';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -81,83 +82,92 @@ type PageProps = {
 
 // ── Summary Card Configuration ────────────────────────────────────────
 
-/**
- * Static config for the five summary cards (Total, Present, Late, Excused, Absent).
- * Each entry maps a summary key to its icon, colour scheme, and text style.
- * Clicking a card filters the table to that attendance status.
- */
 const summaryCards = [
     {
-        label: 'Total',
+        label: 'Total Students',
+        key: 'all',
         summaryKey: 'total' as const,
         icon: Users,
-        iconStyle:
-            'bg-blue-500/10 text-blue-600 ring-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400',
-        valueStyle: '',
+        color: 'text-zinc-900 dark:text-zinc-100',
+        bg: 'bg-zinc-100 dark:bg-zinc-800',
+        accent: 'border-zinc-300 dark:border-zinc-700',
     },
     {
         label: 'Present',
+        key: 'present',
         summaryKey: 'present' as const,
         icon: CheckCircle2,
-        iconStyle:
-            'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400',
-        valueStyle: 'text-emerald-600 dark:text-emerald-400',
+        color: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
+        accent: 'border-emerald-500/30',
     },
     {
         label: 'Late',
+        key: 'late',
         summaryKey: 'late' as const,
         icon: Clock,
-        iconStyle:
-            'bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400',
-        valueStyle: 'text-amber-600 dark:text-amber-400',
+        color: 'text-amber-600 dark:text-amber-400',
+        bg: 'bg-amber-500/10 dark:bg-amber-500/15',
+        accent: 'border-amber-500/30',
     },
     {
         label: 'Excused',
+        key: 'excused',
         summaryKey: 'excused' as const,
         icon: ShieldCheck,
-        iconStyle:
-            'bg-slate-500/10 text-slate-600 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400',
-        valueStyle: 'text-slate-600 dark:text-slate-400',
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-500/10 dark:bg-blue-500/15',
+        accent: 'border-blue-500/30',
     },
     {
         label: 'Absent',
+        key: 'absent',
         summaryKey: 'absent' as const,
         icon: UserX,
-        iconStyle:
-            'bg-red-500/10 text-red-600 ring-red-500/20 dark:bg-red-500/15 dark:text-red-400',
-        valueStyle: 'text-red-600 dark:text-red-400',
+        color: 'text-rose-600 dark:text-rose-400',
+        bg: 'bg-rose-500/10 dark:bg-rose-500/15',
+        accent: 'border-rose-500/30',
     },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-/**
- * Renders a coloured pill badge for the given attendance status.
- * Used in the table "Status" column and grid cards.
- */
 function statusBadge(status: AttendanceStatus) {
-    const styles: Record<AttendanceStatus, string> = {
-        present:
-            'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400',
-        late: 'bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400',
-        excused:
-            'bg-slate-500/10 text-slate-700 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400',
-        absent: 'bg-red-500/10 text-red-700 ring-red-500/20 dark:bg-red-500/15 dark:text-red-400',
+    const config = {
+        present: {
+            label: 'Present',
+            style: 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 ring-emerald-500/20 border-emerald-200/50 dark:border-emerald-800/50',
+            dot: 'bg-emerald-500',
+        },
+        late: {
+            label: 'Late',
+            style: 'bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 ring-amber-500/20 border-amber-200/50 dark:border-amber-800/50',
+            dot: 'bg-amber-500',
+        },
+        excused: {
+            label: 'Excused',
+            style: 'bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 ring-blue-500/20 border-blue-200/50 dark:border-blue-800/50',
+            dot: 'bg-blue-500',
+        },
+        absent: {
+            label: 'Absent',
+            style: 'bg-rose-500/10 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 ring-rose-500/20 border-rose-200/50 dark:border-rose-800/50',
+            dot: 'bg-rose-500',
+        },
     };
 
-    const dots: Record<AttendanceStatus, string> = {
-        present: 'bg-emerald-500',
-        late: 'bg-amber-500',
-        excused: 'bg-slate-400',
-        absent: 'bg-red-500',
-    };
+    const safeStatus = status ?? 'absent';
+    const item = config[safeStatus] ?? config.absent;
 
     return (
         <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium capitalize ring-1 ${styles[status]}`}
+            className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ring-1 transition-all',
+                item.style,
+            )}
         >
-            <span className={`size-1.5 rounded-full ${dots[status]}`} />
-            {status}
+            <span className={cn('size-1.5 rounded-full', item.dot)} />
+            {item.label}
         </span>
     );
 }
@@ -378,13 +388,16 @@ export default function TeacherAttendanceIndex() {
     }, [search, filters?.q]);
 
     // Attendance rate calculation
-    const attendanceRate = summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0;
+    const attendanceRate = useMemo(() => {
+        if (!summary.total) return 0;
+        return Math.round(
+            ((summary.present + summary.late) / summary.total) * 100,
+        );
+    }, [summary]);
 
-    /** Returns the rounded percentage a given status represents of the total. */
-    const getPercentage = (key: 'total' | 'present' | 'late' | 'excused' | 'absent') => {
-        if (summary.total === 0) return 0;
-        if (key === 'total') return 100;
-        return Math.round((summary[key] / summary.total) * 100);
+    const handleStatusFilterChange = (status: string) => {
+        setAttendanceFilter(status);
+        applyFilters({ attendance: status });
     };
 
     return (
@@ -424,77 +437,77 @@ export default function TeacherAttendanceIndex() {
                     </div>
                 </div>
 
-                {/* Summary cards */}
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+                {/* Summary KPI Cards */}
+                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
                     {summaryCards.map((card) => {
                         const Icon = card.icon;
-                        const pct = getPercentage(card.summaryKey);
-                        const isCardFilterActive = attendanceFilter === card.summaryKey || (card.summaryKey === 'total' && attendanceFilter === 'all');
-                        
+                        const isSelected =
+                            attendanceFilter === card.key ||
+                            (card.key === 'all' &&
+                                (!attendanceFilter ||
+                                    attendanceFilter === 'all'));
+                        const subtextMap: Record<string, string> = {
+                            all: `${attendanceRate}% Present`,
+                            present: summary.total
+                                ? `${Math.round((summary.present / summary.total) * 100)}% of total`
+                                : '0%',
+                            late: 'After cutoff time',
+                            excused: 'Official leaves',
+                            absent: 'No check-in',
+                        };
+
                         return (
-                            <div
-                                key={card.label}
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => {
-                                    const nextFilter = card.summaryKey === 'total' ? 'all' : card.summaryKey;
-                                    setAttendanceFilter(nextFilter);
-                                    applyFilters({ attendance: nextFilter });
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        const nextFilter = card.summaryKey === 'total' ? 'all' : card.summaryKey;
-                                        setAttendanceFilter(nextFilter);
-                                        applyFilters({ attendance: nextFilter });
-                                    }
-                                }}
-                                className={`flex flex-col justify-between rounded-xl border bg-card p-4 shadow-xs hover:shadow-md cursor-pointer hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 ${
-                                    isCardFilterActive
-                                        ? 'border-primary ring-2 ring-primary/20 dark:bg-accent/10'
-                                        : 'hover:border-primary/50'
-                                }`}
+                            <Card
+                                key={card.key}
+                                onClick={() =>
+                                    handleStatusFilterChange(card.key)
+                                }
+                                className={cn(
+                                    'group relative cursor-pointer gap-0 overflow-hidden rounded-2xl border py-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
+                                    isSelected
+                                        ? 'border-blue-500/60 bg-blue-500/5 shadow-md ring-2 shadow-blue-500/10 ring-blue-500 dark:bg-blue-500/10'
+                                        : 'bg-card hover:border-zinc-300 dark:hover:border-zinc-700',
+                                )}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ${card.iconStyle}`}
-                                    >
-                                        <Icon className="size-5" aria-hidden />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-semibold text-muted-foreground">
-                                            {card.label}
-                                        </p>
-                                        <p
-                                            className={`text-2xl font-bold tracking-tight tabular-nums ${card.valueStyle}`}
-                                        >
-                                            {summary[card.summaryKey]}
-                                        </p>
-                                    </div>
-                                </div>
-                                {/* Visual Progress Indicator inside card */}
-                                <div className="mt-3.5 w-full">
-                                    <div className="flex justify-between text-[10px] text-muted-foreground font-medium mb-1">
-                                        <span>Ratio</span>
-                                        <span>{pct}%</span>
-                                    </div>
-                                    <div className="h-1 w-full rounded-full bg-slate-100 dark:bg-slate-800">
+                                <CardContent className="relative p-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                                {card.label}
+                                            </p>
+                                            <p
+                                                className={cn(
+                                                    'text-3xl font-extrabold tracking-tight',
+                                                    card.color,
+                                                )}
+                                            >
+                                                {summary[card.summaryKey]}
+                                            </p>
+                                        </div>
                                         <div
-                                            className={`h-full rounded-full transition-all duration-500 ${
-                                                card.summaryKey === 'present'
-                                                    ? 'bg-emerald-500'
-                                                    : card.summaryKey === 'late'
-                                                      ? 'bg-amber-500'
-                                                      : card.summaryKey === 'excused'
-                                                        ? 'bg-slate-400'
-                                                        : card.summaryKey === 'absent'
-                                                          ? 'bg-red-500'
-                                                          : 'bg-blue-500'
-                                            }`}
-                                            style={{ width: `${pct}%` }}
-                                        />
+                                            className={cn(
+                                                'flex size-10 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-110',
+                                                card.bg,
+                                            )}
+                                        >
+                                            <Icon
+                                                className={cn(
+                                                    'size-5',
+                                                    card.color,
+                                                )}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
+                                    <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+                                        <span>{subtextMap[card.key]}</span>
+                                        {isSelected && (
+                                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                                                Active Filter
+                                            </span>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
                         );
                     })}
                 </div>
@@ -720,18 +733,18 @@ export default function TeacherAttendanceIndex() {
                                     bg: 'bg-card hover:bg-amber-500/[0.02]',
                                 },
                                 excused: {
-                                    border: 'border-slate-200 dark:border-slate-800/40 hover:border-slate-400',
-                                    ring: 'ring-slate-500/20',
-                                    dot: 'bg-slate-400',
-                                    text: 'text-slate-700 dark:text-slate-400 bg-slate-500/10',
-                                    bg: 'bg-card hover:bg-slate-500/[0.02]',
+                                    border: 'border-blue-200 dark:border-blue-800/40 hover:border-blue-500',
+                                    ring: 'ring-blue-500/20',
+                                    dot: 'bg-blue-500',
+                                    text: 'text-blue-700 dark:text-blue-400 bg-blue-500/10',
+                                    bg: 'bg-card hover:bg-blue-500/[0.02]',
                                 },
                                 absent: {
-                                    border: 'border-red-200 dark:border-red-800/40 hover:border-red-500',
-                                    ring: 'ring-red-500/20',
-                                    dot: 'bg-red-500',
-                                    text: 'text-red-700 dark:text-red-400 bg-red-500/10',
-                                    bg: 'bg-card hover:bg-red-500/[0.02]',
+                                    border: 'border-rose-200 dark:border-rose-800/40 hover:border-rose-500',
+                                    ring: 'ring-rose-500/20',
+                                    dot: 'bg-rose-500',
+                                    text: 'text-rose-700 dark:text-rose-400 bg-rose-500/10',
+                                    bg: 'bg-card hover:bg-rose-500/[0.02]',
                                 },
                             };
                             
