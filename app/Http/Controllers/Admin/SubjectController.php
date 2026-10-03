@@ -40,11 +40,13 @@ class SubjectController extends Controller
     {
         $subject = Subject::findOrFail($id);
 
-        $teachers = DB::table('teacher_subject as ts')
-            ->join('teacher as t', 't.tch_id', '=', 'ts.tch_id')
-            ->where('ts.subj_id', $id)
+        $teachers = DB::table('class_schedule as cs')
+            ->join('teacher as t', 't.tch_id', '=', 'cs.tch_id')
+            ->where('cs.subj_id', $id)
             ->where('t.is_deleted', false)
             ->select('t.tch_id', 't.tch_fname', 't.tch_mname', 't.tch_lname', 't.tch_email', 't.contact_number')
+            ->distinct()
+            ->orderBy('t.tch_lname')
             ->get();
 
         $enrolledStudents = DB::table('student_subject as ss')
