@@ -317,35 +317,32 @@ export default function TeacherStudentsIndex() {
             <Head title="My Students" />
 
             <div className="space-y-5 p-4 md:p-6 lg:p-8">
-                {/* Page Header */}
-                <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-blue-500/[0.06] via-indigo-500/[0.03] to-transparent p-5 dark:from-blue-500/[0.10] dark:via-indigo-500/[0.05]">
-                    <div className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
-                    <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                            <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                                My Students
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                Masterlist for your advisory and subject classes with cumulative attendance counts and logbook access.
-                            </p>
+                {/* ── Page Header ── */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            My Students
+                        </h1>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            Masterlist for your advisory and subject classes with cumulative attendance counts and logbook access.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs">
+                            <GraduationCap
+                                className="size-3.5 shrink-0 text-blue-600 dark:text-blue-400"
+                                aria-hidden
+                            />
+                            <span className="font-medium text-foreground">
+                                {students.total ?? list.length} students total
+                            </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <div className="inline-flex w-fit items-center gap-2 rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground shadow-xs backdrop-blur-sm">
-                                <GraduationCap
-                                    className="size-4 shrink-0 text-blue-600 dark:text-blue-400"
-                                    aria-hidden
-                                />
-                                <span className="font-medium text-foreground">
-                                    {students.total ?? list.length} students total
-                                </span>
+                        {advisoryCount > 0 && (
+                            <div className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-700 shadow-xs dark:bg-blue-500/15 dark:text-blue-300">
+                                <ShieldCheck className="size-3.5 shrink-0" />
+                                <span>{advisoryCount} in your advisory</span>
                             </div>
-                            {advisoryCount > 0 && (
-                                <div className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-700 shadow-xs backdrop-blur-sm dark:bg-blue-500/15 dark:text-blue-300">
-                                    <ShieldCheck className="size-4 shrink-0" />
-                                    <span>{advisoryCount} in your advisory</span>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
 

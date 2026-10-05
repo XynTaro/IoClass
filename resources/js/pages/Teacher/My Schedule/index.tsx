@@ -177,26 +177,21 @@ export default function MySchedule() {
             <Head title="My Schedule" />
 
             <div className="dash-fade-up space-y-5 p-4 md:p-6 lg:p-8">
-                {/* ── Header banner ── */}
-                <div
-                    className="relative overflow-hidden rounded-xl border bg-linear-to-r from-blue-500/[0.08] via-indigo-500/[0.05] to-transparent p-5 dark:from-blue-500/[0.12] dark:via-indigo-500/[0.07]"
-                >
-                    <div className="absolute inset-y-0 left-0 w-1 bg-blue-600" />
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-0.5">
-                            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                                My Schedule
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                View your assigned class hours, subjects, and room allocations.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs backdrop-blur-sm">
-                                <CalendarDays className="size-3.5 text-blue-600 dark:text-blue-400" />
-                                {schedules.length} class{schedules.length !== 1 ? 'es' : ''} total
-                            </span>
-                        </div>
+                {/* ── Page Header ── */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            My Schedule
+                        </h1>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            View your assigned class hours, subjects, and room allocations.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs">
+                            <CalendarDays className="size-3.5 text-blue-600 dark:text-blue-400" />
+                            {schedules.length} class{schedules.length !== 1 ? 'es' : ''} total
+                        </span>
                     </div>
                 </div>
 

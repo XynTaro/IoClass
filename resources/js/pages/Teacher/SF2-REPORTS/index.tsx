@@ -451,55 +451,98 @@ export default function SF2ReportsIndex() {
             <Head title="SF2 Reports" />
 
             <div className="space-y-6 p-4 md:p-6 lg:p-8">
-                {/* Top panel: title + filters + export */}
-                <section className="relative overflow-hidden rounded-2xl border bg-card/60 shadow-xs backdrop-blur-md">
-                    <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+                {/* ── Page Header ── */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            SF2 Reports
+                        </h1>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            School Form 2 · Daily attendance records and official logbook for your advisory learners.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {sectionInfo && (
+                            <span className="inline-flex items-center rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                                {formatGradeLevel(sectionInfo.gr_level)} – {sectionInfo.sect_name}
+                            </span>
+                        )}
+                        {schoolYearLabel && (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-xs">
+                                <CalendarDays className="size-3.5 text-blue-500" aria-hidden />
+                                {schoolYearLabel}
+                            </span>
+                        )}
+                        <span className="inline-flex items-center rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                            {periodLabel}
+                        </span>
+                    </div>
+                </div>
 
-                    <div className="flex flex-col gap-6 p-6 md:flex-row md:items-start md:justify-between">
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 shadow-inner dark:bg-blue-500/15 dark:text-blue-400">
-                                    <FileSpreadsheet
-                                        className="size-5.5"
-                                        aria-hidden
-                                    />
-                                </div>
-                                <div>
-                                    <h1 className="bg-gradient-to-r from-foreground via-foreground/95 to-foreground/80 bg-clip-text text-2xl font-black tracking-tight">
-                                        SF2 Reports
-                                    </h1>
-                                    <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                        School Form 2 · Daily Attendance
-                                    </p>
-                                </div>
+                {/* ── Filters & Export Panel ── */}
+                <div className="rounded-2xl border bg-card p-5 shadow-xs">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                    School Year
+                                </label>
+                                <Select
+                                    value={syId}
+                                    onValueChange={(v) => {
+                                        setSyId(v);
+                                        navigate({ sy_id: v });
+                                    }}
+                                    disabled={schoolYears.length === 0}
+                                >
+                                    <SelectTrigger className="h-10 w-full rounded-xl border-muted bg-background transition-colors hover:bg-muted/10">
+                                        <SelectValue placeholder="Select school year" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        {schoolYears.map((sy) => (
+                                            <SelectItem
+                                                key={sy.sy_id}
+                                                value={String(sy.sy_id)}
+                                                className="rounded-lg"
+                                            >
+                                                {sy.sy_label}
+                                                {sy.is_active ? ' (Active)' : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <p className="max-w-xl text-sm text-muted-foreground">
-                                View, filter, and export the official monthly
-                                daily attendance log for your advisory learners.
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
-                                {sectionInfo && (
-                                    <span className="inline-flex items-center rounded-lg border border-blue-500/20 bg-blue-500/8 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                                        {formatGradeLevel(sectionInfo.gr_level)}{' '}
-                                        – {sectionInfo.sect_name}
-                                    </span>
-                                )}
-                                {schoolYearLabel && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-lg border bg-background/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                                        <CalendarDays
-                                            className="size-3.5 text-blue-500"
-                                            aria-hidden
-                                        />
-                                        {schoolYearLabel}
-                                    </span>
-                                )}
-                                <span className="inline-flex items-center rounded-lg bg-muted px-2.5 py-1 text-xs font-medium">
-                                    {periodLabel}
-                                </span>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                    Report Month
+                                </label>
+                                <Select
+                                    value={month}
+                                    onValueChange={(v) => {
+                                        setMonth(v);
+                                        navigate({ month: v });
+                                    }}
+                                >
+                                    <SelectTrigger className="h-10 w-full rounded-xl border-muted bg-background transition-colors hover:bg-muted/10">
+                                        <SelectValue placeholder="Month" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        {MONTHS.map((m, i) => (
+                                            <SelectItem
+                                                key={m}
+                                                value={String(i + 1)}
+                                                className="rounded-lg"
+                                            >
+                                                {m}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
-                        {rows.length > 0 ? (
+                        {rows.length > 0 && (
                             <div className="flex shrink-0 flex-col items-end gap-2">
                                 <button
                                     type="button"
@@ -535,69 +578,9 @@ export default function SF2ReportsIndex() {
                                     </p>
                                 )}
                             </div>
-                        ) : null}
+                        )}
                     </div>
-
-                    <div className="grid gap-4 border-t bg-muted/20 p-6 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                School Year
-                            </label>
-                            <Select
-                                value={syId}
-                                onValueChange={(v) => {
-                                    setSyId(v);
-                                    navigate({ sy_id: v });
-                                }}
-                                disabled={schoolYears.length === 0}
-                            >
-                                <SelectTrigger className="h-10 w-full rounded-xl border-muted bg-background transition-colors hover:bg-muted/10">
-                                    <SelectValue placeholder="Select school year" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    {schoolYears.map((sy) => (
-                                        <SelectItem
-                                            key={sy.sy_id}
-                                            value={String(sy.sy_id)}
-                                            className="rounded-lg"
-                                        >
-                                            {sy.sy_label}
-                                            {sy.is_active ? ' (Active)' : ''}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                Report Month
-                            </label>
-                            <Select
-                                value={month}
-                                onValueChange={(v) => {
-                                    setMonth(v);
-                                    navigate({ month: v });
-                                }}
-                            >
-                                <SelectTrigger className="h-10 w-full rounded-xl border-muted bg-background transition-colors hover:bg-muted/10">
-                                    <SelectValue placeholder="Month" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    {MONTHS.map((m, i) => (
-                                        <SelectItem
-                                            key={m}
-                                            value={String(i + 1)}
-                                            className="rounded-lg"
-                                        >
-                                            {m}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                </section>
+                </div>
 
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

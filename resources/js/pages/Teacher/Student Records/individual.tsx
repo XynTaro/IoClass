@@ -268,54 +268,51 @@ export default function TeacherStudentRecordView() {
             />
 
             <div className="space-y-6 p-4 md:p-6 lg:p-8">
-                {/* Page Header — matches My Schedule & My Attendance style */}
-                <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-blue-500/[0.06] via-indigo-500/[0.03] to-transparent p-5 dark:from-blue-500/[0.10] dark:via-indigo-500/[0.05]">
-                    <div className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
-                    <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3.5">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9 shrink-0 cursor-pointer shadow-xs rounded-lg"
-                                onClick={() => router.visit(teacher.students.index.url())}
-                            >
-                                <ArrowLeft className="h-4 w-4" />
-                                <span className="sr-only">Back</span>
-                            </Button>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                                        {student.stu_fname} {student.stu_lname}
-                                    </h1>
-                                    {student.status && (
-                                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                            student.status === 'active' 
-                                                ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' 
-                                                : 'bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-400'
-                                        }`}>
-                                            <span className={`size-1 rounded-full ${student.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                            {student.status}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    Individual attendance records, logs, and statistics.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="inline-flex w-fit items-center gap-2 rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground shadow-xs backdrop-blur-sm">
-                            <span className="font-medium text-foreground">
-                                {student.gr_level} — {student.sect}
-                            </span>
-                            {student.lrn && (
-                                <>
-                                    <span className="text-border">|</span>
-                                    <span className="font-mono text-xs text-muted-foreground">
-                                        LRN: {student.lrn}
+                {/* ── Page Header ── */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3.5">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 shrink-0 cursor-pointer rounded-lg shadow-xs"
+                            onClick={() => router.visit(teacher.students.index.url())}
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sr-only">Back</span>
+                        </Button>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                                    {student.stu_fname} {student.stu_lname}
+                                </h1>
+                                {student.status && (
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                        student.status === 'active' 
+                                            ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' 
+                                            : 'bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-400'
+                                    }`}>
+                                        <span className={`size-1 rounded-full ${student.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                        {student.status}
                                     </span>
-                                </>
-                            )}
+                                )}
+                            </div>
+                            <p className="mt-0.5 text-sm text-muted-foreground">
+                                Individual attendance records, logs, and statistics.
+                            </p>
                         </div>
+                    </div>
+                    <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs">
+                        <span className="font-medium text-foreground">
+                            {student.gr_level} — {student.sect}
+                        </span>
+                        {student.lrn && (
+                            <>
+                                <span className="text-border">|</span>
+                                <span className="font-mono text-xs text-muted-foreground">
+                                    LRN: {student.lrn}
+                                </span>
+                            </>
+                        )}
                     </div>
                 </div>
 

@@ -317,33 +317,28 @@ export default function Index() {
             <Head title={archived ? 'Archived Students' : 'Students Management'} />
 
             <div className="dash-fade-up space-y-5 p-4 md:p-6 lg:p-8">
-                {/* ── Header banner ── */}
-                <div
-                    className="relative overflow-hidden rounded-xl border bg-linear-to-r from-emerald-500/[0.08] via-teal-500/[0.05] to-transparent p-5 dark:from-emerald-500/[0.12] dark:via-teal-500/[0.07]"
-                >
-                    <div className="absolute inset-y-0 left-0 w-1 bg-emerald-500" />
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                                {archived ? 'Archived Students' : 'Students Management'}
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                {archived
-                                    ? 'View and manage soft-deleted student records.'
-                                    : 'Manage enrolled student profiles, sections, and RFID cards.'}
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            {activeSchoolYear && (
-                                <span className="inline-flex items-center rounded-lg border border-emerald-500/15 bg-background/80 px-3 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm dark:text-emerald-300">
-                                    SY: {activeSchoolYear.sy_label}
-                                </span>
-                            )}
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs backdrop-blur-sm">
-                                <Users className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                {studentList.length} {archived ? 'Archived' : 'Students'}
+                {/* ── Page Header ── */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            {archived ? 'Archived Students' : 'Students Management'}
+                        </h1>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            {archived
+                                ? 'View and manage soft-deleted student records.'
+                                : 'Manage enrolled student profiles, sections, and RFID cards.'}
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {activeSchoolYear && (
+                            <span className="inline-flex items-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                                SY: {activeSchoolYear.sy_label}
                             </span>
-                        </div>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs">
+                            <Users className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                            {studentList.length} {archived ? 'Archived' : 'Students'}
+                        </span>
                     </div>
                 </div>
 
