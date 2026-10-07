@@ -113,6 +113,7 @@ class TeacherStudentRecordController extends Controller
                 'a.session_id',
                 'a.att_date as session_date',
                 'a.time_in',
+                'a.time_out',
                 'a.subj_id',
                 'sub.subj_name',
                 'sub.subj_code',
@@ -120,6 +121,7 @@ class TeacherStudentRecordController extends Controller
             ->get()
             ->map(function ($row) {
                 $timeIn = $row->time_in ? Carbon::parse($row->time_in) : null;
+                $timeOut = $row->time_out ? Carbon::parse($row->time_out) : null;
 
                 return [
                     'att_id' => (int) $row->att_id,
@@ -129,7 +131,7 @@ class TeacherStudentRecordController extends Controller
                         ? Carbon::parse($row->session_date)->toDateString()
                         : null,
                     'start_time' => $timeIn?->format('H:i:s'),
-                    'end_time' => null,
+                    'end_time' => $timeOut?->format('H:i:s'),
                     'subj_id' => $row->subj_id !== null ? (int) $row->subj_id : null,
                     'subj_name' => $row->subj_name,
                     'subj_code' => $row->subj_code,

@@ -125,7 +125,7 @@ test('student tap records per-subject attendance when session has a subject', fu
     )->toBeTrue();
 });
 
-test('same student tap for same subject on same day is idempotent', function () {
+test('same student tap within cooldown is rejected by cooldown guard', function () {
     $data = setupTwoSubjectSchedule();
 
     $student = Student::create([
@@ -145,19 +145,71 @@ test('same student tap for same subject on same day is idempotent', function () 
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])->assertSuccessful();
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-IDEM-01'])->assertSuccessful();
 
-    // Second tap in same session
+    // Second tap immediately (within cooldown)
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-IDEM-01'])
         ->assertSuccessful()
-        ->assertJsonPath('attendance.already_checked_in', true);
+        ->assertJsonPath('attendance.already_checked_in', true)
+        ->assertJsonPath('attendance.action', 'cooldown');
 
-    expect(DB::table('attendance')->where('stu_id', $student->stu_id)->count())->toBe(1);
+    expect(DB::table('attendance')->where('stu_id', $student->stu_id)->value('time_out'))->toBeNull();
 });
 
-test('teacher tap for next subject auto-transfers present students', function () {
+test('student taps out after cooldown in same subject session', function () {
     $data = setupTwoSubjectSchedule();
 
     $student = Student::create([
-        'rfid_uid' => 'STU-AUTO-01',
+        'rfid_uid' => 'STU-TAPOUT-01',
+        'stu_fname' => 'Carlos',
+        'stu_lname' => 'Mendoza',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $data['sect_id'],
+        'sy_id' => $data['sy_id'],
+    ]);
+
+    // Teacher opens session (07:30)
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])->assertSuccessful();
+
+    // 1st Tap: Time In
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-TAPOUT-01'])
+        ->assertSuccessful()
+        ->assertJsonPath('action', 'attendance')
+        ->assertJsonPath('attendance.recorded', true)
+        ->assertJsonPath('attendance.action', 'time_in');
+
+    // Advance time past cooldown (to 07:55, end of period)
+    Carbon::setTestNow('2026-06-01 07:55:00');
+
+    // 2nd Tap: Time Out
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-TAPOUT-01'])
+        ->assertSuccessful()
+        ->assertJsonPath('action', 'time_out')
+        ->assertJsonPath('attendance.recorded', true)
+        ->assertJsonPath('attendance.action', 'time_out');
+
+    $att = DB::table('attendance')
+        ->where('stu_id', $student->stu_id)
+        ->where('subj_id', $data['subj1_id'])
+        ->first();
+
+    expect($att->time_in)->not->toBeNull()
+        ->and($att->time_out)->not->toBeNull();
+
+    // 3rd Tap: Already timed out
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-TAPOUT-01'])
+        ->assertSuccessful()
+        ->assertJsonPath('attendance.already_timed_out', true);
+});
+
+test('teacher tap for next subject does not auto-transfer students', function () {
+    $data = setupTwoSubjectSchedule();
+
+    $student = Student::create([
+        'rfid_uid' => 'STU-NOAUTO-01',
         'stu_fname' => 'Ben',
         'stu_lname' => 'Dela Cruz',
         'status' => 'active',
@@ -170,69 +222,35 @@ test('teacher tap for next subject auto-transfers present students', function ()
         'sy_id' => $data['sy_id'],
     ]);
 
-    // Session 1 (07:00–08:00): teacher opens, student taps
+    // Session 1 (07:00–08:00): teacher opens, student taps in
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])->assertSuccessful();
-    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-AUTO-01'])->assertSuccessful();
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-NOAUTO-01'])->assertSuccessful();
 
     // Advance time to 08:15 (subject 2 period)
     Carbon::setTestNow('2026-06-01 08:15:00');
 
-    // Teacher taps again → opens session 2 and auto-transfers student from subject 1
-    $response = $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])
-        ->assertSuccessful()
-        ->assertJsonPath('session.auto_transferred', 1);
-
-    expect(DB::table('attendance')
-        ->where('stu_id', $student->stu_id)
-        ->where('subj_id', $data['subj2_id'])
-        ->where('status', 'present')
-        ->exists()
-    )->toBeTrue();
-});
-
-test('auto-transfer does not duplicate if student already has record for next subject', function () {
-    $data = setupTwoSubjectSchedule();
-
-    $student = Student::create([
-        'rfid_uid' => 'STU-NODUP-01',
-        'stu_fname' => 'Carla',
-        'stu_lname' => 'Rivera',
-        'status' => 'active',
-        'is_deleted' => false,
-    ]);
-
-    DB::table('student_section')->insert([
-        'stu_id' => $student->stu_id,
-        'sect_id' => $data['sect_id'],
-        'sy_id' => $data['sy_id'],
-    ]);
-
-    // Session 1
-    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])->assertSuccessful();
-    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-NODUP-01'])->assertSuccessful();
-
-    // Manually pre-insert a record for subject 2 (e.g. student tapped early)
-    DB::table('attendance')->insert([
-        'stu_id' => $student->stu_id,
-        'subj_id' => $data['subj2_id'],
-        'sect_id' => $data['sect_id'],
-        'sy_id' => $data['sy_id'],
-        'att_date' => '2026-06-01',
-        'time_in' => now(),
-        'status' => 'present',
-    ]);
-
-    Carbon::setTestNow('2026-06-01 08:15:00');
-
+    // Teacher taps again → opens session 2 without auto-transferring
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])
         ->assertSuccessful()
         ->assertJsonPath('session.auto_transferred', 0);
 
+    // Student should NOT have an attendance record for Subject 2 yet
     expect(DB::table('attendance')
         ->where('stu_id', $student->stu_id)
         ->where('subj_id', $data['subj2_id'])
-        ->count()
-    )->toBe(1);
+        ->exists()
+    )->toBeFalse();
+
+    // When the student arrives and taps in Subject 2, they get recorded
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-NOAUTO-01'])
+        ->assertSuccessful()
+        ->assertJsonPath('attendance.recorded', true);
+
+    expect(DB::table('attendance')
+        ->where('stu_id', $student->stu_id)
+        ->where('subj_id', $data['subj2_id'])
+        ->exists()
+    )->toBeTrue();
 });
 
 test('multiple device tokens are accepted', function () {

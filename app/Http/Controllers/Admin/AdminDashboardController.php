@@ -94,6 +94,7 @@ class AdminDashboardController extends Controller
                 'sec.sect_name',
                 'a.status',
                 'a.time_in',
+                'a.time_out',
             ])
             ->get()
             ->map(function ($row) {
@@ -110,6 +111,9 @@ class AdminDashboardController extends Controller
                     'status' => ucfirst($row->status),
                     'time_in' => $row->time_in
                         ? Carbon::parse($row->time_in)->format('g:i A')
+                        : '—',
+                    'time_out' => $row->time_out
+                        ? Carbon::parse($row->time_out)->format('g:i A')
                         : '—',
                     'rfid_uid' => $row->rfid_uid ?? '—',
                 ];

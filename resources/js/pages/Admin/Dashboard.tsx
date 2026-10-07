@@ -76,6 +76,7 @@ interface CheckinRow {
     section: string;
     status: string;
     time_in: string;
+    time_out?: string;
     rfid_uid: string;
 }
 
@@ -1189,6 +1190,7 @@ export default function AdminDashboard({
                                                 'Section',
                                                 'Status',
                                                 'Time In',
+                                                'Time Out',
                                                 'RFID',
                                             ].map((col) => (
                                                 <th
@@ -1263,9 +1265,13 @@ export default function AdminDashboard({
                                                         {row.status}
                                                     </span>
                                                 </td>
-                                                {/* Time */}
+                                                {/* Time In */}
                                                 <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
                                                     {row.time_in}
+                                                </td>
+                                                {/* Time Out */}
+                                                <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
+                                                    {row.time_out ?? '—'}
                                                 </td>
                                                 {/* RFID */}
                                                 <td className="px-4 py-3">

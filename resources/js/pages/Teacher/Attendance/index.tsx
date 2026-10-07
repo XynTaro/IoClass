@@ -54,6 +54,7 @@ interface AttendanceRow {
     sect: string;
     attendance_status: AttendanceStatus;
     time_in: string | null;
+    time_out?: string | null;
 }
 
 /** Inertia page props passed from the server-side controller. */
@@ -288,6 +289,25 @@ export default function TeacherAttendanceIndex() {
                         {time ? (
                             <>
                                 <Clock className={`size-3.5 ${status === 'late' ? 'text-amber-500' : 'text-emerald-500'}`} />
+                                <span className="font-medium text-foreground">{time}</span>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">—</span>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: 'time_out',
+            header: 'Time Out',
+            cell: ({ row }) => {
+                const time = row.original.time_out;
+                return (
+                    <div className="flex items-center gap-1.5 text-sm tabular-nums">
+                        {time ? (
+                            <>
+                                <Clock className="size-3.5 text-sky-500" />
                                 <span className="font-medium text-foreground">{time}</span>
                             </>
                         ) : (
@@ -781,14 +801,22 @@ export default function TeacherAttendanceIndex() {
                                             <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${currentStyles.text}`}>
                                                 {student.attendance_status}
                                             </span>
-                                            {student.time_in ? (
-                                                <span className="flex items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground tabular-nums">
-                                                    <Clock className="size-3 text-emerald-500" />
-                                                    {student.time_in}
-                                                </span>
-                                            ) : (
-                                                <span className="text-[11px] text-muted-foreground italic">No Scan</span>
-                                            )}
+                                            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-medium text-muted-foreground tabular-nums">
+                                                {student.time_in ? (
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="size-3 text-emerald-500" />
+                                                        In: {student.time_in}
+                                                    </span>
+                                                ) : (
+                                                    <span className="italic">No Scan</span>
+                                                )}
+                                                {student.time_out && (
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="size-3 text-sky-500" />
+                                                        Out: {student.time_out}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\DB;
 
 class StudentAttendanceService
 {
+    private StudentAbsenceNotifier $absenceNotifier;
+
+    public function __construct(?StudentAbsenceNotifier $absenceNotifier = null)
+    {
+        $this->absenceNotifier = $absenceNotifier ?? app(StudentAbsenceNotifier::class);
+    }
+
     /**
      * Record attendance for a student, scoped per-subject when a session with a
      * subject is active, or as a whole-day record when no subject is known.
@@ -30,6 +37,13 @@ class StudentAttendanceService
      *     already_checked_in: bool,
      *     status: string,
      *     time_in: string,
+     *     time_out?: string|null,
+     *     action?: string,
+     *     already_timed_out?: bool,
+     *     message?: string,
+     *     non_school_day?: bool,
+     *     event_title?: string,
+     *     event_type?: string,
      * }
      */
     public function recordForStudent(Student $student, ?CarbonInterface $scannedAt = null, ?array $session = null): array
@@ -43,11 +57,13 @@ class StudentAttendanceService
             return [
                 'recorded' => false,
                 'already_checked_in' => false,
+                'action' => 'blocked',
                 'non_school_day' => true,
                 'event_title' => $nonSchoolDay['title'],
                 'event_type' => $nonSchoolDay['type'],
                 'status' => 'no_class',
                 'time_in' => $scannedAt->toIso8601String(),
+                'time_out' => null,
             ];
         }
 
@@ -74,18 +90,61 @@ class StudentAttendanceService
                 ])->save();
 
                 return [
-                    'recorded' => false,
+                    'recorded' => true,
+                    'action' => 'time_in',
                     'already_checked_in' => false,
                     'status' => $existing->status,
                     'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
+                    'time_out' => $existing->time_out?->toIso8601String(),
+                ];
+            }
+
+            $cooldownSeconds = (int) config('attendance.tap_cooldown_seconds', 120);
+            $secondsSinceTimeIn = $existing->time_in
+                ? abs($scannedAt->diffInSeconds($existing->time_in))
+                : PHP_INT_MAX;
+
+            if ($secondsSinceTimeIn < $cooldownSeconds) {
+                return [
+                    'recorded' => false,
+                    'action' => 'cooldown',
+                    'already_checked_in' => true,
+                    'already_timed_out' => $existing->time_out !== null,
+                    'status' => $existing->status,
+                    'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
+                    'time_out' => $existing->time_out?->toIso8601String(),
+                    'message' => 'Tap cooldown active. Please wait before tapping out.',
+                ];
+            }
+
+            if ($existing->time_out === null) {
+                $existing->forceFill([
+                    'time_out' => $scannedAt,
+                ])->save();
+
+                // When student taps out (e.g. going home), check if they missed any earlier subjects today
+                $this->absenceNotifier->notifyMissedSubjectsForStudent($student, $scannedAt);
+
+                return [
+                    'recorded' => true,
+                    'action' => 'time_out',
+                    'already_checked_in' => false,
+                    'already_timed_out' => false,
+                    'status' => $existing->status,
+                    'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
+                    'time_out' => $existing->time_out->toIso8601String(),
                 ];
             }
 
             return [
                 'recorded' => false,
-                'already_checked_in' => true,
+                'action' => 'already_timed_out',
+                'already_checked_in' => false,
+                'already_timed_out' => true,
                 'status' => $existing->status,
                 'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
+                'time_out' => $existing->time_out->toIso8601String(),
+                'message' => 'Already timed out for this session.',
             ];
         }
 
@@ -107,14 +166,17 @@ class StudentAttendanceService
             'sy_id' => $syId,
             'att_date' => $attDate,
             'time_in' => $scannedAt,
+            'time_out' => null,
             'status' => $this->resolveStatus($scannedAt),
         ]);
 
         return [
             'recorded' => true,
+            'action' => 'time_in',
             'already_checked_in' => false,
             'status' => $attendance->status,
             'time_in' => $attendance->time_in->toIso8601String(),
+            'time_out' => null,
         ];
     }
 

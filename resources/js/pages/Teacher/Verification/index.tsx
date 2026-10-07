@@ -30,6 +30,7 @@ export type VerificationRow = {
     sect: string;
     attendance_status: 'absent';
     time_in: string | null;
+    time_out?: string | null;
 };
 
 type Assignment = {

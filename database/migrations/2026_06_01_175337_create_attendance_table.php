@@ -21,7 +21,9 @@ return new class extends Migration
             $table->dateTime('time_in')->nullable();
             $table->string('status', 20)->default('present');
 
-            $table->unique(['stu_id', 'att_date']);
+            if (DB::getDriverName() === 'pgsql') {
+                $table->unique(['stu_id', 'att_date']);
+            }
 
             $table->foreign('stu_id')->references('stu_id')->on('student')->onDelete('cascade');
             $table->foreign('sect_id')->references('sect_id')->on('section')->onDelete('set null');

@@ -9,6 +9,8 @@ use App\Models\Student;
 use App\Models\Teacher;
 use App\Services\Sms\RecordingSmsSender;
 use App\Services\StudentAbsenceNotifier;
+use App\Services\StudentAttendanceService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
@@ -332,4 +334,168 @@ test('artisan command attendance:notify-absent notifies all absent students', fu
         ->expectsOutputToContain('Notifications sent: 2');
 
     expect($this->sms->messages)->toHaveCount(2);
+});
+
+test('attendance:notify-subject-absences sends specific subject absence alerts to guardians', function () {
+    ['syId' => $syId, 'sectId' => $sectId, 'subjId' => $subjId] = seedAbsenceTestEnvironment();
+
+    $student = Student::create([
+        'lrn' => '777788889994',
+        'stu_fname' => 'Rico',
+        'stu_lname' => 'Yan',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    $guardian = Guardian::create([
+        'name' => 'Mrs. Yan',
+        'contact_number' => '09175556677',
+        'is_deleted' => false,
+    ]);
+
+    ParentGuardian::create(['stu_par_id' => $student->stu_id, 'guardian_id' => $guardian->guardian_id]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    // Schedule is Monday 09:00 - 10:00 (seeded in seedAbsenceTestEnvironment: English 8)
+    // Run command at 12:00 PM for June 1, 2026 (a Monday)
+    $this->artisan('attendance:notify-subject-absences', [
+        '--date' => '2026-06-01',
+        '--before' => '12:00',
+    ])
+        ->assertSuccessful()
+        ->expectsOutputToContain('sent 1 notification(s)');
+
+    expect($this->sms->messages)->toHaveCount(1)
+        ->and($this->sms->messages[0]['to'])->toBe('09175556677')
+        ->and($this->sms->messages[0]['message'])->toContain('was marked ABSENT in English 8 (Diamond)');
+
+    // Ensure an absent attendance record was logged in the database
+    expect(DB::table('attendance')
+        ->where('stu_id', $student->stu_id)
+        ->where('subj_id', $subjId)
+        ->where('att_date', '2026-06-01')
+        ->where('status', 'absent')
+        ->exists()
+    )->toBeTrue();
+});
+
+test('student tapping out of another subject alerts guardian of earlier missed subject', function () {
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2025-2026',
+        'is_active' => true,
+        'is_deleted' => false,
+    ], 'sy_id');
+
+    $sectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Sapphire',
+        'gr_level' => 'Grade 9',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $subj1Id = DB::table('subject')->insertGetId([
+        'subj_code' => 'MATH9',
+        'subj_name' => 'Math 9',
+        'gr_level' => 'Grade 9',
+        'is_deleted' => false,
+    ], 'subj_id');
+
+    $subj2Id = DB::table('subject')->insertGetId([
+        'subj_code' => 'SCI9',
+        'subj_name' => 'Science 9',
+        'gr_level' => 'Grade 9',
+        'is_deleted' => false,
+    ], 'subj_id');
+
+    $teacher = Teacher::create([
+        'tch_fname' => 'John',
+        'tch_lname' => 'Doe',
+        'tch_email' => 'john.doe@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+    ]);
+
+    $roomId = DB::table('room')->insertGetId(['room_no' => 'R-301', 'is_deleted' => false], 'room_id');
+
+    // Subject 1: Math 07:00 - 08:00 on Monday
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacher->tch_id,
+        'subj_id' => $subj1Id,
+        'sect_id' => $sectId,
+        'room_id' => $roomId,
+        'sy_id' => $syId,
+        'day_of_week' => 'Monday',
+        'start_time' => '07:00:00',
+        'end_time' => '08:00:00',
+    ]);
+
+    // Subject 2: Science 08:00 - 09:00 on Monday
+    $sched2Id = DB::table('class_schedule')->insertGetId([
+        'tch_id' => $teacher->tch_id,
+        'subj_id' => $subj2Id,
+        'sect_id' => $sectId,
+        'room_id' => $roomId,
+        'sy_id' => $syId,
+        'day_of_week' => 'Monday',
+        'start_time' => '08:00:00',
+        'end_time' => '09:00:00',
+    ], 'schedule_id');
+
+    $student = Student::create([
+        'rfid_uid' => 'STUDENT-MISSED-MATH',
+        'stu_fname' => 'Leo',
+        'stu_lname' => 'Valdez',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    $guardian = Guardian::create([
+        'name' => 'Mrs. Valdez',
+        'contact_number' => '09191234567',
+        'is_deleted' => false,
+    ]);
+
+    ParentGuardian::create(['stu_par_id' => $student->stu_id, 'guardian_id' => $guardian->guardian_id]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    // Student SKIPPED Math (07:00 - 08:00).
+    // Now at 08:10 (Monday June 1, 2026), student enters Science and taps in
+    Carbon::setTestNow('2026-06-01 08:10:00');
+
+    $sessionScience = [
+        'tch_id' => $teacher->tch_id,
+        'tch_name' => 'John Doe',
+        'sect_id' => $sectId,
+        'sect_name' => 'Sapphire',
+        'subj_id' => $subj2Id,
+        'subj_name' => 'Science 9',
+        'schedule_id' => $sched2Id,
+        'started_at' => now()->timestamp,
+    ];
+
+    $attendanceService = app(StudentAttendanceService::class);
+    $attendanceService->recordForStudent($student, null, $sessionScience);
+
+    // No SMS sent yet at tap-in
+    expect($this->sms->messages)->toBeEmpty();
+
+    // At 09:00, student taps out of Science to go home
+    Carbon::setTestNow('2026-06-01 09:00:00');
+    $attendanceService->recordForStudent($student, null, $sessionScience);
+
+    // Tapping out detected missed Math! Guardian receives SMS for Math 9
+    expect($this->sms->messages)->toHaveCount(1)
+        ->and($this->sms->messages[0]['to'])->toBe('09191234567')
+        ->and($this->sms->messages[0]['message'])->toContain('was marked ABSENT in Math 9 (Sapphire)');
+
+    Carbon::setTestNow();
 });

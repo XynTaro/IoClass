@@ -28,6 +28,7 @@ class Attendance extends Model
         'sy_id',
         'att_date',
         'time_in',
+        'time_out',
         'status',
     ];
 
@@ -39,6 +40,7 @@ class Attendance extends Model
         return [
             'att_date' => 'date',
             'time_in' => 'datetime',
+            'time_out' => 'datetime',
         ];
     }
 

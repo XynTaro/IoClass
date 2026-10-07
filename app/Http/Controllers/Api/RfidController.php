@@ -75,11 +75,12 @@ class RfidController extends Controller
         if ($student !== null) {
             $activeSession = RfidSessionCache::get($deviceKey);
             $attendance = $this->studentAttendanceService->recordForStudent($student, null, $activeSession);
+            $action = ($attendance['action'] ?? null) === 'time_out' ? 'time_out' : 'attendance';
 
             return response()->json([
                 'success' => true,
                 'type' => 'student',
-                'action' => 'attendance',
+                'action' => $action,
                 'data' => $student,
                 'attendance' => $attendance,
                 'session' => $activeSession !== null ? [
@@ -156,24 +157,6 @@ class RfidController extends Controller
      *     subj_name: string|null,
      *     schedule_id: int|null,
      *     started_at: int,
-     * }
-     */
-    /**
-     * Open a teaching session for the given device key.
-     *
-     * When a new session has a known section + subject, automatically copy
-     * today's present/late records from any earlier subject in the same
-     * section so students don't need to tap again.
-     *
-     * @return array{
-     *     tch_id: int,
-     *     tch_name: string,
-     *     sect_id: int|null,
-     *     sect_name: string|null,
-     *     subj_id: int|null,
-     *     subj_name: string|null,
-     *     schedule_id: int|null,
-     *     started_at: int,
      *     auto_transferred: int,
      * }
      */
@@ -210,23 +193,6 @@ class RfidController extends Controller
         ];
 
         RfidSessionCache::open($deviceKey, $session);
-
-        // Auto-transfer present/late students from the previous subject so only
-        // late-comers need to tap for this period.
-        if ($schedule !== null && $schedule->sect_id !== null && $schedule->subj_id !== null) {
-            $syId = $this->studentAttendanceService->resolveActiveSyIdPublic();
-
-            if ($syId !== null) {
-                $transferred = $this->studentAttendanceService->transferFromPreviousSubject(
-                    sectId: $schedule->sect_id,
-                    newSubjId: $schedule->subj_id,
-                    newSessionId: $schedule->schedule_id,
-                    newSyId: $syId,
-                );
-
-                $session['auto_transferred'] = $transferred;
-            }
-        }
 
         return $session;
     }

@@ -14,4 +14,16 @@ return [
 
     'late_after' => env('ATTENDANCE_LATE_AFTER', '08:00'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tap out cooldown (seconds)
+    |--------------------------------------------------------------------------
+    |
+    | Minimum seconds required between time_in and time_out to prevent
+    | accidental immediate double-taps on the RFID scanner.
+    |
+    */
+
+    'tap_cooldown_seconds' => (int) env('ATTENDANCE_TAP_COOLDOWN_SECONDS', 120),
+
 ];

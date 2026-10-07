@@ -157,6 +157,7 @@ class TeacherVerificationController extends Controller
                 'sec.sect_name as sect',
                 'a.status as attendance_status',
                 'a.time_in',
+                'a.time_out',
             )
             ->orderBy('s.stu_lname')
             ->orderBy('s.stu_fname')
@@ -165,6 +166,9 @@ class TeacherVerificationController extends Controller
                 $row->attendance_status = $row->attendance_status ?? 'absent';
                 $row->time_in = $row->time_in
                     ? Carbon::parse($row->time_in)->format('H:i')
+                    : null;
+                $row->time_out = $row->time_out
+                    ? Carbon::parse($row->time_out)->format('H:i')
                     : null;
 
                 return $row;

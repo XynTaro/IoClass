@@ -30,20 +30,20 @@ return new class extends Migration
         if (DB::getDriverName() === 'pgsql') {
             // Drop old daily-unique index
             DB::statement('DROP INDEX IF EXISTS attendance_stu_id_att_date_unique');
-
-            // New per-subject unique index — treats NULL subj_id as distinct
-            // so advisory (whole-day) records don't clash with subject records.
-            DB::statement(
-                'CREATE UNIQUE INDEX IF NOT EXISTS attendance_stu_id_att_date_subj_id_unique '
-                .'ON attendance (stu_id, att_date, subj_id) WHERE att_date IS NOT NULL AND subj_id IS NOT NULL'
-            );
-
-            // Separate partial index for advisory (subj_id IS NULL) records.
-            DB::statement(
-                'CREATE UNIQUE INDEX IF NOT EXISTS attendance_stu_id_att_date_no_subj_unique '
-                .'ON attendance (stu_id, att_date) WHERE att_date IS NOT NULL AND subj_id IS NULL'
-            );
         }
+
+        // New per-subject unique index — treats NULL subj_id as distinct
+        // so advisory (whole-day) records don't clash with subject records.
+        DB::statement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS attendance_stu_id_att_date_subj_id_unique '
+            .'ON attendance (stu_id, att_date, subj_id) WHERE att_date IS NOT NULL AND subj_id IS NOT NULL'
+        );
+
+        // Separate partial index for advisory (subj_id IS NULL) records.
+        DB::statement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS attendance_stu_id_att_date_no_subj_unique '
+            .'ON attendance (stu_id, att_date) WHERE att_date IS NOT NULL AND subj_id IS NULL'
+        );
     }
 
     public function down(): void
