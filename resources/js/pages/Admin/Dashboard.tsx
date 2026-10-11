@@ -401,7 +401,6 @@ type StatCardProps = {
 const ACCENT_STYLES: Record<
     StatCardAccent,
     {
-        bar: string;
         glow: string;
         iconBg: string;
         iconText: string;
@@ -409,28 +408,24 @@ const ACCENT_STYLES: Record<
     }
 > = {
     emerald: {
-        bar: 'bg-emerald-500',
         glow: 'hover:shadow-lg hover:shadow-emerald-500/10 dark:hover:shadow-emerald-500/5',
         iconBg: 'bg-emerald-100 dark:bg-emerald-950/40',
         iconText: 'text-emerald-600 dark:text-emerald-400',
         changeBg: 'bg-emerald-50 dark:bg-emerald-950/40',
     },
     blue: {
-        bar: 'bg-blue-500',
         glow: 'hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5',
         iconBg: 'bg-blue-100 dark:bg-blue-950/40',
         iconText: 'text-blue-600 dark:text-blue-400',
         changeBg: 'bg-blue-50 dark:bg-blue-950/40',
     },
     violet: {
-        bar: 'bg-violet-500',
         glow: 'hover:shadow-lg hover:shadow-violet-500/10 dark:hover:shadow-violet-500/5',
         iconBg: 'bg-violet-100 dark:bg-violet-950/40',
         iconText: 'text-violet-600 dark:text-violet-400',
         changeBg: 'bg-violet-50 dark:bg-violet-950/40',
     },
     amber: {
-        bar: 'bg-amber-500',
         glow: 'hover:shadow-lg hover:shadow-amber-500/10 dark:hover:shadow-amber-500/5',
         iconBg: 'bg-amber-100 dark:bg-amber-950/40',
         iconText: 'text-amber-600 dark:text-amber-400',
@@ -462,7 +457,6 @@ function StatCard({
             )}
             style={style}
         >
-            <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-xl', styles.bar)} />
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">
