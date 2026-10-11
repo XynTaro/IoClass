@@ -1,4 +1,4 @@
-import { Deferred, Head, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import {
     TrendingDown,
     TrendingUp,
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/chart';
 import AdminLayout from '@/layouts/admin/admin-layout';
 import { cn } from '@/lib/utils';
+import admin from '@/routes/admin';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 function getGreeting(): string {
@@ -388,12 +389,13 @@ type StatCardAccent = 'emerald' | 'blue' | 'violet' | 'amber';
 type StatCardProps = {
     label: string;
     value: string | number;
-    change: number;
+    change?: number;
     icon: React.ElementType;
     accent: StatCardAccent;
     suffix?: string;
     hideChange?: boolean;
     footnote?: string;
+    href?: string;
     style?: React.CSSProperties;
     className?: string;
 };
@@ -436,35 +438,37 @@ const ACCENT_STYLES: Record<
 function StatCard({
     label,
     value,
-    change,
+    change = 0,
     icon: Icon,
     accent,
     suffix,
     hideChange,
     footnote,
+    href,
     style,
     className,
 }: StatCardProps) {
     const positive = change >= 0;
     const styles = ACCENT_STYLES[accent];
 
-    return (
+    const cardContent = (
         <Card
             className={cn(
                 'group relative overflow-hidden rounded-xl border-border/60 py-0 shadow-sm transition-all duration-300 hover:-translate-y-0.5',
                 styles.glow,
-                className,
+                href && 'cursor-pointer hover:border-border',
+                !href && className,
             )}
-            style={style}
+            style={!href ? style : undefined}
         >
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
                         {label}
                     </span>
                     <div
                         className={cn(
-                            'flex size-8 items-center justify-center rounded-lg',
+                            'flex size-8 items-center justify-center rounded-lg transition-transform group-hover:scale-105',
                             styles.iconBg,
                         )}
                     >
@@ -506,6 +510,44 @@ function StatCard({
             </CardContent>
         </Card>
     );
+
+    if (href) {
+        if (href.startsWith('#')) {
+            return (
+                <a
+                    href={href}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.querySelector(href);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }}
+                    className={cn(
+                        'dash-fade-up block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        className,
+                    )}
+                    style={style}
+                >
+                    {cardContent}
+                </a>
+            );
+        }
+        return (
+            <Link
+                href={href}
+                className={cn(
+                    'dash-fade-up block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    className,
+                )}
+                style={style}
+            >
+                {cardContent}
+            </Link>
+        );
+    }
+
+    return cardContent;
 }
 
 // ─── Status pill ──────────────────────────────────────────────────────────────
@@ -734,6 +776,7 @@ export default function AdminDashboard({
                         accent="blue"
                         hideChange
                         footnote="Enrolled in system"
+                        href={admin.student.index.url()}
                         className="dash-fade-up"
                         style={{ animationDelay: '50ms' }}
                     />
@@ -743,6 +786,7 @@ export default function AdminDashboard({
                         change={stats.presentChange}
                         icon={UserCheck}
                         accent="emerald"
+                        href="#recent-checkins"
                         className="dash-fade-up"
                         style={{ animationDelay: '100ms' }}
                     />
@@ -753,6 +797,7 @@ export default function AdminDashboard({
                         icon={Activity}
                         accent="violet"
                         suffix="%"
+                        href="#attendance-trend"
                         className="dash-fade-up"
                         style={{ animationDelay: '150ms' }}
                     />
@@ -764,6 +809,7 @@ export default function AdminDashboard({
                         accent="amber"
                         hideChange
                         footnote="Assigned to students"
+                        href={admin.student.index.url()}
                         className="dash-fade-up"
                         style={{ animationDelay: '200ms' }}
                     />
@@ -771,7 +817,8 @@ export default function AdminDashboard({
 
                 {/* ── Status + Chart row ── */}
                 <div
-                    className="dash-fade-up grid gap-4 lg:grid-cols-5"
+                    id="attendance-trend"
+                    className="dash-fade-up grid gap-4 lg:grid-cols-5 scroll-mt-6"
                     style={{ animationDelay: '250ms' }}
                 >
                     {/* Status bar takes 2/5 */}
@@ -1131,7 +1178,8 @@ export default function AdminDashboard({
 
                 {/* ── Recent Check-ins ── */}
                 <Card
-                    className="dash-fade-up overflow-hidden rounded-2xl border-border/60 gap-0 py-0 shadow-sm"
+                    id="recent-checkins"
+                    className="dash-fade-up overflow-hidden rounded-2xl border-border/60 gap-0 py-0 shadow-sm scroll-mt-6"
                     style={{ animationDelay: '400ms' }}
                 >
                     <CardHeader className="px-5 pt-4 pb-3">
