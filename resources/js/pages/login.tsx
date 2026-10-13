@@ -76,7 +76,7 @@ export default function Login({ status }: { status?: string }) {
                     </div>
 
                     {/* Center — school identity */}
-                    <div className="dash-fade-up relative space-y-8 px-10">
+                    <div className="dash-fade-up relative space-y-8 px-10 xl:px-14">
                         {/* Logo with glow ring */}
                         <div className="relative w-fit">
                             <div className="absolute -inset-1.5 rounded-full bg-emerald-300/30 blur-sm" />
@@ -87,20 +87,20 @@ export default function Login({ status }: { status?: string }) {
                             />
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {/* IoClass badge */}
-                            <span className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-bold tracking-widest text-emerald-300 uppercase">
+                            <span className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3.5 py-1 text-xs font-bold tracking-widest text-emerald-300 uppercase">
                                 IoClass
                             </span>
 
-                            <h1 className="text-3xl leading-snug font-bold text-white">
+                            <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">
                                 An IoT-Based
                                 <br />
                                 Class Monitoring
                                 <br />
                                 System
                             </h1>
-                            <p className="text-sm text-emerald-200/70">
+                            <p className="text-base xl:text-lg font-medium text-emerald-100/80">
                                 for Puro National High School
                             </p>
                         </div>
