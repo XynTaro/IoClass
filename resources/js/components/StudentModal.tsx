@@ -477,7 +477,7 @@ function ParentSection({
                         error={errors[phoneKey]}
                         required={required && !isDeceased}
                         inputProps={{
-                            placeholder: '09xx xxx xxxx',
+                            placeholder: '09XX XXX XXXX',
                             disabled: isDeceased,
                             maxLength: 13,
                         }}

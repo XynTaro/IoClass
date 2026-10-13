@@ -651,7 +651,7 @@ export default function AdminProfileIndex() {
                                                         );
                                                     }}
                                                     className="rounded-xl pl-8"
-                                                    placeholder="09xx xxx xxxx"
+                                                    placeholder="09XX XXX XXXX"
                                                     maxLength={13}
                                                 />
                                             </div>

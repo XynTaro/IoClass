@@ -531,7 +531,7 @@ export default function AdminModal({
                                     </Label>
                                     <Input
                                         id="contact_number"
-                                        placeholder="09xx xxx xxxx"
+                                        placeholder="09XX XXX XXXX"
                                         value={form.data.contact_number}
                                         maxLength={13}
                                         onChange={(e) => {
