@@ -337,26 +337,22 @@ const PARENT_STYLE: Record<
         icon: React.ElementType;
         iconBg: string;
         iconColor: string;
-        border: string;
     }
 > = {
     father: {
         icon: User,
         iconBg: 'bg-blue-100 dark:bg-blue-950/50',
         iconColor: 'text-blue-600 dark:text-blue-400',
-        border: 'border-l-blue-400',
     },
     mother: {
         icon: UserRound,
         iconBg: 'bg-rose-100 dark:bg-rose-950/50',
         iconColor: 'text-rose-600 dark:text-rose-400',
-        border: 'border-l-rose-400',
     },
     guardian: {
         icon: HeartHandshake,
         iconBg: 'bg-violet-100 dark:bg-violet-950/50',
         iconColor: 'text-violet-600 dark:text-violet-400',
-        border: 'border-l-violet-400',
     },
 };
 
@@ -376,15 +372,10 @@ function ParentSection({
     const phoneKey = `${prefix}_contact_number` as keyof StudentFormData;
     const deceasedKey = DECEASED_KEY[prefix];
     const isDeceased = deceasedKey ? Boolean(data[deceasedKey]) : false;
-    const { icon: Icon, iconBg, iconColor, border } = PARENT_STYLE[prefix];
+    const { icon: Icon, iconBg, iconColor } = PARENT_STYLE[prefix];
 
     return (
-        <div
-            className={cn(
-                'space-y-3 rounded-xl border border-l-4 bg-card p-4 shadow-sm',
-                border,
-            )}
-        >
+        <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                     <div
