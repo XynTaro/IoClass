@@ -4,6 +4,7 @@ use App\Contracts\SmsSender;
 use App\Models\Admin;
 use App\Models\Father;
 use App\Models\Guardian;
+use App\Models\Mother;
 use App\Models\ParentGuardian;
 use App\Models\Student;
 use App\Services\Sms\RecordingSmsSender;
@@ -54,6 +55,7 @@ test('adding a student sends an rfid registration sms to the guardian', function
 
     expect($this->sms->messages)->toHaveCount(1)
         ->and($this->sms->messages[0]['to'])->toBe('09171234567')
+        ->and($this->sms->messages[0]['message'])->toContain('IoClass Alert:')
         ->and($this->sms->messages[0]['message'])->toContain('Juan Dela Cruz')
         ->and($this->sms->messages[0]['message'])->toContain('RFIDABC123')
         ->and($this->sms->messages[0]['message'])->toContain('LRN: 123456789012');
@@ -61,9 +63,9 @@ test('adding a student sends an rfid registration sms to the guardian', function
     expect(DB::table('student_section')->where('sy_id', $syId)->where('sect_id', $sectId)->exists())->toBeTrue();
 });
 
-test('rfid registration sms is not sent to father or mother', function () {
-    $student = Student::create([
-        'rfid_uid' => 'NOGUARD001',
+test('rfid registration sms falls back to mother or father when guardian is not provided', function () {
+    $studentWithMother = Student::create([
+        'rfid_uid' => 'MOMUID001',
         'lrn' => '109876543210',
         'stu_fname' => 'Ana',
         'stu_lname' => 'Reyes',
@@ -71,24 +73,58 @@ test('rfid registration sms is not sent to father or mother', function () {
         'is_deleted' => false,
     ]);
 
+    $mother = Mother::create([
+        'mother_name' => 'Juana',
+        'mother_lname' => 'Reyes',
+        'contact_number' => '09191234567',
+        'is_deleted' => false,
+    ]);
+
+    ParentGuardian::create([
+        'stu_par_id' => $studentWithMother->stu_id,
+        'mother_id' => $mother->mother_id,
+    ]);
+
+    $studentWithFather = Student::create([
+        'rfid_uid' => 'DADUID001',
+        'lrn' => '109876543211',
+        'stu_fname' => 'Pedro',
+        'stu_lname' => 'Santos',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
     $father = Father::create([
-        'father_name' => 'Pedro',
-        'father_lname' => 'Reyes',
+        'father_name' => 'Roberto',
+        'father_lname' => 'Santos',
         'contact_number' => '09181234567',
         'is_deleted' => false,
     ]);
 
     ParentGuardian::create([
-        'stu_par_id' => $student->stu_id,
+        'stu_par_id' => $studentWithFather->stu_id,
         'f_id' => $father->f_id,
     ]);
 
-    app(StudentRfidRegistrationNotifier::class)->notify($student);
+    $notifier = app(StudentRfidRegistrationNotifier::class);
 
-    expect($this->sms->messages)->toBeEmpty();
+    $sentMother = $notifier->notify($studentWithMother);
+    $sentFather = $notifier->notify($studentWithFather);
+
+    expect($sentMother)->toBeTrue()
+        ->and($sentFather)->toBeTrue()
+        ->and($this->sms->messages)->toHaveCount(2)
+        ->and($this->sms->messages[0]['to'])->toBe('09191234567')
+        ->and($this->sms->messages[0]['message'])->toContain('IoClass Alert:')
+        ->and($this->sms->messages[0]['message'])->toContain('Ana Reyes')
+        ->and($this->sms->messages[0]['message'])->toContain('MOMUID001')
+        ->and($this->sms->messages[1]['to'])->toBe('09181234567')
+        ->and($this->sms->messages[1]['message'])->toContain('IoClass Alert:')
+        ->and($this->sms->messages[1]['message'])->toContain('Pedro Santos')
+        ->and($this->sms->messages[1]['message'])->toContain('DADUID001');
 });
 
-test('rfid registration sms is skipped when guardian has no contact number', function () {
+test('rfid registration sms is skipped when no contact number is provided', function () {
     $student = Student::create([
         'rfid_uid' => 'NOCONTACT1',
         'stu_fname' => 'No',
@@ -109,12 +145,51 @@ test('rfid registration sms is skipped when guardian has no contact number', fun
         'guardian_id' => $guardian->guardian_id,
     ]);
 
-    app(StudentRfidRegistrationNotifier::class)->notify($student);
+    $sent = app(StudentRfidRegistrationNotifier::class)->notify($student);
 
-    expect($this->sms->messages)->toBeEmpty();
+    expect($sent)->toBeFalse()
+        ->and($this->sms->messages)->toBeEmpty();
 });
 
-test('updating a student rfid uid sends a registration sms only to the guardian', function () {
+test('rfid registration sms falls back to mother when guardian has no contact number', function () {
+    $student = Student::create([
+        'rfid_uid' => 'FALLBACK01',
+        'stu_fname' => 'Carlo',
+        'stu_lname' => 'Mendoza',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    $guardian = Guardian::create([
+        'name' => 'Silent',
+        'guardian_lname' => 'Guardian',
+        'contact_number' => null,
+        'is_deleted' => false,
+    ]);
+
+    $mother = Mother::create([
+        'mother_name' => 'Elena',
+        'mother_lname' => 'Mendoza',
+        'contact_number' => '09201234567',
+        'is_deleted' => false,
+    ]);
+
+    ParentGuardian::create([
+        'stu_par_id' => $student->stu_id,
+        'guardian_id' => $guardian->guardian_id,
+        'mother_id' => $mother->mother_id,
+    ]);
+
+    $sent = app(StudentRfidRegistrationNotifier::class)->notify($student);
+
+    expect($sent)->toBeTrue()
+        ->and($this->sms->messages)->toHaveCount(1)
+        ->and($this->sms->messages[0]['to'])->toBe('09201234567')
+        ->and($this->sms->messages[0]['message'])->toContain('Carlo Mendoza')
+        ->and($this->sms->messages[0]['message'])->toContain('FALLBACK01');
+});
+
+test('updating a student rfid uid sends a registration sms to the parent or guardian', function () {
     $admin = Admin::factory()->create();
 
     $student = Student::create([
@@ -125,16 +200,16 @@ test('updating a student rfid uid sends a registration sms only to the guardian'
         'is_deleted' => false,
     ]);
 
-    $guardian = Guardian::create([
-        'name' => 'Rosa',
-        'guardian_lname' => 'Santos',
+    $father = Father::create([
+        'father_name' => 'Ramon',
+        'father_lname' => 'Santos',
         'contact_number' => '09221234567',
         'is_deleted' => false,
     ]);
 
     ParentGuardian::create([
         'stu_par_id' => $student->stu_id,
-        'guardian_id' => $guardian->guardian_id,
+        'f_id' => $father->f_id,
     ]);
 
     $this->withoutVite()
@@ -149,6 +224,7 @@ test('updating a student rfid uid sends a registration sms only to the guardian'
 
     expect($this->sms->messages)->toHaveCount(1)
         ->and($this->sms->messages[0]['to'])->toBe('09221234567')
+        ->and($this->sms->messages[0]['message'])->toContain('IoClass Alert:')
         ->and($this->sms->messages[0]['message'])->toContain('NEWUID0001')
         ->and($this->sms->messages[0]['message'])->toContain('Student ID: '.$student->stu_id);
 });
