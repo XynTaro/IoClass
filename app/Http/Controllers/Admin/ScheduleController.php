@@ -11,6 +11,7 @@ use App\Models\Teacher;
 use App\Services\ClassScheduleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Response;
 
 class ScheduleController extends Controller
@@ -63,9 +64,23 @@ class ScheduleController extends Controller
             ->orderBy('subj_code')
             ->get();
 
+        $activeSyId = DB::table('school_year')->where('is_active', true)->value('sy_id');
+
+        $allSchedules = Class_Schedule::with([
+            'teacher:tch_id,tch_fname,tch_mname,tch_lname',
+            'section:sect_id,sect_name',
+            'room:room_id,room_no',
+            'subject:subj_id,subj_name,subj_code',
+        ])
+            ->when($activeSyId !== null, fn ($q) => $q->where(function ($sub) use ($activeSyId) {
+                $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
+            }))
+            ->get();
+
         return inertia('Admin/Schedule Management/Show', [
             'section' => $section,
             'schedules' => $schedules,
+            'allSchedules' => $allSchedules,
             'teachers' => $teachers,
             'rooms' => $rooms,
             'subjects' => $subjects,

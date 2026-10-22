@@ -250,26 +250,38 @@ class ClassScheduleService
 
                     if ($a['sect_id'] === $b['sect_id']) {
                         $key = $prefix !== '' ? "{$prefix}.{$bIndex}.sect_id" : 'sect_id';
+                        $msg = "Schedule slot {$bSlotLabel} conflicts with slot {$aSlotLabel}: Section already has a class scheduled on {$a['day']} between {$aDisplayTime}.";
+                        $messages = [$key => $msg];
+                        if ($prefix !== '') {
+                            $messages['sect_id'] = $msg;
+                        }
 
-                        throw ValidationException::withMessages([
-                            $key => "Schedule slot {$bSlotLabel} conflicts with slot {$aSlotLabel}: Section already has a class scheduled on {$a['day']} between {$aDisplayTime}.",
-                        ]);
+                        throw ValidationException::withMessages($messages);
                     }
 
                     if ($a['room_id'] === $b['room_id']) {
                         $key = $prefix !== '' ? "{$prefix}.{$bIndex}.room_id" : 'room_id';
+                        $msg = "Schedule slot {$bSlotLabel} conflicts with slot {$aSlotLabel}: Room is already assigned on {$a['day']} between {$aDisplayTime}.";
+                        $messages = [$key => $msg];
+                        if ($prefix !== '') {
+                            $messages['room_id'] = $msg;
+                        }
 
-                        throw ValidationException::withMessages([
-                            $key => "Schedule slot {$bSlotLabel} conflicts with slot {$aSlotLabel}: Room is already assigned on {$a['day']} between {$aDisplayTime}.",
-                        ]);
+                        throw ValidationException::withMessages($messages);
                     }
 
                     if ($a['tch_id'] === $b['tch_id']) {
                         $key = $prefix !== '' ? "{$prefix}.{$bIndex}.start_time" : 'start_time';
+                        $msg = "Schedule slot {$bSlotLabel} conflicts with slot {$aSlotLabel}: Teacher is already scheduled on {$a['day']} between {$aDisplayTime}.";
+                        $messages = [
+                            $key => $msg,
+                            'tch_id' => $msg,
+                        ];
+                        if ($prefix !== '') {
+                            $messages["{$prefix}.{$bIndex}.tch_id"] = $msg;
+                        }
 
-                        throw ValidationException::withMessages([
-                            $key => "Schedule slot {$bSlotLabel} conflicts with slot {$aSlotLabel}: Teacher is already scheduled on {$a['day']} between {$aDisplayTime}.",
-                        ]);
+                        throw ValidationException::withMessages($messages);
                     }
                 }
             }
@@ -294,7 +306,6 @@ class ClassScheduleService
 
             foreach ($slot['days'] as $day) {
                 $query = Class_Schedule::with(['teacher', 'section', 'room', 'subject'])
-                    ->where('sy_id', $syId)
                     ->where('day_of_week', $day)
                     ->where('start_time', '<', $endTime)
                     ->where('end_time', '>', $startTime)
@@ -303,6 +314,12 @@ class ClassScheduleService
                             ->orWhere('sect_id', $sectId)
                             ->orWhere('room_id', $roomId);
                     });
+
+                if ($syId !== null) {
+                    $query->where(function ($q) use ($syId) {
+                        $q->where('sy_id', $syId)->orWhereNull('sy_id');
+                    });
+                }
 
                 if ($ignoreScheduleId !== null) {
                     $query->where('schedule_id', '!=', $ignoreScheduleId);
@@ -323,21 +340,43 @@ class ClassScheduleService
                     $keyPrefix = $prefix !== '' ? "{$prefix}.{$slotIndex}." : '';
 
                     if ($conflict->tch_id === $teacherId) {
-                        throw ValidationException::withMessages([
-                            "{$keyPrefix}start_time" => "Teacher {$teacherName} already has a class on {$day} ({$cStart} - {$cEnd}) with Section {$sectionName} in Room {$roomName}.",
-                        ]);
+                        $msg = "Teacher {$teacherName} already has a class on {$day} ({$cStart} - {$cEnd}) with Section {$sectionName} in Room {$roomName}.";
+                        $messages = [
+                            "{$keyPrefix}start_time" => $msg,
+                            'tch_id' => $msg,
+                        ];
+                        if ($prefix !== '') {
+                            $messages["{$prefix}.{$slotIndex}.tch_id"] = $msg;
+                        }
+                        if ($keyPrefix !== '') {
+                            $messages['start_time'] = $msg;
+                        }
+
+                        throw ValidationException::withMessages($messages);
                     }
 
                     if ($conflict->sect_id === $sectId) {
-                        throw ValidationException::withMessages([
-                            "{$keyPrefix}sect_id" => "Section {$sectionName} already has {$subjectName} on {$day} ({$cStart} - {$cEnd}) in Room {$roomName}.",
-                        ]);
+                        $msg = "Section {$sectionName} already has {$subjectName} on {$day} ({$cStart} - {$cEnd}) in Room {$roomName}.";
+                        $messages = [
+                            "{$keyPrefix}sect_id" => $msg,
+                        ];
+                        if ($keyPrefix !== '') {
+                            $messages['sect_id'] = $msg;
+                        }
+
+                        throw ValidationException::withMessages($messages);
                     }
 
                     if ($conflict->room_id === $roomId) {
-                        throw ValidationException::withMessages([
-                            "{$keyPrefix}room_id" => "Room {$roomName} is already occupied by Section {$sectionName} on {$day} ({$cStart} - {$cEnd}).",
-                        ]);
+                        $msg = "Room {$roomName} is already occupied by Section {$sectionName} on {$day} ({$cStart} - {$cEnd}).";
+                        $messages = [
+                            "{$keyPrefix}room_id" => $msg,
+                        ];
+                        if ($keyPrefix !== '') {
+                            $messages['room_id'] = $msg;
+                        }
+
+                        throw ValidationException::withMessages($messages);
                     }
                 }
             }

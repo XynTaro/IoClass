@@ -168,6 +168,7 @@ interface SectionScheduleModalProps {
     onSuccess?: () => void;
     sectionId: number;
     sectionGrLevel?: string | null;
+    allSchedules?: any[];
     teachers: SlotTeacher[];
     rooms: SlotRoom[];
     subjects: SlotSubject[];
@@ -185,6 +186,7 @@ export default function SectionScheduleModal({
     onSuccess,
     sectionId,
     sectionGrLevel,
+    allSchedules,
     teachers,
     rooms,
     subjects,
@@ -358,10 +360,15 @@ export default function SectionScheduleModal({
                 errors.end_time = 'End time must be after start time.';
             }
 
+            if (teacherConflict) {
+                errors.tch_id = teacherConflict.message;
+            }
+
             if (Object.keys(errors).length > 0) {
                 form.setError(errors);
                 setSubmitError(
-                    'Please fix the validation errors before saving.',
+                    teacherConflict?.message ||
+                        'Please fix the validation errors before saving.',
                 );
                 return;
             }
@@ -380,6 +387,7 @@ export default function SectionScheduleModal({
                     ? firstSlot.end_time.slice(0, 5)
                     : '',
             }));
+
             form.put(
                 route('admin.schedule.update', { schedule: slot.schedule_id }),
                 {
@@ -425,9 +433,13 @@ export default function SectionScheduleModal({
             }
         });
 
+        if (teacherConflict) {
+            createErrors.tch_id = teacherConflict.message;
+        }
+
         if (Object.keys(createErrors).length > 0) {
             form.setError(createErrors as any);
-            setSubmitError('Please fix the validation errors before saving.');
+            setSubmitError(teacherConflict?.message || 'Please fix the validation errors before saving.');
             return;
         }
         setSubmitError(null);
@@ -448,14 +460,62 @@ export default function SectionScheduleModal({
 
         form.post(route('admin.schedule.store'), {
             onSuccess: () => {
+                setSubmitError(null);
                 onSuccess?.();
                 onClose();
+            },
+            onError: (errs) => {
+                const first = Object.values(errs)[0];
+                setSubmitError(
+                    typeof first === 'string'
+                        ? first
+                        : 'Failed to add schedule slot. Please check the fields and try again.',
+                );
             },
         });
     };
 
+    const teacherConflict = useMemo(() => {
+        if (!allSchedules || !form.data.tch_id) return null;
+        const selectedTeacherId = Number(form.data.tch_id);
+        const teacherObj = teachers.find((t) => t.tch_id === selectedTeacherId);
+        const teacherName = teacherObj ? teacherFullName(teacherObj) : `Teacher #${selectedTeacherId}`;
+
+        for (const [slotIndex, s] of slots.entries()) {
+            if (!s.start_time || !s.end_time || !s.days || s.days.length === 0) continue;
+            const slotStart = s.start_time.slice(0, 5);
+            const slotEnd = s.end_time.slice(0, 5);
+            if (slotEnd <= slotStart) continue;
+
+            for (const sched of allSchedules) {
+                if (mode === 'edit' && slot?.schedule_id === sched.schedule_id) continue;
+                if (sched.tch_id !== selectedTeacherId) continue;
+                if (!s.days.includes(sched.day_of_week)) continue;
+
+                const schedStart = (sched.start_time || '').slice(0, 5);
+                const schedEnd = (sched.end_time || '').slice(0, 5);
+                if (!schedStart || !schedEnd) continue;
+
+                if (schedStart < slotEnd && schedEnd > slotStart) {
+                    const secName = sched.section?.sect_name ?? (sched.sect_id === sectionId ? 'this section' : `Section #${sched.sect_id}`);
+                    const rmName = sched.room?.room_no ? `Room ${sched.room.room_no}` : (sched.room_id ? `Room #${sched.room_id}` : 'Room');
+                    return {
+                        slotIndex,
+                        day: sched.day_of_week,
+                        message: `Teacher ${teacherName} already has a class on ${sched.day_of_week} (${schedStart} - ${schedEnd}) with ${secName} in ${rmName}.`,
+                    };
+                }
+            }
+        }
+        return null;
+    }, [allSchedules, form.data.tch_id, slots, teachers, mode, slot?.schedule_id, sectionId]);
+
     const warnings = useMemo(() => {
         const list: string[] = [];
+
+        if (teacherConflict) {
+            list.push(teacherConflict.message);
+        }
 
         slots.forEach((s, idx) => {
             if (s.start_time && s.end_time && s.end_time <= s.start_time) {
@@ -492,9 +552,13 @@ export default function SectionScheduleModal({
         });
 
         return list;
-    }, [slots]);
+    }, [slots, teacherConflict]);
 
     const errors = form.errors as Record<string, string>;
+    const teacherError =
+        errors.tch_id ||
+        errors['schedules.0.tch_id'] ||
+        Object.entries(errors).find(([k]) => k.includes('tch_id'))?.[1];
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -510,6 +574,12 @@ export default function SectionScheduleModal({
                         }
                         description={`Teacher, subject, room, day, and time for Grade Level ${sectionGrLevel}`}
                     />
+
+                    {submitError && (
+                        <div className="pt-1">
+                            <ErrorBanner message={submitError} />
+                        </div>
+                    )}
 
                     <form
                         onSubmit={handleSubmit}
@@ -543,13 +613,13 @@ export default function SectionScheduleModal({
                                         onValueChange={(v) => {
                                             form.setData('tch_id', Number(v));
                                             form.clearErrors('tch_id' as never);
+                                            setSubmitError(null);
                                         }}
                                     >
                                         <SelectTrigger
                                             className={cn(
                                                 'h-9.5 rounded-xl',
-                                                (errors['schedules.0.tch_id'] ||
-                                                    errors.tch_id) &&
+                                                teacherError &&
                                                 'border-red-500 focus:ring-red-500/20',
                                             )}
                                         >
@@ -568,7 +638,7 @@ export default function SectionScheduleModal({
                                     </Select>
                                     <FormFieldError
                                         label="Teacher"
-                                        message={errors.tch_id}
+                                        message={teacherError}
                                     />
                                 </div>
 
@@ -1175,7 +1245,7 @@ export default function SectionScheduleModal({
                         </div>
                     </form>
 
-                    {submitError && mode === 'edit' && (
+                    {submitError && (
                         <ErrorBanner message={submitError} />
                     )}
 

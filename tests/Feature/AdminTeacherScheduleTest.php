@@ -575,3 +575,122 @@ test('schedule update rejects conflict with existing schedule', function () {
 
     $response->assertSessionHasErrors(['room_id']);
 });
+
+test('schedule store flags both tch_id and start_time when teacher has an existing time conflict', function () {
+    $admin = Admin::factory()->create();
+    $fixtures = seedTeacherScheduleFixtures();
+
+    $addId = DB::table('address')->insertGetId([], 'add_id');
+    $teacherId = DB::table('teacher')->insertGetId([
+        'add_id' => $addId,
+        'tch_fname' => 'Elena',
+        'tch_lname' => 'Reyes',
+        'tch_email' => 'elena.reyes@example.com',
+        'tch_pw' => 'hashed',
+        'is_deleted' => false,
+    ], 'tch_id');
+
+    // Existing slot: Monday 08:00 - 09:00
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacherId,
+        'sect_id' => $fixtures['sectIds'][0],
+        'room_id' => $fixtures['roomIds'][0],
+        'subj_id' => $fixtures['subjId'],
+        'sy_id' => $fixtures['syId'],
+        'day_of_week' => 'Monday',
+        'start_time' => '08:00:00',
+        'end_time' => '09:00:00',
+    ]);
+
+    // Attempt to schedule same teacher on Monday 08:30 - 09:30
+    $response = $this->actingAs($admin, 'admin')->post(route('admin.schedule.store'), [
+        'tch_id' => $teacherId,
+        'schedules' => [
+            [
+                'sect_id' => $fixtures['sectIds'][1],
+                'room_id' => $fixtures['roomIds'][1],
+                'subj_id' => $fixtures['subjId'],
+                'days' => ['Monday'],
+                'start_time' => '08:30',
+                'end_time' => '09:30',
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors(['schedules.0.start_time', 'schedules.0.tch_id', 'tch_id']);
+    $sessionErrors = session('errors')->getBag('default');
+    expect($sessionErrors->first('tch_id'))->toContain('Teacher Elena Reyes already has a class on Monday');
+});
+
+test('schedule update flags both tch_id and start_time when teacher has an existing time conflict', function () {
+    $admin = Admin::factory()->create();
+    $fixtures = seedTeacherScheduleFixtures();
+
+    $addId = DB::table('address')->insertGetId([], 'add_id');
+    $teacherId = DB::table('teacher')->insertGetId([
+        'add_id' => $addId,
+        'tch_fname' => 'Marco',
+        'tch_lname' => 'Cruz',
+        'tch_email' => 'marco.cruz@example.com',
+        'tch_pw' => 'hashed',
+        'is_deleted' => false,
+    ], 'tch_id');
+
+    // Slot 1: Tuesday 09:00 - 10:00
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacherId,
+        'sect_id' => $fixtures['sectIds'][0],
+        'room_id' => $fixtures['roomIds'][0],
+        'subj_id' => $fixtures['subjId'],
+        'sy_id' => $fixtures['syId'],
+        'day_of_week' => 'Tuesday',
+        'start_time' => '09:00:00',
+        'end_time' => '10:00:00',
+    ]);
+
+    // Slot 2: Tuesday 13:00 - 14:00
+    $schedule2Id = DB::table('class_schedule')->insertGetId([
+        'tch_id' => $teacherId,
+        'sect_id' => $fixtures['sectIds'][1],
+        'room_id' => $fixtures['roomIds'][1],
+        'subj_id' => $fixtures['subjId'],
+        'sy_id' => $fixtures['syId'],
+        'day_of_week' => 'Tuesday',
+        'start_time' => '13:00:00',
+        'end_time' => '14:00:00',
+    ], 'schedule_id');
+
+    // Attempt to update slot 2 to 09:30 - 10:30 (conflicts with slot 1)
+    $response = $this->actingAs($admin, 'admin')->put(route('admin.schedule.update', $schedule2Id), [
+        'tch_id' => $teacherId,
+        'sect_id' => $fixtures['sectIds'][1],
+        'room_id' => $fixtures['roomIds'][1],
+        'subj_id' => $fixtures['subjId'],
+        'day_of_week' => 'Tuesday',
+        'start_time' => '09:30',
+        'end_time' => '10:30',
+    ]);
+
+    $response->assertSessionHasErrors(['start_time', 'tch_id']);
+    $sessionErrors = session('errors')->getBag('default');
+    expect($sessionErrors->first('tch_id'))->toContain('Teacher Marco Cruz already has a class on Tuesday');
+});
+
+test('schedule section show endpoint passes allSchedules prop to view', function () {
+    $admin = Admin::factory()->create();
+    $fixtures = seedTeacherScheduleFixtures();
+
+    $response = $this->actingAs($admin, 'admin')->get(route('admin.schedule.section.show', [
+        'sectionId' => $fixtures['sectIds'][0],
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Admin/Schedule Management/Show')
+        ->has('allSchedules')
+        ->has('schedules')
+        ->has('teachers')
+        ->has('rooms')
+        ->has('subjects')
+    );
+});

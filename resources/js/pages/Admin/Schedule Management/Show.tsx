@@ -72,10 +72,11 @@ function formatTime(time: string): string {
 }
 
 export default function Show() {
-    const { section, schedules, teachers, rooms, subjects } =
+    const { section, schedules, allSchedules, teachers, rooms, subjects } =
         usePage<any>().props as {
             section: Section;
             schedules: ScheduleSlot[];
+            allSchedules?: ScheduleSlot[];
             teachers: SlotTeacher[];
             rooms: SlotRoom[];
             subjects: SlotSubject[];
@@ -465,6 +466,7 @@ export default function Show() {
                 mode="create"
                 sectionId={section.sect_id}
                 sectionGrLevel={section.gr_level}
+                allSchedules={allSchedules}
                 teachers={teachers}
                 rooms={rooms}
                 subjects={subjects}
@@ -485,6 +487,7 @@ export default function Show() {
                 sectionId={section.sect_id}
                 sectionGrLevel={section.gr_level}
                 slot={slotForEdit}
+                allSchedules={allSchedules}
                 teachers={teachers}
                 rooms={rooms}
                 subjects={subjects}
