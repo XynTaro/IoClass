@@ -333,14 +333,11 @@ export function AdminSidebarNav({ isCollapsed = false, onExpandSidebar }: AdminS
                         {openClassManagement && !isCollapsed && (
                             <div className="ml-8 space-y-1">
                                 {[
-                                    { href: sectionHref, label: 'Section' },
+                                    { href: schoolYearHref, label: 'School Year' },
                                     { href: buildingHref, label: 'Building' },
                                     { href: roomHref, label: 'Room' },
                                     { href: subjectHref, label: 'Subject' },
-                                    {
-                                        href: schoolYearHref,
-                                        label: 'School Year',
-                                    },
+                                    { href: sectionHref, label: 'Section' },
                                 ].map(({ href, label }) => (
                                     <Link
                                         key={href}
