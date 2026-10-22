@@ -366,10 +366,7 @@ export default function SectionScheduleModal({
 
             if (Object.keys(errors).length > 0) {
                 form.setError(errors);
-                setSubmitError(
-                    teacherConflict?.message ||
-                        'Failed to update schedule slot. Please check the fields and try again.',
-                );
+                setSubmitError(teacherConflict?.message ?? null);
                 return;
             }
             setSubmitError(null);
@@ -397,14 +394,12 @@ export default function SectionScheduleModal({
                         onClose();
                     },
                     onError: (errors) => {
-                        const first = Object.values(errors)[0];
-                        const isRequired =
-                            typeof first === 'string' && /required/i.test(first);
-                        setSubmitError(
-                            typeof first === 'string' && !isRequired
-                                ? first
-                                : 'Failed to update schedule slot. Please check the fields and try again.',
+                        const conflict = Object.values(errors).find(
+                            (msg) =>
+                                typeof msg === 'string' &&
+                                /already has a class|conflict/i.test(msg),
                         );
+                        setSubmitError(conflict ? (conflict as string) : null);
                     },
                 },
             );
@@ -441,10 +436,7 @@ export default function SectionScheduleModal({
 
         if (Object.keys(createErrors).length > 0) {
             form.setError(createErrors as any);
-            setSubmitError(
-                teacherConflict?.message ||
-                    'Failed to add schedule slot. Please check the fields and try again.',
-            );
+            setSubmitError(teacherConflict?.message ?? null);
             return;
         }
         setSubmitError(null);
@@ -470,14 +462,12 @@ export default function SectionScheduleModal({
                 onClose();
             },
             onError: (errs) => {
-                const first = Object.values(errs)[0];
-                const isRequired =
-                    typeof first === 'string' && /required/i.test(first);
-                setSubmitError(
-                    typeof first === 'string' && !isRequired
-                        ? first
-                        : 'Failed to add schedule slot. Please check the fields and try again.',
+                const conflict = Object.values(errs).find(
+                    (msg) =>
+                        typeof msg === 'string' &&
+                        /already has a class|conflict/i.test(msg),
                 );
+                setSubmitError(conflict ? (conflict as string) : null);
             },
         });
     };

@@ -125,11 +125,7 @@ export default function SubjectModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) {
-            setSubmitError(
-                mode === 'edit'
-                    ? 'Failed to update subject. Please check the fields and try again.'
-                    : 'Failed to add subject. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
         setSubmitError(null);
@@ -150,7 +146,7 @@ export default function SubjectModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to update subject. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });
@@ -168,7 +164,7 @@ export default function SubjectModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to add subject. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });

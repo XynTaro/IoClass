@@ -297,9 +297,7 @@ export default function AdminModal({
 
         if (!validateStep1()) {
             setEditTab('details');
-            setSubmitError(
-                'Failed to update admin. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
 
@@ -335,7 +333,7 @@ export default function AdminModal({
                 setSubmitError(
                     typeof first === 'string' && !isRequired
                         ? first
-                        : 'Failed to update admin. Please check the fields and try again.',
+                        : null,
                 );
             },
         });

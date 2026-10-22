@@ -75,11 +75,7 @@ export default function BuildingModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) {
-            setSubmitError(
-                mode === 'edit'
-                    ? 'Failed to update building. Please check the fields and try again.'
-                    : 'Failed to add building. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
         setSubmitError(null);
@@ -100,7 +96,7 @@ export default function BuildingModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to update building. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });
@@ -118,7 +114,7 @@ export default function BuildingModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to add building. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });

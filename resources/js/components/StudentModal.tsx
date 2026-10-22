@@ -830,9 +830,7 @@ export default function StudentModal({
         if (Object.keys(errors).length > 0) {
             setLocalErrors(errors);
             setEditTab('student');
-            setSubmitError(
-                'Failed to update student. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
 
@@ -853,9 +851,7 @@ export default function StudentModal({
                 rfid_uid: 'RFID UID is required.',
             });
             setEditTab('student');
-            setSubmitError(
-                'Failed to update student. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
 
@@ -950,9 +946,7 @@ export default function StudentModal({
         if (Object.keys(familyErrors).length > 0) {
             form.setError(familyErrors);
             setEditTab('family');
-            setSubmitError(
-                'Failed to update student. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
 
@@ -1017,7 +1011,7 @@ export default function StudentModal({
                 setSubmitError(
                     typeof firstMsg === 'string' && !isRequired
                         ? firstMsg
-                        : 'Failed to update student. Please check the fields and try again.',
+                        : null,
                 );
             },
         });
@@ -1173,9 +1167,7 @@ export default function StudentModal({
                 } else if (step2Fields.some((f) => f in errors)) {
                     setStep(2);
                 }
-                setSubmitError(
-                    'Failed to add student. Please review the highlighted fields and try again.',
-                );
+                setSubmitError(null);
             },
         });
     };

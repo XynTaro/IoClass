@@ -115,11 +115,7 @@ export default function SectionModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) {
-            setSubmitError(
-                mode === 'edit'
-                    ? 'Failed to update section. Please check the fields and try again.'
-                    : 'Failed to add section. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
         setSubmitError(null);
@@ -140,7 +136,7 @@ export default function SectionModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to update section. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });
@@ -158,7 +154,7 @@ export default function SectionModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to add section. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });

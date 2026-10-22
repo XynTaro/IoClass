@@ -477,9 +477,7 @@ export default function TeacherModal({
 
         if (!validateStep1()) {
             setEditTab('details');
-            setSubmitError(
-                'Failed to update teacher. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
 
@@ -518,7 +516,7 @@ export default function TeacherModal({
                 setSubmitError(
                     typeof firstMsg === 'string' && !isRequired
                         ? firstMsg
-                        : 'Failed to update teacher. Please check the fields and try again.',
+                        : null,
                 );
             },
         });

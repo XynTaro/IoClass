@@ -101,11 +101,7 @@ export default function RoomModal({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) {
-            setSubmitError(
-                mode === 'edit'
-                    ? 'Failed to update room. Please check the fields and try again.'
-                    : 'Failed to add room. Please check the fields and try again.',
-            );
+            setSubmitError(null);
             return;
         }
         setSubmitError(null);
@@ -126,7 +122,7 @@ export default function RoomModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to update room. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });
@@ -144,7 +140,7 @@ export default function RoomModal({
                     setSubmitError(
                         typeof first === 'string' && !isRequired
                             ? first
-                            : 'Failed to add room. Please check the fields and try again.',
+                            : null,
                     );
                 },
             });
