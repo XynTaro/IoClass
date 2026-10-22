@@ -17,6 +17,8 @@ import {
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import AddressModal, {
+    AddressSection,
+    useCascade,
     type AddressFormData,
     type PendingTeacherData,
 } from '@/components/Address';
@@ -69,8 +71,16 @@ interface Teacher {
     tch_mname?: string | null;
     tch_lname: string;
     tch_email: string;
+    contact_number?: string | null;
     status: Status | null;
     avatar?: string | null;
+    address?: {
+        add_id?: number;
+        region?: string | null;
+        province?: string | null;
+        municipality?: string | null;
+        barangay?: string | null;
+    } | null;
 }
 
 interface TeacherFormData {
@@ -86,6 +96,10 @@ interface TeacherFormData {
     tch_pw_confirmation: string;
     auto_password: boolean;
     reset_password: boolean;
+    region: string;
+    province: string;
+    municipality: string;
+    barangay: string;
 }
 
 interface TeacherModalProps {
@@ -112,6 +126,8 @@ export default function TeacherModal({
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [copied, setCopied] = useState<'pw' | 'confirm' | null>(null);
+    const [editTab, setEditTab] = useState<'details' | 'address'>('details');
+    const addressCascade = useCascade();
 
     // Wizard state (create mode only)
     const { isOnline } = useOnlineStatus();
@@ -197,6 +213,10 @@ export default function TeacherModal({
         tch_pw_confirmation: '',
         auto_password: true,
         reset_password: false,
+        region: '',
+        province: '',
+        municipality: '',
+        barangay: '',
     });
 
     const generatePassword = (length = 10) => {
@@ -230,12 +250,22 @@ export default function TeacherModal({
                 tch_mname: (teacher.tch_mname as string | null) ?? '',
                 tch_lname: teacher.tch_lname ?? '',
                 tch_email: teacher.tch_email ?? '',
-                contact_number: '',
+                contact_number: teacher.contact_number ?? '',
                 tch_pw: '',
                 tch_pw_confirmation: '',
                 auto_password: true,
                 reset_password: false,
+                region: teacher.address?.region ?? '',
+                province: teacher.address?.province ?? '',
+                municipality: teacher.address?.municipality ?? '',
+                barangay: teacher.address?.barangay ?? '',
             });
+
+            if (teacher.address?.region) {
+                addressCascade.initializeFromNames(teacher.address);
+            } else {
+                addressCascade.reset();
+            }
         }
     }, [teacher, mode, open]);
 
@@ -269,6 +299,8 @@ export default function TeacherModal({
             setShowPassword(false);
             setShowConfirmPassword(false);
             setStep(1);
+            setEditTab('details');
+            addressCascade.reset();
             setPendingTeacherData(null);
             setPendingAddressData(null);
             setLocalErrors({});
@@ -444,6 +476,7 @@ export default function TeacherModal({
         }
 
         if (!validateStep1()) {
+            setEditTab('details');
             setSubmitError('Please fix the validation errors before saving.');
             return;
         }
@@ -554,6 +587,37 @@ export default function TeacherModal({
                             </div>
                         )}
 
+                        {mode === 'edit' && (
+                            <div className="flex border-b border-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('details')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'details'
+                                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <UserRound className="size-4" />
+                                    Teacher Details
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('address')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'address'
+                                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <MapPin className="size-4" />
+                                    Address
+                                </button>
+                            </div>
+                        )}
+
                         <form
                             onSubmit={
                                 mode === 'edit'
@@ -565,7 +629,44 @@ export default function TeacherModal({
                             }
                             className="max-h-[70vh] space-y-3 overflow-y-auto pr-1"
                         >
-                            {Object.entries(pageErrors)
+                            {mode === 'edit' && editTab === 'address' ? (
+                                <div className="space-y-4 pt-1">
+                                    <AddressSection
+                                        title="Teacher Address"
+                                        cascade={addressCascade}
+                                        barangayValue={form.data.barangay}
+                                        onRegionChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                region: name,
+                                                province: '',
+                                                municipality: '',
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onProvinceChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                province: name,
+                                                municipality: '',
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onMunicipalityChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                municipality: name,
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onBarangayChange={(name) => {
+                                            form.setData('barangay', name);
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    {Object.entries(pageErrors)
                                 .filter(
                                     ([k]) =>
                                         !clearedPageErrors[k] &&
@@ -1186,7 +1287,9 @@ export default function TeacherModal({
                                     </p>
                                 )}
                             </div>
-                        </form>
+                        </>
+                    )}
+                </form>
 
                         {submitError && mode === 'edit' && (
                             <ErrorBanner message={submitError} />

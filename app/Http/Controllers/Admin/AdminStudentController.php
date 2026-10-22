@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Address;
 use App\Models\Father;
 use App\Models\Guardian;
 use App\Models\Mother;
@@ -58,6 +59,11 @@ class AdminStudentController extends Controller
                 }
             })
             ->leftJoin('section as sec', 'sec.sect_id', '=', 'ss.sect_id')
+            ->leftJoin('address as addr', 'addr.add_id', '=', 's.add_id')
+            ->leftJoin('parent as p', 'p.stu_par_id', '=', 's.stu_id')
+            ->leftJoin('father as f', 'f.f_id', '=', 'p.f_id')
+            ->leftJoin('mother as m', 'm.mother_id', '=', 'p.mother_id')
+            ->leftJoin('parentguardian as g', 'g.guardian_id', '=', 'p.guardian_id')
             ->select(
                 's.stu_id',
                 's.lrn',
@@ -69,14 +75,41 @@ class AdminStudentController extends Controller
                 's.rfid_uid',
                 's.status',
                 's.is_deleted',
+                's.add_id',
+                'ss.sect_id',
                 'sec.gr_level',
                 'sec.sect_name as sect',
+                // Address fields
+                'addr.region',
+                'addr.province',
+                'addr.municipality',
+                'addr.barangay',
+                // Father fields
+                'f.father_name',
+                'f.father_mname',
+                'f.father_lname',
+                'f.contact_number as father_contact_number',
+                // Mother fields
+                'm.mother_name',
+                'm.mother_mname',
+                'm.mother_lname',
+                'm.contact_number as mother_contact_number',
+                // Guardian fields
+                'g.name as guardian_name',
+                'g.guardian_mname',
+                'g.guardian_lname',
+                'g.contact_number as guardian_contact_number',
             )
             ->where('s.is_deleted', $archived ? 1 : 0)
             ->groupBy(
                 's.stu_id', 's.lrn', 's.stu_fname', 's.stu_mname', 's.stu_lname',
                 's.gender', 's.photo',
-                's.rfid_uid', 's.status', 's.is_deleted', 'sec.gr_level', 'sec.sect_name'
+                's.rfid_uid', 's.status', 's.is_deleted', 's.add_id', 'ss.sect_id',
+                'sec.gr_level', 'sec.sect_name',
+                'addr.region', 'addr.province', 'addr.municipality', 'addr.barangay',
+                'f.father_name', 'f.father_mname', 'f.father_lname', 'f.contact_number',
+                'm.mother_name', 'm.mother_mname', 'm.mother_lname', 'm.contact_number',
+                'g.name', 'g.guardian_mname', 'g.guardian_lname', 'g.contact_number'
             )
             ->orderBy('s.stu_lname')
             ->orderBy('s.stu_fname');
@@ -425,7 +458,36 @@ class AdminStudentController extends Controller
     {
         $student = Student::findOrFail($id);
 
-        $validated = $request->validate([
+        $fatherIsDeceased = $request->boolean('father_is_deceased');
+        $motherIsDeceased = $request->boolean('mother_is_deceased');
+        $bothParentsDeceased = $fatherIsDeceased && $motherIsDeceased;
+
+        $hasParentInput = $request->has('father_name')
+            || $request->has('mother_name')
+            || $request->has('guardian_name')
+            || $request->has('father_is_deceased')
+            || $request->has('mother_is_deceased');
+
+        $existingParent = $hasParentInput ? ParentGuardian::where('stu_par_id', $student->stu_id)->first() : null;
+        $hasExistingFather = $existingParent && $existingParent->f_id;
+        $hasExistingMother = $existingParent && $existingParent->mother_id;
+        $hasExistingGuardian = $existingParent && $existingParent->guardian_id;
+
+        $hasFatherInput = $request->filled('father_name') || $request->filled('father_lname') || $request->filled('father_contact_number');
+        $hasMotherInput = $request->filled('mother_name') || $request->filled('mother_lname') || $request->filled('mother_contact_number');
+        $hasGuardianInput = $request->filled('guardian_name') || $request->filled('guardian_lname') || $request->filled('guardian_contact_number');
+
+        $requireFather = ! $fatherIsDeceased && ($hasExistingFather || $hasFatherInput);
+        $requireMother = ! $motherIsDeceased && ($hasExistingMother || $hasMotherInput);
+        $requireGuardian = $bothParentsDeceased || ($hasExistingGuardian && ! $request->has('guardian_name')) || $hasGuardianInput;
+
+        $hasParentFields = $hasParentInput && ($fatherIsDeceased
+            || $motherIsDeceased
+            || $requireFather
+            || $requireMother
+            || $requireGuardian);
+
+        $rules = [
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn,'.$student->stu_id.',stu_id'],
             'stu_fname' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('student', ignoreId: $student->stu_id)],
             'stu_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
@@ -434,7 +496,76 @@ class AdminStudentController extends Controller
             'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'rfid_uid' => ['required', 'string', 'max:50', new UniqueRfidUid(ignoreStudentId: $student->stu_id)],
             'status' => 'nullable|string|max:50',
-        ], [
+            'sect_id' => 'nullable|integer|exists:section,sect_id',
+            'region' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'municipality' => 'nullable|string|max:100',
+            'barangay' => 'nullable|string|max:100',
+        ];
+
+        if ($hasParentFields) {
+            $rules['father_is_deceased'] = 'nullable|boolean';
+            $rules['mother_is_deceased'] = 'nullable|boolean';
+            $rules['father_name'] = [
+                $requireFather ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ];
+            $rules['father_mname'] = ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'];
+            $rules['father_lname'] = [
+                $requireFather ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ];
+            $rules['father_contact_number'] = [
+                $requireFather ? 'required' : 'nullable',
+                'string',
+                'max:20',
+                'regex:/^\+?[\d\s]+$/',
+            ];
+            $rules['mother_name'] = [
+                $requireMother ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ];
+            $rules['mother_mname'] = ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'];
+            $rules['mother_lname'] = [
+                $requireMother ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ];
+            $rules['mother_contact_number'] = [
+                $requireMother ? 'required' : 'nullable',
+                'string',
+                'max:20',
+                'regex:/^\+?[\d\s]+$/',
+            ];
+            $rules['guardian_name'] = [
+                $bothParentsDeceased ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ];
+            $rules['guardian_mname'] = ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'];
+            $rules['guardian_lname'] = [
+                $bothParentsDeceased ? 'required' : 'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
+            ];
+            $rules['guardian_contact_number'] = [
+                $bothParentsDeceased ? 'required' : 'nullable',
+                'string',
+                'max:20',
+                'regex:/^\+?[\d\s]+$/',
+            ];
+        }
+
+        $validated = $request->validate($rules, [
             'rfid_uid.required' => 'RFID UID is required.',
             'lrn.regex' => 'LRN must contain only numbers.',
             'lrn.unique' => 'This LRN is already taken.',
@@ -446,6 +577,27 @@ class AdminStudentController extends Controller
             'photo.image' => 'Photo must be an image file.',
             'photo.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
             'photo.max' => 'Photo must not exceed 2MB.',
+            'father_name.required' => 'Father first name is required.',
+            'father_name.regex' => 'Father first name must contain only letters and cannot start with a space.',
+            'father_mname.regex' => 'Father middle name must contain only letters and cannot start with a space.',
+            'father_lname.required' => 'Father last name is required.',
+            'father_lname.regex' => 'Father last name must contain only letters and cannot start with a space.',
+            'father_contact_number.required' => 'Father contact number is required.',
+            'father_contact_number.regex' => 'Father contact number must contain only numbers.',
+            'mother_name.required' => 'Mother first name is required.',
+            'mother_name.regex' => 'Mother first name must contain only letters and cannot start with a space.',
+            'mother_mname.regex' => 'Mother middle name must contain only letters and cannot start with a space.',
+            'mother_lname.required' => 'Mother last name is required.',
+            'mother_lname.regex' => 'Mother last name must contain only letters and cannot start with a space.',
+            'mother_contact_number.required' => 'Mother contact number is required.',
+            'mother_contact_number.regex' => 'Mother contact number must contain only numbers.',
+            'guardian_name.required' => 'Guardian first name is required when both parents are deceased.',
+            'guardian_name.regex' => 'Guardian first name must contain only letters and cannot start with a space.',
+            'guardian_mname.regex' => 'Guardian middle name must contain only letters and cannot start with a space.',
+            'guardian_lname.required' => 'Guardian last name is required when both parents are deceased.',
+            'guardian_lname.regex' => 'Guardian last name must contain only letters and cannot start with a space.',
+            'guardian_contact_number.required' => 'Guardian contact number is required when both parents are deceased.',
+            'guardian_contact_number.regex' => 'Guardian contact number must contain only numbers.',
         ]);
 
         $validated['stu_fname'] = $this->formatName($validated['stu_fname']);
@@ -478,7 +630,146 @@ class AdminStudentController extends Controller
 
         $previousRfid = RfidUid::normalize($student->rfid_uid);
 
-        $student->update($validated);
+        DB::transaction(function () use ($student, $validated, $request, $hasParentFields, $fatherIsDeceased, $motherIsDeceased) {
+            // 1. Update Student fields
+            $studentFields = array_intersect_key($validated, array_flip([
+                'lrn', 'stu_fname', 'stu_mname', 'stu_lname', 'gender', 'photo', 'rfid_uid', 'status',
+            ]));
+            $student->update($studentFields);
+
+            // 2. Update Address
+            $region = $validated['region'] ?? $request->input('perm_region');
+            $province = $validated['province'] ?? $request->input('perm_province');
+            $municipality = $validated['municipality'] ?? $request->input('perm_municipality');
+            $barangay = $validated['barangay'] ?? $request->input('perm_barangay');
+
+            $hasAddress = $region || $province || $municipality || $barangay;
+            if ($hasAddress) {
+                if ($student->add_id && $address = Address::find($student->add_id)) {
+                    $address->update([
+                        'region' => $region,
+                        'province' => $province,
+                        'municipality' => $municipality,
+                        'barangay' => $barangay,
+                    ]);
+                } else {
+                    $address = Address::create([
+                        'region' => $region,
+                        'province' => $province,
+                        'municipality' => $municipality,
+                        'barangay' => $barangay,
+                        'add_type' => 'current',
+                    ]);
+                    $student->update(['add_id' => $address->add_id]);
+                }
+            }
+
+            // 3. Update Section for active school year
+            if ($request->filled('sect_id')) {
+                $activeSyId = DB::table('school_year')->where('is_active', true)->value('sy_id');
+                $enrollmentQuery = DB::table('student_section')->where('stu_id', $student->stu_id);
+                if ($activeSyId) {
+                    $enrollmentQuery->where('sy_id', $activeSyId);
+                }
+                $enrollment = $enrollmentQuery->first();
+
+                if ($enrollment) {
+                    DB::table('student_section')
+                        ->where('stu_sect_id', $enrollment->stu_sect_id)
+                        ->update(['sect_id' => $request->input('sect_id')]);
+                } else {
+                    DB::table('student_section')->insert([
+                        'stu_id' => $student->stu_id,
+                        'sect_id' => $request->input('sect_id'),
+                        'sy_id' => $activeSyId,
+                    ]);
+                }
+            }
+
+            // 4. Update Parent / Guardian
+            if ($hasParentFields) {
+                $parentLink = ParentGuardian::where('stu_par_id', $student->stu_id)->first();
+                if (! $parentLink) {
+                    $parentLink = new ParentGuardian(['stu_par_id' => $student->stu_id]);
+                }
+
+                // Father
+                if ($fatherIsDeceased) {
+                    $parentLink->f_id = null;
+                } elseif (! empty($validated['father_name'])) {
+                    if ($parentLink->f_id && $father = Father::find($parentLink->f_id)) {
+                        $father->update([
+                            'father_name' => $this->formatName($validated['father_name']),
+                            'father_mname' => $this->formatName($validated['father_mname'] ?? null),
+                            'father_lname' => $this->formatName($validated['father_lname'] ?? null),
+                            'contact_number' => $validated['father_contact_number'] ?? null,
+                        ]);
+                    } else {
+                        $father = Father::create([
+                            'father_name' => $this->formatName($validated['father_name']),
+                            'father_mname' => $this->formatName($validated['father_mname'] ?? null),
+                            'father_lname' => $this->formatName($validated['father_lname'] ?? null),
+                            'contact_number' => $validated['father_contact_number'] ?? null,
+                            'is_deleted' => false,
+                        ]);
+                        $parentLink->f_id = $father->f_id;
+                    }
+                }
+
+                // Mother
+                if ($motherIsDeceased) {
+                    $parentLink->mother_id = null;
+                } elseif (! empty($validated['mother_name'])) {
+                    if ($parentLink->mother_id && $mother = Mother::find($parentLink->mother_id)) {
+                        $mother->update([
+                            'mother_name' => $this->formatName($validated['mother_name']),
+                            'mother_mname' => $this->formatName($validated['mother_mname'] ?? null),
+                            'mother_lname' => $this->formatName($validated['mother_lname'] ?? null),
+                            'contact_number' => $validated['mother_contact_number'] ?? null,
+                        ]);
+                    } else {
+                        $mother = Mother::create([
+                            'mother_name' => $this->formatName($validated['mother_name']),
+                            'mother_mname' => $this->formatName($validated['mother_mname'] ?? null),
+                            'mother_lname' => $this->formatName($validated['mother_lname'] ?? null),
+                            'contact_number' => $validated['mother_contact_number'] ?? null,
+                            'is_deleted' => false,
+                        ]);
+                        $parentLink->mother_id = $mother->mother_id;
+                    }
+                }
+
+                // Guardian
+                if (! empty($validated['guardian_name'])) {
+                    if ($parentLink->guardian_id && $guardian = Guardian::find($parentLink->guardian_id)) {
+                        $guardian->update([
+                            'name' => $this->formatName($validated['guardian_name']),
+                            'guardian_mname' => $this->formatName($validated['guardian_mname'] ?? null),
+                            'guardian_lname' => $this->formatName($validated['guardian_lname'] ?? null),
+                            'contact_number' => $validated['guardian_contact_number'] ?? null,
+                        ]);
+                    } else {
+                        $guardian = Guardian::create([
+                            'name' => $this->formatName($validated['guardian_name']),
+                            'guardian_mname' => $this->formatName($validated['guardian_mname'] ?? null),
+                            'guardian_lname' => $this->formatName($validated['guardian_lname'] ?? null),
+                            'contact_number' => $validated['guardian_contact_number'] ?? null,
+                            'is_deleted' => false,
+                        ]);
+                        $parentLink->guardian_id = $guardian->guardian_id;
+                    }
+                } else {
+                    $parentLink->guardian_id = null;
+                }
+
+                if ($parentLink->f_id || $parentLink->mother_id || $parentLink->guardian_id) {
+                    $parentLink->save();
+                } elseif ($parentLink->exists) {
+                    $parentLink->delete();
+                }
+            }
+        });
+
         RfidRegistryCache::forget();
 
         if ($previousRfid !== $validated['rfid_uid']) {

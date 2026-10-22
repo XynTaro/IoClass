@@ -155,6 +155,128 @@ export function useCascade() {
         setHasProvinces(true);
     }, []);
 
+    const initializeFromNames = useCallback(
+        async (addr: {
+            region?: string | null;
+            province?: string | null;
+            municipality?: string | null;
+            barangay?: string | null;
+        }) => {
+            if (!addr.region) {
+                reset();
+                return;
+            }
+
+            try {
+                let regList = regions;
+                if (regList.length === 0) {
+                    setLoading((l) => ({ ...l, regions: true }));
+                    regList = await fetch(`${PSGC}/regions/`)
+                        .then((r) => r.json())
+                        .then((d: PsgcItem[]) => sorted(d));
+                    setRegions(regList);
+                    setLoading((l) => ({ ...l, regions: false }));
+                }
+
+                const regTarget = addr.region.trim().toLowerCase();
+                const matchedReg =
+                    regList.find((r) => r.name.toLowerCase() === regTarget) ||
+                    regList.find((r) => r.name.toLowerCase().includes(regTarget) || regTarget.includes(r.name.toLowerCase()));
+
+                if (!matchedReg) return;
+
+                setRegionCode(matchedReg.code);
+
+                // Fetch provinces
+                setLoading((l) => ({ ...l, provinces: true }));
+                const provs: PsgcItem[] = await fetch(
+                    `${PSGC}/regions/${matchedReg.code}/provinces/`,
+                ).then((r) => r.json());
+                setLoading((l) => ({ ...l, provinces: false }));
+
+                if (provs.length > 0) {
+                    const sortedProvs = sorted(provs);
+                    setProvinces(sortedProvs);
+                    setHasProvinces(true);
+
+                    if (addr.province) {
+                        const provTarget = addr.province.trim().toLowerCase();
+                        const matchedProv =
+                            sortedProvs.find((p) => p.name.toLowerCase() === provTarget) ||
+                            sortedProvs.find((p) => p.name.toLowerCase().includes(provTarget) || provTarget.includes(p.name.toLowerCase()));
+
+                        if (matchedProv) {
+                            setProvinceCode(matchedProv.code);
+
+                            // Fetch municipalities
+                            setLoading((l) => ({ ...l, municipalities: true }));
+                            const muns: PsgcItem[] = await fetch(
+                                `${PSGC}/provinces/${matchedProv.code}/cities-municipalities/`,
+                            ).then((r) => r.json());
+                            setLoading((l) => ({ ...l, municipalities: false }));
+
+                            const sortedMuns = sorted(muns);
+                            setMunicipalities(sortedMuns);
+
+                            if (addr.municipality) {
+                                const munTarget = addr.municipality.trim().toLowerCase();
+                                const matchedMun =
+                                    sortedMuns.find((m) => m.name.toLowerCase() === munTarget) ||
+                                    sortedMuns.find((m) => m.name.toLowerCase().includes(munTarget) || munTarget.includes(m.name.toLowerCase()));
+
+                                if (matchedMun) {
+                                    setMunicipalityCode(matchedMun.code);
+
+                                    // Fetch barangays
+                                    setLoading((l) => ({ ...l, barangays: true }));
+                                    const brgys: PsgcItem[] = await fetch(
+                                        `${PSGC}/cities-municipalities/${matchedMun.code}/barangays/`,
+                                    ).then((r) => r.json());
+                                    setLoading((l) => ({ ...l, barangays: false }));
+
+                                    setBarangays(sorted(brgys));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    setHasProvinces(false);
+                    setLoading((l) => ({ ...l, municipalities: true }));
+                    const muns: PsgcItem[] = await fetch(
+                        `${PSGC}/regions/${matchedReg.code}/cities-municipalities/`,
+                    ).then((r) => r.json());
+                    setLoading((l) => ({ ...l, municipalities: false }));
+
+                    const sortedMuns = sorted(muns);
+                    setMunicipalities(sortedMuns);
+
+                    if (addr.municipality) {
+                        const munTarget = addr.municipality.trim().toLowerCase();
+                        const matchedMun =
+                            sortedMuns.find((m) => m.name.toLowerCase() === munTarget) ||
+                            sortedMuns.find((m) => m.name.toLowerCase().includes(munTarget) || munTarget.includes(m.name.toLowerCase()));
+
+                        if (matchedMun) {
+                            setMunicipalityCode(matchedMun.code);
+
+                            // Fetch barangays
+                            setLoading((l) => ({ ...l, barangays: true }));
+                            const brgys: PsgcItem[] = await fetch(
+                                `${PSGC}/cities-municipalities/${matchedMun.code}/barangays/`,
+                            ).then((r) => r.json());
+                            setLoading((l) => ({ ...l, barangays: false }));
+
+                            setBarangays(sorted(brgys));
+                        }
+                    }
+                }
+            } catch {
+                // Ignore API or parse errors
+            }
+        },
+        [regions, reset],
+    );
+
     return {
         regions,
         provinces,
@@ -167,6 +289,7 @@ export function useCascade() {
         selectRegion,
         selectProvince,
         selectMunicipality,
+        initializeFromNames,
         reset,
         loading,
     };

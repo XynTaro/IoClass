@@ -33,19 +33,20 @@ class AdminTeacherController extends Controller
     {
         $archived = $request->boolean('archived');
 
-        $teachers = Teacher::select(
-            'tch_id',
-            'add_id',
-            'tch_rfid_uid',
-            'master_card',
-            'tch_fname',
-            'tch_mname',
-            'tch_lname',
-            'tch_email',
-            'contact_number',
-            'is_deleted',
-            'avatar',
-        )
+        $teachers = Teacher::with('address:add_id,region,province,municipality,barangay')
+            ->select(
+                'tch_id',
+                'add_id',
+                'tch_rfid_uid',
+                'master_card',
+                'tch_fname',
+                'tch_mname',
+                'tch_lname',
+                'tch_email',
+                'contact_number',
+                'is_deleted',
+                'avatar',
+            )
             ->when($archived, fn ($q) => $q->where('is_deleted', true), fn ($q) => $q->where('is_deleted', false))
             ->orderBy('tch_id', 'desc')
             ->paginate(8);
@@ -150,6 +151,14 @@ class AdminTeacherController extends Controller
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
             'tch_pw' => 'nullable|string|min:8|max:255|confirmed',
+            'region' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'municipality' => 'nullable|string|max:100',
+            'barangay' => 'nullable|string|max:100',
+            'perm_region' => 'nullable|string|max:100',
+            'perm_province' => 'nullable|string|max:100',
+            'perm_municipality' => 'nullable|string|max:100',
+            'perm_barangay' => 'nullable|string|max:100',
         ], [
             'tch_rfid_uid.required' => 'RFID UID is required.',
             'tch_rfid_uid.string' => 'RFID UID must be a valid string.',
@@ -180,7 +189,41 @@ class AdminTeacherController extends Controller
 
         $this->normalizeRfidFields($validated);
 
-        $teacherModel->update($validated);
+        DB::transaction(function () use ($teacherModel, $validated, $request) {
+            $region = $validated['region'] ?? $request->input('perm_region');
+            $province = $validated['province'] ?? $request->input('perm_province');
+            $municipality = $validated['municipality'] ?? $request->input('perm_municipality');
+            $barangay = $validated['barangay'] ?? $request->input('perm_barangay');
+
+            $hasAddress = $region || $province || $municipality || $barangay;
+            if ($hasAddress) {
+                if ($teacherModel->add_id && $address = Address::find($teacherModel->add_id)) {
+                    $address->update([
+                        'region' => $region,
+                        'province' => $province,
+                        'municipality' => $municipality,
+                        'barangay' => $barangay,
+                    ]);
+                } else {
+                    $address = Address::create([
+                        'region' => $region,
+                        'province' => $province,
+                        'municipality' => $municipality,
+                        'barangay' => $barangay,
+                        'add_type' => 'permanent',
+                    ]);
+                    $validated['add_id'] = $address->add_id;
+                }
+            }
+
+            $teacherFields = array_intersect_key($validated, array_flip([
+                'tch_rfid_uid', 'master_card', 'tch_fname', 'tch_mname', 'tch_lname',
+                'tch_email', 'contact_number', 'add_id', 'tch_pw',
+            ]));
+
+            $teacherModel->update($teacherFields);
+        });
+
         $teacherModel->refresh();
         RfidRegistryCache::forget();
 

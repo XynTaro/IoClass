@@ -154,10 +154,27 @@ export interface Student {
     gender?: 'male' | 'female' | null;
     photo?: string | null;
     stu_address?: string | null;
+    sect_id?: number | null;
     gr_level?: string | null;
     sect?: string | null;
     rfid_uid: string;
     status: Status | null;
+    region?: string | null;
+    province?: string | null;
+    municipality?: string | null;
+    barangay?: string | null;
+    father_name?: string | null;
+    father_mname?: string | null;
+    father_lname?: string | null;
+    father_contact_number?: string | null;
+    mother_name?: string | null;
+    mother_mname?: string | null;
+    mother_lname?: string | null;
+    mother_contact_number?: string | null;
+    guardian_name?: string | null;
+    guardian_mname?: string | null;
+    guardian_lname?: string | null;
+    guardian_contact_number?: string | null;
 }
 
 interface StudentFormData {
@@ -502,6 +519,7 @@ export default function StudentModal({
     const { isOnline } = useOnlineStatus();
     const form = useForm<StudentFormData>(emptyForm);
     const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [editTab, setEditTab] = useState<'student' | 'address' | 'family'>('student');
     const [localErrors, setLocalErrors] = useState<LocalErrors>({});
     const [rfidRegistryConflict, setRfidRegistryConflict] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -553,6 +571,14 @@ export default function StudentModal({
     // Populate form when editing
     useEffect(() => {
         if (student && mode === 'edit') {
+            setEditTab('student');
+            const hasFather = Boolean(student.father_name && student.father_name.trim());
+            const hasMother = Boolean(student.mother_name && student.mother_name.trim());
+            const hasGuardian = Boolean(student.guardian_name && student.guardian_name.trim());
+
+            const fatherDeceased = (!hasFather && hasGuardian) || (!hasFather && hasMother && hasGuardian);
+            const motherDeceased = (!hasMother && hasGuardian) || (!hasMother && hasFather && hasGuardian);
+
             form.setData({
                 ...emptyForm,
                 stu_id: student.stu_id,
@@ -561,9 +587,41 @@ export default function StudentModal({
                 stu_mname: student.stu_mname ?? '',
                 stu_lname: student.stu_lname ?? '',
                 gender: (student.gender as 'male' | 'female') ?? 'male',
+                sect_id: student.sect_id ?? '',
+                gr_level: student.gr_level ?? '',
+                sect: student.sect ?? '',
                 rfid_uid: student.rfid_uid ?? '',
                 status: student.status ?? 'active',
+                region: student.region ?? '',
+                province: student.province ?? '',
+                municipality: student.municipality ?? '',
+                barangay: student.barangay ?? '',
+                father_name: student.father_name ?? '',
+                father_mname: student.father_mname ?? '',
+                father_lname: student.father_lname ?? '',
+                father_contact_number: student.father_contact_number ?? '',
+                father_is_deceased: fatherDeceased,
+                mother_name: student.mother_name ?? '',
+                mother_mname: student.mother_mname ?? '',
+                mother_lname: student.mother_lname ?? '',
+                mother_contact_number: student.mother_contact_number ?? '',
+                mother_is_deceased: motherDeceased,
+                guardian_name: student.guardian_name ?? '',
+                guardian_mname: student.guardian_mname ?? '',
+                guardian_lname: student.guardian_lname ?? '',
+                guardian_contact_number: student.guardian_contact_number ?? '',
             });
+
+            if (student.region) {
+                permCascade.initializeFromNames({
+                    region: student.region,
+                    province: student.province,
+                    municipality: student.municipality,
+                    barangay: student.barangay,
+                });
+            } else {
+                permCascade.reset();
+            }
         }
     }, [student, mode, open]);
 
@@ -572,6 +630,7 @@ export default function StudentModal({
         if (!open) {
             form.reset();
             setStep(1);
+            setEditTab('student');
             setLocalErrors({});
             permCascade.reset();
             currCascade.reset();
@@ -770,6 +829,7 @@ export default function StudentModal({
         const errors = validateStep1(form.data);
         if (Object.keys(errors).length > 0) {
             setLocalErrors(errors);
+            setEditTab('student');
             setSubmitError('Please fix the validation errors before saving.');
             return;
         }
@@ -779,6 +839,7 @@ export default function StudentModal({
                 rfid_uid:
                     'This RFID card is already registered to another person.',
             });
+            setEditTab('student');
             setSubmitError('Please fix the validation errors before saving.');
             return;
         }
@@ -787,6 +848,7 @@ export default function StudentModal({
             setLocalErrors({
                 rfid_uid: 'RFID UID is required.',
             });
+            setEditTab('student');
             setSubmitError('Please fix the validation errors before saving.');
             return;
         }
@@ -794,6 +856,96 @@ export default function StudentModal({
         if (!isOnline) {
             setSubmitError(
                 'Cannot save while offline. Your entered data has been preserved. Please check your internet connection and try again.',
+            );
+            return;
+        }
+
+        // Validate family fields in edit mode
+        const familyErrors: Record<string, string> = {};
+        if (!form.data.father_is_deceased && form.data.father_name.trim()) {
+            if (!form.data.father_lname.trim()) {
+                familyErrors.father_lname = 'Father last name is required.';
+            }
+            if (!form.data.father_contact_number.trim()) {
+                familyErrors.father_contact_number =
+                    'Father contact number is required.';
+            } else {
+                const cleanNum = form.data.father_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
+                if (cleanNum.length !== 11) {
+                    familyErrors.father_contact_number =
+                        'Contact number must be exactly 11 digits.';
+                }
+            }
+        }
+
+        if (!form.data.mother_is_deceased && form.data.mother_name.trim()) {
+            if (!form.data.mother_lname.trim()) {
+                familyErrors.mother_lname = 'Mother last name is required.';
+            }
+            if (!form.data.mother_contact_number.trim()) {
+                familyErrors.mother_contact_number =
+                    'Mother contact number is required.';
+            } else {
+                const cleanNum = form.data.mother_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
+                if (cleanNum.length !== 11) {
+                    familyErrors.mother_contact_number =
+                        'Contact number must be exactly 11 digits.';
+                }
+            }
+        }
+
+        const bothParentsDeceased = Boolean(
+            form.data.father_is_deceased && form.data.mother_is_deceased,
+        );
+        if (bothParentsDeceased) {
+            if (!form.data.guardian_name.trim()) {
+                familyErrors.guardian_name =
+                    'Guardian first name is required when both parents are deceased.';
+            }
+            if (!form.data.guardian_lname.trim()) {
+                familyErrors.guardian_lname =
+                    'Guardian last name is required when both parents are deceased.';
+            }
+            if (!form.data.guardian_contact_number.trim()) {
+                familyErrors.guardian_contact_number =
+                    'Guardian contact number is required when both parents are deceased.';
+            } else {
+                const cleanNum = form.data.guardian_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
+                if (cleanNum.length !== 11) {
+                    familyErrors.guardian_contact_number =
+                        'Contact number must be exactly 11 digits.';
+                }
+            }
+        } else if (
+            form.data.guardian_name.trim() ||
+            form.data.guardian_contact_number.trim()
+        ) {
+            if (form.data.guardian_contact_number.trim()) {
+                const cleanNum = form.data.guardian_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
+                if (cleanNum.length !== 11) {
+                    familyErrors.guardian_contact_number =
+                        'Contact number must be exactly 11 digits.';
+                }
+            }
+        }
+
+        if (Object.keys(familyErrors).length > 0) {
+            form.setError(familyErrors);
+            setEditTab('family');
+            setSubmitError(
+                'Please fix the family information errors before saving.',
             );
             return;
         }
@@ -815,6 +967,44 @@ export default function StudentModal({
                 onClose();
             },
             onError: (errors) => {
+                const step1Fields = [
+                    'lrn',
+                    'stu_fname',
+                    'stu_mname',
+                    'stu_lname',
+                    'gender',
+                    'rfid_uid',
+                    'gr_level',
+                    'sect_id',
+                    'status',
+                ];
+                const step2Fields = [
+                    'region',
+                    'province',
+                    'municipality',
+                    'barangay',
+                ];
+                const step3Fields = [
+                    'father_name',
+                    'father_mname',
+                    'father_lname',
+                    'father_contact_number',
+                    'mother_name',
+                    'mother_mname',
+                    'mother_lname',
+                    'mother_contact_number',
+                    'guardian_name',
+                    'guardian_mname',
+                    'guardian_lname',
+                    'guardian_contact_number',
+                ];
+                if (step1Fields.some((f) => f in errors)) {
+                    setEditTab('student');
+                } else if (step2Fields.some((f) => f in errors)) {
+                    setEditTab('address');
+                } else if (step3Fields.some((f) => f in errors)) {
+                    setEditTab('family');
+                }
                 const firstMsg = Object.values(errors)[0];
                 setSubmitError(
                     typeof firstMsg === 'string'
@@ -1015,7 +1205,7 @@ export default function StudentModal({
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
                                         {mode === 'edit'
-                                            ? 'Update the student information below'
+                                            ? 'Update student details, address, and family information'
                                             : 'Basic information about the student'}
                                     </p>
                                 </div>
@@ -1051,6 +1241,50 @@ export default function StudentModal({
 
                         {mode === 'create' && <StepIndicator current={1} />}
 
+                        {mode === 'edit' && (
+                            <div className="flex border-b border-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('student')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'student'
+                                            ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <GraduationCap className="size-4" />
+                                    Student Details
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('address')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'address'
+                                            ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <MapPin className="size-4" />
+                                    Address
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('family')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'family'
+                                            ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <UsersRound className="size-4" />
+                                    Family & Guardians
+                                </button>
+                            </div>
+                        )}
+
                         <form
                             onSubmit={
                                 mode === 'edit'
@@ -1062,290 +1296,465 @@ export default function StudentModal({
                             }
                             className="max-h-[72vh] space-y-4 overflow-y-auto pr-1"
                         >
-                            <Field
-                                id="lrn"
-                                label="LRN *"
-                                value={form.data.lrn}
-                                onChange={(v) =>
-                                    setField('lrn', formatLrnInput(v))
-                                }
-                                error={form.errors.lrn}
-                                localError={localErrors.lrn}
-                                inputProps={{
-                                    placeholder: 'Learner Reference Number',
-                                    inputMode: 'numeric',
-                                    pattern: '[0-9]*',
-                                    required: true,
-                                }}
-                            />
-
-                            {/* Gender / Sex */}
-                            <div>
-                                <Label className="mb-1.5 inline-block text-xs font-medium text-muted-foreground">
-                                    Gender / Sex{' '}
-                                    <span className="text-destructive">*</span>
-                                </Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setField('gender', 'male')
-                                        }
-                                        className={cn(
-                                            'flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all',
-                                            form.data.gender === 'male'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-700 ring-2 ring-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'
-                                                : 'border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                'flex size-6 items-center justify-center rounded-full text-xs font-bold',
-                                                form.data.gender === 'male'
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-muted text-muted-foreground',
-                                            )}
-                                        >
-                                            M
-                                        </div>
-                                        <span>Male</span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setField('gender', 'female')
-                                        }
-                                        className={cn(
-                                            'flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all',
-                                            form.data.gender === 'female'
-                                                ? 'border-rose-500 bg-rose-500/10 text-rose-700 ring-2 ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-400'
-                                                : 'border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                'flex size-6 items-center justify-center rounded-full text-xs font-bold',
-                                                form.data.gender === 'female'
-                                                    ? 'bg-rose-600 text-white'
-                                                    : 'bg-muted text-muted-foreground',
-                                            )}
-                                        >
-                                            F
-                                        </div>
-                                        <span>Female</span>
-                                    </button>
-                                </div>
-                                <FieldError
-                                    message={
-                                        form.errors.gender ?? localErrors.gender
-                                    }
-                                />
-                            </div>
-
-                            <div className="grid gap-3 sm:grid-cols-3">
-                                <Field
-                                    id="stu_fname"
-                                    label="First name *"
-                                    value={form.data.stu_fname}
-                                    onChange={(v) =>
-                                        setField(
-                                            'stu_fname',
-                                            formatNameInput(v),
-                                        )
-                                    }
-                                    error={form.errors.stu_fname}
-                                    localError={localErrors.stu_fname}
-                                    inputProps={{
-                                        placeholder: 'First name',
-                                        required: true,
-                                    }}
-                                />
-                                <Field
-                                    id="stu_mname"
-                                    label="Middle name"
-                                    value={form.data.stu_mname}
-                                    onChange={(v) =>
-                                        setField(
-                                            'stu_mname',
-                                            formatNameInput(v),
-                                        )
-                                    }
-                                    error={form.errors.stu_mname}
-                                    localError={localErrors.stu_mname}
-                                    inputProps={{
-                                        placeholder: 'Middle name (optional)',
-                                    }}
-                                />
-                                <Field
-                                    id="stu_lname"
-                                    label="Last name *"
-                                    value={form.data.stu_lname}
-                                    onChange={(v) =>
-                                        setField(
-                                            'stu_lname',
-                                            formatNameInput(v),
-                                        )
-                                    }
-                                    error={form.errors.stu_lname}
-                                    localError={localErrors.stu_lname}
-                                    inputProps={{
-                                        placeholder: 'Last name',
-                                        required: true,
-                                    }}
-                                />
-                            </div>
-
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {/* Grade level dropdown */}
-                                <div>
-                                    <Label
-                                        htmlFor="gr_level"
-                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                    >
-                                        Grade level{' '}
-                                        <span className="text-destructive">
-                                            *
-                                        </span>
-                                    </Label>
-                                    <select
-                                        id="gr_level"
-                                        value={form.data.gr_level}
-                                        onChange={(e) => {
-                                            setField(
-                                                'gr_level',
-                                                e.target.value,
-                                            );
-                                            setField('sect', '');
+                            {mode === 'edit' && editTab === 'address' ? (
+                                <div className="space-y-4 pt-1">
+                                    <AddressSection
+                                        title="Permanent Address"
+                                        cascade={permCascade}
+                                        barangayValue={form.data.barangay}
+                                        errors={{
+                                            region: form.errors.region,
+                                            province: form.errors.province,
+                                            municipality:
+                                                form.errors.municipality,
+                                            barangay: form.errors.barangay,
                                         }}
-                                        className={`h-9 w-full rounded-md border bg-background px-3 text-sm shadow-sm ${inputErrorClass(Boolean(form.errors.gr_level || localErrors.gr_level))}`}
-                                    >
-                                        <option value="">
-                                            Select grade level
-                                        </option>
-                                        {gradeOptions.map((g) => (
-                                            <option key={g} value={g}>
-                                                {g}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <FieldError
-                                        message={
-                                            form.errors.gr_level ??
-                                            localErrors.gr_level
-                                        }
+                                        onRegionChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                region: name,
+                                                province: '',
+                                                municipality: '',
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onProvinceChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                province: name,
+                                                municipality: '',
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onMunicipalityChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                municipality: name,
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onBarangayChange={(name) => {
+                                            form.setData('barangay', name);
+                                        }}
                                     />
                                 </div>
-
-                                {/* Section dropdown — filtered by selected grade */}
-                                <div>
-                                    <Label
-                                        htmlFor="sect"
-                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                    >
-                                        Section{' '}
-                                        <span className="text-destructive">
-                                            *
-                                        </span>
-                                    </Label>
-                                    <select
-                                        id="sect"
-                                        value={form.data.sect_id}
-                                        onChange={(e) => {
-                                            const selected =
-                                                sectionOptions.find(
-                                                    (s) =>
-                                                        s.sect_id ===
-                                                        Number(e.target.value),
+                            ) : mode === 'edit' && editTab === 'family' ? (
+                                <div className="space-y-4 pt-1">
+                                    {form.data.father_is_deceased &&
+                                        form.data.mother_is_deceased && (
+                                            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                                                <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                                <div>
+                                                    <p className="font-semibold">
+                                                        Both parents are marked
+                                                        deceased
+                                                    </p>
+                                                    <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                                                        Guardian first name,
+                                                        last name, and contact
+                                                        number are required.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    <ParentSection
+                                        title="Father"
+                                        prefix="father"
+                                        data={form.data}
+                                        errors={form.errors}
+                                        onChange={setField}
+                                        required={!form.data.father_is_deceased}
+                                        onDeceasedChange={(deceased) => {
+                                            if (deceased) {
+                                                form.setData({
+                                                    ...form.data,
+                                                    father_is_deceased: true,
+                                                    father_name: '',
+                                                    father_mname: '',
+                                                    father_lname: '',
+                                                    father_contact_number: '',
+                                                });
+                                                form.clearErrors(
+                                                    'father_name',
+                                                    'father_mname',
+                                                    'father_lname',
+                                                    'father_contact_number',
                                                 );
-                                            form.setData({
-                                                ...form.data,
-                                                sect_id: selected
-                                                    ? selected.sect_id
-                                                    : '',
-                                                sect: selected
-                                                    ? selected.sect_name
-                                                    : '',
-                                            });
+                                            } else {
+                                                form.setData(
+                                                    'father_is_deceased',
+                                                    false,
+                                                );
+                                            }
                                         }}
-                                        disabled={!form.data.gr_level}
-                                        className={`h-9 w-full rounded-md border bg-background px-3 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50 ${inputErrorClass(Boolean(form.errors.sect || localErrors.sect))}`}
-                                    >
-                                        <option value="">
-                                            {form.data.gr_level
-                                                ? 'Select section'
-                                                : 'Select grade first'}
-                                        </option>
-                                        {sectionOptions.map((s) => (
-                                            <option
-                                                key={s.sect_id}
-                                                value={s.sect_id}
-                                            >
-                                                {s.sect_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <FieldError
-                                        message={
-                                            form.errors.sect ?? localErrors.sect
+                                    />
+                                    <ParentSection
+                                        title="Mother"
+                                        prefix="mother"
+                                        data={form.data}
+                                        errors={form.errors}
+                                        onChange={setField}
+                                        required={!form.data.mother_is_deceased}
+                                        onDeceasedChange={(deceased) => {
+                                            if (deceased) {
+                                                form.setData({
+                                                    ...form.data,
+                                                    mother_is_deceased: true,
+                                                    mother_name: '',
+                                                    mother_mname: '',
+                                                    mother_lname: '',
+                                                    mother_contact_number: '',
+                                                });
+                                                form.clearErrors(
+                                                    'mother_name',
+                                                    'mother_mname',
+                                                    'mother_lname',
+                                                    'mother_contact_number',
+                                                );
+                                            } else {
+                                                form.setData(
+                                                    'mother_is_deceased',
+                                                    false,
+                                                );
+                                            }
+                                        }}
+                                    />
+                                    <ParentSection
+                                        title="Guardian"
+                                        prefix="guardian"
+                                        data={form.data}
+                                        errors={form.errors}
+                                        onChange={setField}
+                                        required={Boolean(
+                                            form.data.father_is_deceased &&
+                                                form.data.mother_is_deceased,
+                                        )}
+                                        badgeNote={
+                                            form.data.father_is_deceased &&
+                                            form.data.mother_is_deceased
+                                                ? 'Parents deceased'
+                                                : undefined
                                         }
                                     />
                                 </div>
-                            </div>
-
-                            <RfidUidInput
-                                id="rfid_uid"
-                                label="RFID UID"
-                                value={form.data.rfid_uid}
-                                onChange={(v) => setField('rfid_uid', v)}
-                                error={
-                                    form.errors.rfid_uid ?? localErrors.rfid_uid
-                                }
-                                excludeUid={
-                                    mode === 'edit'
-                                        ? (student?.rfid_uid ?? '')
-                                        : ''
-                                }
-                                required
-                                enabled={
-                                    open && (mode === 'edit' || step === 1)
-                                }
-                                captureGlobalScan={
-                                    open && (mode === 'edit' || step === 1)
-                                }
-                                wirelessCapture={
-                                    open && (mode === 'edit' || step === 1)
-                                }
-                                onConflictChange={setRfidRegistryConflict}
-                            />
-
-                            {/* Status shown inline in edit mode only */}
-                            {mode === 'edit' && (
-                                <div>
-                                    <Label
-                                        htmlFor="status"
-                                        className="mb-1 inline-block text-xs font-medium text-muted-foreground"
-                                    >
-                                        Status
-                                    </Label>
-                                    <select
-                                        id="status"
-                                        value={form.data.status}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'status',
-                                                e.target.value,
-                                            )
+                            ) : (
+                                <>
+                                    <Field
+                                        id="lrn"
+                                        label="LRN *"
+                                        value={form.data.lrn}
+                                        onChange={(v) =>
+                                            setField('lrn', formatLrnInput(v))
                                         }
-                                        className="h-9 w-full rounded-md border bg-background px-3 text-sm shadow-sm"
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">
-                                            Inactive
-                                        </option>
-                                    </select>
-                                    <FieldError message={form.errors.status} />
-                                </div>
+                                        error={form.errors.lrn}
+                                        localError={localErrors.lrn}
+                                        inputProps={{
+                                            placeholder:
+                                                'Learner Reference Number',
+                                            inputMode: 'numeric',
+                                            pattern: '[0-9]*',
+                                            required: true,
+                                        }}
+                                    />
+
+                                    {/* Gender / Sex */}
+                                    <div>
+                                        <Label className="mb-1.5 inline-block text-xs font-medium text-muted-foreground">
+                                            Gender / Sex{' '}
+                                            <span className="text-destructive">
+                                                *
+                                            </span>
+                                        </Label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setField('gender', 'male')
+                                                }
+                                                className={cn(
+                                                    'flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all',
+                                                    form.data.gender === 'male'
+                                                        ? 'border-blue-500 bg-blue-500/10 text-blue-700 ring-2 ring-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'
+                                                        : 'border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                                                )}
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        'flex size-6 items-center justify-center rounded-full text-xs font-bold',
+                                                        form.data.gender ===
+                                                            'male'
+                                                            ? 'bg-blue-600 text-white'
+                                                            : 'bg-muted text-muted-foreground',
+                                                    )}
+                                                >
+                                                    M
+                                                </div>
+                                                <span>Male</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setField('gender', 'female')
+                                                }
+                                                className={cn(
+                                                    'flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border p-2.5 text-sm font-semibold transition-all',
+                                                    form.data.gender ===
+                                                        'female'
+                                                        ? 'border-rose-500 bg-rose-500/10 text-rose-700 ring-2 ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-400'
+                                                        : 'border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                                                )}
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        'flex size-6 items-center justify-center rounded-full text-xs font-bold',
+                                                        form.data.gender ===
+                                                            'female'
+                                                            ? 'bg-rose-600 text-white'
+                                                            : 'bg-muted text-muted-foreground',
+                                                    )}
+                                                >
+                                                    F
+                                                </div>
+                                                <span>Female</span>
+                                            </button>
+                                        </div>
+                                        <FieldError
+                                            message={
+                                                form.errors.gender ??
+                                                localErrors.gender
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-3">
+                                        <Field
+                                            id="stu_fname"
+                                            label="First name *"
+                                            value={form.data.stu_fname}
+                                            onChange={(v) =>
+                                                setField(
+                                                    'stu_fname',
+                                                    formatNameInput(v),
+                                                )
+                                            }
+                                            error={form.errors.stu_fname}
+                                            localError={localErrors.stu_fname}
+                                            inputProps={{
+                                                placeholder: 'First name',
+                                                required: true,
+                                            }}
+                                        />
+                                        <Field
+                                            id="stu_mname"
+                                            label="Middle name"
+                                            value={form.data.stu_mname}
+                                            onChange={(v) =>
+                                                setField(
+                                                    'stu_mname',
+                                                    formatNameInput(v),
+                                                )
+                                            }
+                                            error={form.errors.stu_mname}
+                                            localError={localErrors.stu_mname}
+                                            inputProps={{
+                                                placeholder:
+                                                    'Middle name (optional)',
+                                            }}
+                                        />
+                                        <Field
+                                            id="stu_lname"
+                                            label="Last name *"
+                                            value={form.data.stu_lname}
+                                            onChange={(v) =>
+                                                setField(
+                                                    'stu_lname',
+                                                    formatNameInput(v),
+                                                )
+                                            }
+                                            error={form.errors.stu_lname}
+                                            localError={localErrors.stu_lname}
+                                            inputProps={{
+                                                placeholder: 'Last name',
+                                                required: true,
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {/* Grade level dropdown */}
+                                        <div>
+                                            <Label
+                                                htmlFor="gr_level"
+                                                className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                            >
+                                                Grade level{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <select
+                                                id="gr_level"
+                                                value={form.data.gr_level}
+                                                onChange={(e) => {
+                                                    setField(
+                                                        'gr_level',
+                                                        e.target.value,
+                                                    );
+                                                    setField('sect', '');
+                                                }}
+                                                className={`h-9 w-full rounded-md border bg-background px-3 text-sm shadow-sm ${inputErrorClass(Boolean(form.errors.gr_level || localErrors.gr_level))}`}
+                                            >
+                                                <option value="">
+                                                    Select grade level
+                                                </option>
+                                                {gradeOptions.map((g) => (
+                                                    <option key={g} value={g}>
+                                                        {g}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FieldError
+                                                message={
+                                                    form.errors.gr_level ??
+                                                    localErrors.gr_level
+                                                }
+                                            />
+                                        </div>
+
+                                        {/* Section dropdown — filtered by selected grade */}
+                                        <div>
+                                            <Label
+                                                htmlFor="sect"
+                                                className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                            >
+                                                Section{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <select
+                                                id="sect"
+                                                value={form.data.sect_id}
+                                                onChange={(e) => {
+                                                    const selected =
+                                                        sectionOptions.find(
+                                                            (s) =>
+                                                                s.sect_id ===
+                                                                Number(
+                                                                    e.target
+                                                                        .value,
+                                                                ),
+                                                        );
+                                                    form.setData({
+                                                        ...form.data,
+                                                        sect_id: selected
+                                                            ? selected.sect_id
+                                                            : '',
+                                                        sect: selected
+                                                            ? selected.sect_name
+                                                            : '',
+                                                    });
+                                                }}
+                                                disabled={!form.data.gr_level}
+                                                className={`h-9 w-full rounded-md border bg-background px-3 text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50 ${inputErrorClass(Boolean(form.errors.sect || localErrors.sect))}`}
+                                            >
+                                                <option value="">
+                                                    {form.data.gr_level
+                                                        ? 'Select section'
+                                                        : 'Select grade first'}
+                                                </option>
+                                                {sectionOptions.map((s) => (
+                                                    <option
+                                                        key={s.sect_id}
+                                                        value={s.sect_id}
+                                                    >
+                                                        {s.sect_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FieldError
+                                                message={
+                                                    form.errors.sect ??
+                                                    localErrors.sect
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <RfidUidInput
+                                        id="rfid_uid"
+                                        label="RFID UID"
+                                        value={form.data.rfid_uid}
+                                        onChange={(v) =>
+                                            setField('rfid_uid', v)
+                                        }
+                                        error={
+                                            form.errors.rfid_uid ??
+                                                localErrors.rfid_uid
+                                        }
+                                        excludeUid={
+                                            mode === 'edit'
+                                                ? (student?.rfid_uid ?? '')
+                                                : ''
+                                        }
+                                        required
+                                        enabled={
+                                            open &&
+                                            (mode === 'create'
+                                                ? step === 1
+                                                : editTab === 'student')
+                                        }
+                                        captureGlobalScan={
+                                            open &&
+                                            (mode === 'create'
+                                                ? step === 1
+                                                : editTab === 'student')
+                                        }
+                                        wirelessCapture={
+                                            open &&
+                                            (mode === 'create'
+                                                ? step === 1
+                                                : editTab === 'student')
+                                        }
+                                        onConflictChange={
+                                            setRfidRegistryConflict
+                                        }
+                                    />
+
+                                    {/* Status shown inline in edit mode only */}
+                                    {mode === 'edit' && (
+                                        <div>
+                                            <Label
+                                                htmlFor="status"
+                                                className="mb-1 inline-block text-xs font-medium text-muted-foreground"
+                                            >
+                                                Status
+                                            </Label>
+                                            <select
+                                                id="status"
+                                                value={form.data.status}
+                                                onChange={(e) =>
+                                                    form.setData(
+                                                        'status',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="h-9 w-full rounded-md border bg-background px-3 text-sm shadow-sm"
+                                            >
+                                                <option value="active">
+                                                    Active
+                                                </option>
+                                                <option value="inactive">
+                                                    Inactive
+                                                </option>
+                                            </select>
+                                            <FieldError
+                                                message={form.errors.status}
+                                            />
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </form>
 

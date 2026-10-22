@@ -21,7 +21,8 @@ class AdminAdminController extends Controller
     {
         $archived = $request->boolean('archived');
 
-        $admins = Admin::select('admin_id', 'fname', 'mname', 'lname', 'email', 'contact_number', 'add_id', 'is_deleted', 'avatar')
+        $admins = Admin::with('address:add_id,region,province,municipality,barangay')
+            ->select('admin_id', 'fname', 'mname', 'lname', 'email', 'contact_number', 'add_id', 'is_deleted', 'avatar')
             ->when($archived, fn ($q) => $q->where('is_deleted', true), fn ($q) => $q->where('is_deleted', false))
             ->orderBy('admin_id', 'desc')
             ->paginate(8);
@@ -98,6 +99,14 @@ class AdminAdminController extends Controller
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s]+$/'],
             'add_id' => 'nullable|integer|exists:address,add_id',
             'pw' => 'nullable|string|min:8|max:255|confirmed',
+            'region' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'municipality' => 'nullable|string|max:100',
+            'barangay' => 'nullable|string|max:100',
+            'perm_region' => 'nullable|string|max:100',
+            'perm_province' => 'nullable|string|max:100',
+            'perm_municipality' => 'nullable|string|max:100',
+            'perm_barangay' => 'nullable|string|max:100',
         ], [
             'fname.required' => 'First name is required.',
             'fname.regex' => 'First name must contain only letters and cannot start with a space.',
@@ -121,10 +130,41 @@ class AdminAdminController extends Controller
             unset($validated['pw']);
         }
 
-        $adminModel->update($validated);
-        $adminModel->refresh();
+        DB::transaction(function () use ($adminModel, $validated, $request) {
+            $region = $validated['region'] ?? $request->input('perm_region');
+            $province = $validated['province'] ?? $request->input('perm_province');
+            $municipality = $validated['municipality'] ?? $request->input('perm_municipality');
+            $barangay = $validated['barangay'] ?? $request->input('perm_barangay');
 
-        $adminName = trim("{$adminModel->fname} {$adminModel->lname}");
+            $hasAddress = $region || $province || $municipality || $barangay;
+            if ($hasAddress) {
+                if ($adminModel->add_id && $address = Address::find($adminModel->add_id)) {
+                    $address->update([
+                        'region' => $region,
+                        'province' => $province,
+                        'municipality' => $municipality,
+                        'barangay' => $barangay,
+                    ]);
+                } else {
+                    $address = Address::create([
+                        'region' => $region,
+                        'province' => $province,
+                        'municipality' => $municipality,
+                        'barangay' => $barangay,
+                        'add_type' => 'permanent',
+                    ]);
+                    $validated['add_id'] = $address->add_id;
+                }
+            }
+
+            $adminFields = array_intersect_key($validated, array_flip([
+                'fname', 'mname', 'lname', 'email', 'contact_number', 'add_id', 'pw',
+            ]));
+
+            $adminModel->update($adminFields);
+        });
+
+        $adminModel->refresh();
 
         return redirect()->route('admin.admin.index')
             ->with('success', 'Admin updated successfully.');

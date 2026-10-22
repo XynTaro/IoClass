@@ -11,7 +11,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
-import AddressModal, { type PendingAdminData } from '@/components/Address';
+import AddressModal, {
+    AddressSection,
+    useCascade,
+    type PendingAdminData,
+} from '@/components/Address';
 import { ModalHeader, ModalStepIndicator } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -50,6 +54,13 @@ export interface Admin {
     lname: string;
     email: string;
     contact_number?: string | null;
+    address?: {
+        add_id?: number;
+        region?: string | null;
+        province?: string | null;
+        municipality?: string | null;
+        barangay?: string | null;
+    } | null;
 }
 
 interface AdminFormData {
@@ -63,6 +74,10 @@ interface AdminFormData {
     pw_confirmation: string;
     auto_password: boolean;
     reset_password: boolean;
+    region: string;
+    province: string;
+    municipality: string;
+    barangay: string;
 }
 
 interface AdminModalProps {
@@ -86,6 +101,8 @@ export default function AdminModal({
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [copied, setCopied] = useState<'pw' | 'confirm' | null>(null);
+    const [editTab, setEditTab] = useState<'details' | 'address'>('details');
+    const addressCascade = useCascade();
     // Wizard step state (create mode only)
     const [step, setStep] = useState<1 | 2>(1);
     const [pendingAdminData, setPendingAdminData] =
@@ -106,6 +123,10 @@ export default function AdminModal({
         pw_confirmation: '',
         auto_password: true,
         reset_password: false,
+        region: '',
+        province: '',
+        municipality: '',
+        barangay: '',
     });
 
     const generatePassword = (length = 10) => {
@@ -142,10 +163,28 @@ export default function AdminModal({
                 pw_confirmation: '',
                 auto_password: true,
                 reset_password: false,
+                region: admin.address?.region ?? '',
+                province: admin.address?.province ?? '',
+                municipality: admin.address?.municipality ?? '',
+                barangay: admin.address?.barangay ?? '',
             });
+
+            if (admin.address?.region) {
+                addressCascade.initializeFromNames(admin.address);
+            } else {
+                addressCascade.reset();
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [admin, mode, open]);
+
+    useEffect(() => {
+        if (!open) {
+            setEditTab('details');
+            addressCascade.reset();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
     // Force auto-generate in create / reset-password flows
     useEffect(() => {
@@ -257,6 +296,7 @@ export default function AdminModal({
         if (!adminId) return;
 
         if (!validateStep1()) {
+            setEditTab('details');
             setSubmitError('Please fix the validation errors before saving.');
             return;
         }
@@ -331,6 +371,37 @@ export default function AdminModal({
                             />
                         )}
 
+                        {mode === 'edit' && (
+                            <div className="flex border-b border-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('details')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'details'
+                                            ? 'border-violet-600 text-violet-600 dark:border-violet-400 dark:text-violet-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <UserRound className="size-4" />
+                                    Admin Details
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditTab('address')}
+                                    className={cn(
+                                        'flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-semibold transition-colors',
+                                        editTab === 'address'
+                                            ? 'border-violet-600 text-violet-600 dark:border-violet-400 dark:text-violet-400'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    <MapPin className="size-4" />
+                                    Address
+                                </button>
+                            </div>
+                        )}
+
                         <form
                             onSubmit={
                                 mode === 'edit'
@@ -342,12 +413,49 @@ export default function AdminModal({
                             }
                             className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
                         >
-                            <div className="flex items-center gap-2 border-b pb-2">
-                                <UserRound className="size-4 text-violet-600 dark:text-violet-400" />
-                                <p className="text-sm font-semibold text-foreground">
-                                    Admin details
-                                </p>
-                            </div>
+                            {mode === 'edit' && editTab === 'address' ? (
+                                <div className="space-y-4 pt-1">
+                                    <AddressSection
+                                        title="Permanent Address"
+                                        cascade={addressCascade}
+                                        barangayValue={form.data.barangay}
+                                        onRegionChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                region: name,
+                                                province: '',
+                                                municipality: '',
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onProvinceChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                province: name,
+                                                municipality: '',
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onMunicipalityChange={(_code, name) => {
+                                            form.setData((d) => ({
+                                                ...d,
+                                                municipality: name,
+                                                barangay: '',
+                                            }));
+                                        }}
+                                        onBarangayChange={(name) => {
+                                            form.setData('barangay', name);
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2 border-b pb-2">
+                                        <UserRound className="size-4 text-violet-600 dark:text-violet-400" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                            Admin details
+                                        </p>
+                                    </div>
 
                             {/* Name row */}
                             <div className="grid gap-3 sm:grid-cols-3">
@@ -834,7 +942,9 @@ export default function AdminModal({
                                     </p>
                                 </>
                             )}
-                        </form>
+                        </>
+                    )}
+                </form>
 
                         {submitError && mode === 'edit' && (
                             <ErrorBanner message={submitError} />

@@ -28,6 +28,13 @@ interface Teacher {
     tch_email: string;
     status: Status | null;
     avatar?: string | null;
+    address?: {
+        add_id?: number;
+        region?: string | null;
+        province?: string | null;
+        municipality?: string | null;
+        barangay?: string | null;
+    } | null;
 }
 
 export default function Index() {

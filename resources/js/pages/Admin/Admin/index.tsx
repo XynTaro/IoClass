@@ -26,6 +26,13 @@ interface Admin {
     contact_number?: string | null;
     is_deleted?: boolean;
     avatar?: string | null;
+    address?: {
+        add_id?: number;
+        region?: string | null;
+        province?: string | null;
+        municipality?: string | null;
+        barangay?: string | null;
+    } | null;
 }
 
 export default function Index() {
