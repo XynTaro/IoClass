@@ -676,6 +676,115 @@ test('schedule update flags both tch_id and start_time when teacher has an exist
     expect($sessionErrors->first('tch_id'))->toContain('Teacher Marco Cruz already has a class on Tuesday');
 });
 
+test('schedule store flags start_time and sect_id when section already has an assigned teacher/subject at that time', function () {
+    $admin = Admin::factory()->create();
+    $fixtures = seedTeacherScheduleFixtures();
+
+    $addId = DB::table('address')->insertGetId([], 'add_id');
+    $teacher1 = DB::table('teacher')->insertGetId([
+        'add_id' => $addId,
+        'tch_fname' => 'Teacher',
+        'tch_lname' => 'One',
+        'tch_email' => 't1@example.com',
+        'tch_pw' => 'hashed',
+        'is_deleted' => false,
+    ], 'tch_id');
+
+    $teacher2 = DB::table('teacher')->insertGetId([
+        'add_id' => $addId,
+        'tch_fname' => 'Teacher',
+        'tch_lname' => 'Two',
+        'tch_email' => 't2@example.com',
+        'tch_pw' => 'hashed',
+        'is_deleted' => false,
+    ], 'tch_id');
+
+    // Section 0 already has a class on Monday 13:00 - 14:00 (1-2 PM) with Teacher One
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacher1,
+        'sect_id' => $fixtures['sectIds'][0],
+        'room_id' => $fixtures['roomIds'][0],
+        'subj_id' => $fixtures['subjId'],
+        'sy_id' => $fixtures['syId'],
+        'day_of_week' => 'Monday',
+        'start_time' => '13:00:00',
+        'end_time' => '14:00:00',
+    ]);
+
+    // Attempt to schedule Teacher Two to Section 0 on Monday 13:30 - 14:30 in Room 102
+    $response = $this->actingAs($admin, 'admin')->post(route('admin.schedule.store'), [
+        'tch_id' => $teacher2,
+        'schedules' => [
+            [
+                'sect_id' => $fixtures['sectIds'][0],
+                'room_id' => $fixtures['roomIds'][1],
+                'subj_id' => $fixtures['subjId'],
+                'days' => ['Monday'],
+                'start_time' => '13:30',
+                'end_time' => '14:30',
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors(['schedules.0.start_time', 'start_time', 'sect_id']);
+    $sessionErrors = session('errors')->getBag('default');
+    expect($sessionErrors->first('start_time'))->toContain('already has');
+});
+
+test('schedule update flags start_time and sect_id when section already has an assigned class at that time', function () {
+    $admin = Admin::factory()->create();
+    $fixtures = seedTeacherScheduleFixtures();
+
+    $addId = DB::table('address')->insertGetId([], 'add_id');
+    $teacher1 = DB::table('teacher')->insertGetId([
+        'add_id' => $addId,
+        'tch_fname' => 'UpT1',
+        'tch_lname' => 'Teacher',
+        'tch_email' => 'upt1@example.com',
+        'tch_pw' => 'hashed',
+        'is_deleted' => false,
+    ], 'tch_id');
+
+    // Slot 1: Section 0 has a class on Wednesday 13:00 - 14:00
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacher1,
+        'sect_id' => $fixtures['sectIds'][0],
+        'room_id' => $fixtures['roomIds'][0],
+        'subj_id' => $fixtures['subjId'],
+        'sy_id' => $fixtures['syId'],
+        'day_of_week' => 'Wednesday',
+        'start_time' => '13:00:00',
+        'end_time' => '14:00:00',
+    ]);
+
+    // Slot 2: Section 0 has another class on Wednesday 15:00 - 16:00
+    $slot2Id = DB::table('class_schedule')->insertGetId([
+        'tch_id' => $teacher1,
+        'sect_id' => $fixtures['sectIds'][0],
+        'room_id' => $fixtures['roomIds'][1],
+        'subj_id' => $fixtures['subjId'],
+        'sy_id' => $fixtures['syId'],
+        'day_of_week' => 'Wednesday',
+        'start_time' => '15:00:00',
+        'end_time' => '16:00:00',
+    ], 'schedule_id');
+
+    // Attempt to update Slot 2 to 13:30 - 14:30 (conflicts with Slot 1 for Section 0)
+    $response = $this->actingAs($admin, 'admin')->put(route('admin.schedule.update', $slot2Id), [
+        'tch_id' => $teacher1,
+        'sect_id' => $fixtures['sectIds'][0],
+        'room_id' => $fixtures['roomIds'][1],
+        'subj_id' => $fixtures['subjId'],
+        'day_of_week' => 'Wednesday',
+        'start_time' => '13:30',
+        'end_time' => '14:30',
+    ]);
+
+    $response->assertSessionHasErrors(['start_time', 'sect_id']);
+    $sessionErrors = session('errors')->getBag('default');
+    expect($sessionErrors->first('start_time'))->toContain('already has');
+});
+
 test('schedule section show endpoint passes allSchedules prop to view', function () {
     $admin = Admin::factory()->create();
     $fixtures = seedTeacherScheduleFixtures();

@@ -1,6 +1,5 @@
 import { useForm } from '@inertiajs/react';
 import {
-    AlertCircle,
     CalendarClock,
     Plus,
     Trash2,
@@ -23,15 +22,6 @@ import {
 } from '@/components/ui/select';
 import { FormFieldError } from '@/components/form-field-error';
 import { cn } from '@/lib/utils';
-
-function ErrorBanner({ message }: { message: string }) {
-    return (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
-            <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
-            <p className="text-sm text-red-700 dark:text-red-400">{message}</p>
-        </div>
-    );
-}
 
 const DAYS_OF_WEEK = [
     'Monday',
@@ -212,8 +202,6 @@ export default function SectionScheduleModal({
         [rooms],
     );
 
-    const [submitError, setSubmitError] = useState<string | null>(null);
-
     const form = useForm<FormData>({
         tch_id: '',
         subj_id: '',
@@ -234,7 +222,30 @@ export default function SectionScheduleModal({
     ]);
 
     const updateSlot = (index: number, patch: Partial<DayTimeSlot>) => {
-        setSubmitError(null);
+        if ('start_time' in patch) {
+            form.clearErrors(`schedules.${index}.start_time` as never);
+            form.clearErrors(`schedules.${index}.sect_id` as never);
+            form.clearErrors('start_time' as never);
+            form.clearErrors('sect_id' as never);
+        }
+        if ('end_time' in patch) {
+            form.clearErrors(`schedules.${index}.end_time` as never);
+            form.clearErrors('end_time' as never);
+            form.clearErrors(`schedules.${index}.start_time` as never);
+            form.clearErrors('start_time' as never);
+        }
+        if ('room_id' in patch) {
+            form.clearErrors(`schedules.${index}.room_id` as never);
+            form.clearErrors('room_id' as never);
+            form.clearErrors(`schedules.${index}.start_time` as never);
+            form.clearErrors('start_time' as never);
+        }
+        if ('buildingFilter' in patch) {
+            form.clearErrors(`schedules.${index}.buildingFilter` as never);
+            form.clearErrors(`schedules.${index}.building_id` as never);
+            form.clearErrors('buildingFilter' as never);
+            form.clearErrors('building_id' as never);
+        }
         setSlots((current) =>
             current.map((item, i) =>
                 i === index ? { ...item, ...patch } : item,
@@ -260,7 +271,12 @@ export default function SectionScheduleModal({
     };
 
     const toggleDay = (slotIndex: number, day: string) => {
-        setSubmitError(null);
+        form.clearErrors(`schedules.${slotIndex}.days` as never);
+        form.clearErrors(`schedules.${slotIndex}.days.0` as never);
+        form.clearErrors(`schedules.${slotIndex}.start_time` as never);
+        form.clearErrors('start_time' as never);
+        form.clearErrors('days' as never);
+        form.clearErrors('day_of_week' as never);
         const slot = slots[slotIndex];
         if (mode === 'edit') {
             updateSlot(slotIndex, { days: [day] });
@@ -316,14 +332,12 @@ export default function SectionScheduleModal({
                 },
             ]);
         }
-        setSubmitError(null);
     }, [open, mode, slot]);
 
     useEffect(() => {
         if (!open) {
             form.reset();
             form.clearErrors();
-            setSubmitError(null);
             setSlots([
                 {
                     room_id: '',
@@ -335,6 +349,183 @@ export default function SectionScheduleModal({
             ]);
         }
     }, [open]);
+
+    const scheduleConflicts = useMemo<
+        Array<{
+            slotIndex: number;
+            type: 'section' | 'teacher' | 'room' | 'intra';
+            message: string;
+        }>
+    >(() => {
+        if (!allSchedules) return [];
+        const result: Array<{
+            slotIndex: number;
+            type: 'section' | 'teacher' | 'room' | 'intra';
+            message: string;
+        }> = [];
+
+        const selectedTeacherId = form.data.tch_id
+            ? Number(form.data.tch_id)
+            : null;
+        const teacherObj = selectedTeacherId
+            ? teachers.find((t) => t.tch_id === selectedTeacherId)
+            : null;
+        const teacherName = teacherObj
+            ? teacherFullName(teacherObj)
+            : selectedTeacherId
+              ? `Teacher #${selectedTeacherId}`
+              : '';
+
+        for (const [slotIndex, s] of slots.entries()) {
+            if (!s.start_time || !s.end_time || !s.days || s.days.length === 0)
+                continue;
+            const slotStart = s.start_time.slice(0, 5);
+            const slotEnd = s.end_time.slice(0, 5);
+            if (slotEnd <= slotStart) continue;
+
+            const selectedRoomId = s.room_id ? Number(s.room_id) : null;
+            const roomObj = selectedRoomId
+                ? rooms.find((r) => r.room_id === selectedRoomId)
+                : null;
+            const currentRoomName = roomObj?.room_no
+                ? `Room ${roomObj.room_no}`
+                : selectedRoomId
+                  ? `Room #${selectedRoomId}`
+                  : 'Room';
+
+            for (const sched of allSchedules) {
+                if (mode === 'edit' && slot?.schedule_id === sched.schedule_id)
+                    continue;
+                if (!s.days.includes(sched.day_of_week)) continue;
+
+                const schedStart = (sched.start_time || '').slice(0, 5);
+                const schedEnd = (sched.end_time || '').slice(0, 5);
+                if (!schedStart || !schedEnd) continue;
+
+                const hasOverlap =
+                    schedStart < slotEnd && schedEnd > slotStart;
+                if (!hasOverlap) continue;
+
+                const secName =
+                    sched.section?.sect_name ??
+                    (sched.sect_id === sectionId
+                        ? 'this section'
+                        : `Section #${sched.sect_id}`);
+                const rmName = sched.room?.room_no
+                    ? `Room ${sched.room.room_no}`
+                    : sched.room_id
+                      ? `Room #${sched.room_id}`
+                      : 'Room';
+                const schedTeacherName = sched.teacher
+                    ? teacherFullName(sched.teacher)
+                    : sched.tch_id
+                      ? `Teacher #${sched.tch_id}`
+                      : 'Teacher';
+                const schedSubjName =
+                    sched.subject?.subj_name ??
+                    sched.subject?.subj_code ??
+                    (sched.subj_id
+                        ? `Subject #${sched.subj_id}`
+                        : 'a subject');
+
+                // 1. Section conflict: this section already has an assigned teacher/subject at that time
+                if (sched.sect_id === sectionId) {
+                    result.push({
+                        slotIndex,
+                        type: 'section',
+                        message: `This section already has ${schedSubjName} (${schedTeacherName}) scheduled on ${sched.day_of_week} (${schedStart} - ${schedEnd}) in ${rmName}.`,
+                    });
+                }
+
+                // 2. Teacher conflict: selected teacher is already teaching at that time
+                if (
+                    selectedTeacherId &&
+                    sched.tch_id === selectedTeacherId &&
+                    sched.sect_id !== sectionId
+                ) {
+                    result.push({
+                        slotIndex,
+                        type: 'teacher',
+                        message: `Teacher ${teacherName} already has a class on ${sched.day_of_week} (${schedStart} - ${schedEnd}) with ${secName} in ${rmName}.`,
+                    });
+                }
+
+                // 3. Room conflict: selected room is already occupied
+                if (
+                    selectedRoomId &&
+                    sched.room_id === selectedRoomId &&
+                    sched.sect_id !== sectionId
+                ) {
+                    result.push({
+                        slotIndex,
+                        type: 'room',
+                        message: `${currentRoomName} is already occupied by Section ${secName} on ${sched.day_of_week} (${schedStart} - ${schedEnd}).`,
+                    });
+                }
+            }
+
+            // 4. Intra-batch conflict between multiple slots
+            for (let oIdx = 0; oIdx < slotIndex; oIdx++) {
+                const other = slots[oIdx];
+                if (
+                    !other.start_time ||
+                    !other.end_time ||
+                    !other.days ||
+                    other.days.length === 0
+                )
+                    continue;
+                const oStart = other.start_time.slice(0, 5);
+                const oEnd = other.end_time.slice(0, 5);
+                if (oEnd <= oStart) continue;
+
+                const commonDays = s.days.filter((d) =>
+                    other.days.includes(d),
+                );
+                if (
+                    commonDays.length > 0 &&
+                    slotStart < oEnd &&
+                    slotEnd > oStart
+                ) {
+                    result.push({
+                        slotIndex,
+                        type: 'intra',
+                        message: `Slot #${slotIndex + 1} conflicts with Slot #${oIdx + 1} on ${commonDays.join(', ')} (${oStart} - ${oEnd}).`,
+                    });
+                }
+            }
+        }
+
+        return result;
+    }, [
+        allSchedules,
+        form.data.tch_id,
+        slots,
+        teachers,
+        rooms,
+        mode,
+        slot?.schedule_id,
+        sectionId,
+    ]);
+
+    const warnings = useMemo(() => {
+        const list: string[] = [];
+
+        scheduleConflicts.forEach((c) => {
+            if (!list.includes(c.message)) {
+                list.push(c.message);
+            }
+        });
+
+        slots.forEach((s, idx) => {
+            if (s.start_time && s.end_time && s.end_time <= s.start_time) {
+                list.push(
+                    `Slot #${idx + 1}: End time must be after start time.`,
+                );
+            }
+        });
+
+        return list;
+    }, [scheduleConflicts, slots]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -360,16 +551,21 @@ export default function SectionScheduleModal({
                 errors.end_time = 'End time must be after start time.';
             }
 
-            if (teacherConflict) {
-                errors.tch_id = teacherConflict.message;
-            }
+            scheduleConflicts.forEach((c) => {
+                errors.start_time = c.message;
+                if (c.type === 'teacher') {
+                    errors.tch_id = c.message;
+                } else if (c.type === 'room') {
+                    errors.room_id = c.message;
+                } else if (c.type === 'section') {
+                    errors.subj_id = c.message;
+                }
+            });
 
             if (Object.keys(errors).length > 0) {
                 form.setError(errors);
-                setSubmitError(teacherConflict?.message ?? null);
                 return;
             }
-            setSubmitError(null);
 
             form.transform((data) => ({
                 tch_id: data.tch_id,
@@ -389,17 +585,8 @@ export default function SectionScheduleModal({
                 route('admin.schedule.update', { schedule: slot.schedule_id }),
                 {
                     onSuccess: () => {
-                        setSubmitError(null);
                         onSuccess?.();
                         onClose();
-                    },
-                    onError: (errors) => {
-                        const conflict = Object.values(errors).find(
-                            (msg) =>
-                                typeof msg === 'string' &&
-                                /already has a class|conflict/i.test(msg),
-                        );
-                        setSubmitError(conflict ? (conflict as string) : null);
                     },
                 },
             );
@@ -408,7 +595,7 @@ export default function SectionScheduleModal({
 
         const createErrors: Record<string, string> = {};
         if (!form.data.tch_id) createErrors.tch_id = 'Teacher is required.';
-        if (!form.data.subj_id) createErrors['schedules.0.subj_id'] = 'Subject is required.';
+        if (!form.data.subj_id) createErrors.subj_id = 'Subject is required.';
 
         slots.forEach((s, idx) => {
             if (!s.buildingFilter || s.buildingFilter === 'all-buildings') {
@@ -430,16 +617,26 @@ export default function SectionScheduleModal({
             }
         });
 
-        if (teacherConflict) {
-            createErrors.tch_id = teacherConflict.message;
-        }
+        scheduleConflicts.forEach((c) => {
+            createErrors[`schedules.${c.slotIndex}.start_time`] = c.message;
+            if (c.slotIndex === 0) {
+                createErrors.start_time = c.message;
+            }
+            if (c.type === 'teacher') {
+                createErrors.tch_id = c.message;
+                createErrors[`schedules.${c.slotIndex}.tch_id`] = c.message;
+            } else if (c.type === 'room') {
+                createErrors[`schedules.${c.slotIndex}.room_id`] = c.message;
+            } else if (c.type === 'section') {
+                createErrors.subj_id = c.message;
+                createErrors['schedules.0.subj_id'] = c.message;
+            }
+        });
 
         if (Object.keys(createErrors).length > 0) {
             form.setError(createErrors as any);
-            setSubmitError(teacherConflict?.message ?? null);
             return;
         }
-        setSubmitError(null);
 
         form.transform((data) => ({
             tch_id: data.tch_id,
@@ -457,105 +654,22 @@ export default function SectionScheduleModal({
 
         form.post(route('admin.schedule.store'), {
             onSuccess: () => {
-                setSubmitError(null);
                 onSuccess?.();
                 onClose();
             },
-            onError: (errs) => {
-                const conflict = Object.values(errs).find(
-                    (msg) =>
-                        typeof msg === 'string' &&
-                        /already has a class|conflict/i.test(msg),
-                );
-                setSubmitError(conflict ? (conflict as string) : null);
-            },
         });
     };
-
-    const teacherConflict = useMemo(() => {
-        if (!allSchedules || !form.data.tch_id) return null;
-        const selectedTeacherId = Number(form.data.tch_id);
-        const teacherObj = teachers.find((t) => t.tch_id === selectedTeacherId);
-        const teacherName = teacherObj ? teacherFullName(teacherObj) : `Teacher #${selectedTeacherId}`;
-
-        for (const [slotIndex, s] of slots.entries()) {
-            if (!s.start_time || !s.end_time || !s.days || s.days.length === 0) continue;
-            const slotStart = s.start_time.slice(0, 5);
-            const slotEnd = s.end_time.slice(0, 5);
-            if (slotEnd <= slotStart) continue;
-
-            for (const sched of allSchedules) {
-                if (mode === 'edit' && slot?.schedule_id === sched.schedule_id) continue;
-                if (sched.tch_id !== selectedTeacherId) continue;
-                if (!s.days.includes(sched.day_of_week)) continue;
-
-                const schedStart = (sched.start_time || '').slice(0, 5);
-                const schedEnd = (sched.end_time || '').slice(0, 5);
-                if (!schedStart || !schedEnd) continue;
-
-                if (schedStart < slotEnd && schedEnd > slotStart) {
-                    const secName = sched.section?.sect_name ?? (sched.sect_id === sectionId ? 'this section' : `Section #${sched.sect_id}`);
-                    const rmName = sched.room?.room_no ? `Room ${sched.room.room_no}` : (sched.room_id ? `Room #${sched.room_id}` : 'Room');
-                    return {
-                        slotIndex,
-                        day: sched.day_of_week,
-                        message: `Teacher ${teacherName} already has a class on ${sched.day_of_week} (${schedStart} - ${schedEnd}) with ${secName} in ${rmName}.`,
-                    };
-                }
-            }
-        }
-        return null;
-    }, [allSchedules, form.data.tch_id, slots, teachers, mode, slot?.schedule_id, sectionId]);
-
-    const warnings = useMemo(() => {
-        const list: string[] = [];
-
-        if (teacherConflict) {
-            list.push(teacherConflict.message);
-        }
-
-        slots.forEach((s, idx) => {
-            if (s.start_time && s.end_time && s.end_time <= s.start_time) {
-                list.push(
-                    `Slot #${idx + 1}: End time must be after start time.`,
-                );
-            }
-
-            slots.forEach((other, oIdx) => {
-                if (idx >= oIdx) return;
-                if (
-                    !s.start_time ||
-                    !s.end_time ||
-                    !other.start_time ||
-                    !other.end_time
-                )
-                    return;
-
-                const commonDays = s.days.filter((d) => other.days.includes(d));
-                if (commonDays.length === 0) return;
-
-                const sStart = s.start_time;
-                const sEnd = s.end_time;
-                const oStart = other.start_time;
-                const oEnd = other.end_time;
-
-                const hasOverlap = sStart < oEnd && sEnd > oStart;
-                if (hasOverlap) {
-                    list.push(
-                        `Time collision: Slot #${idx + 1} and Slot #${oIdx + 1} overlap on ${commonDays.join(', ')}.`,
-                    );
-                }
-            });
-        });
-
-        return list;
-    }, [slots, teacherConflict]);
 
     const errors = form.errors as Record<string, string>;
     const teacherError =
         errors.tch_id ||
         errors['schedules.0.tch_id'] ||
         Object.entries(errors).find(([k]) => k.includes('tch_id'))?.[1];
+
+    const subjectError =
+        errors.subj_id ||
+        errors['schedules.0.subj_id'] ||
+        Object.entries(errors).find(([k]) => k.includes('subj_id'))?.[1];
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -604,7 +718,9 @@ export default function SectionScheduleModal({
                                         onValueChange={(v) => {
                                             form.setData('tch_id', Number(v));
                                             form.clearErrors('tch_id' as never);
-                                            setSubmitError(null);
+                                            form.clearErrors('schedules.0.tch_id' as never);
+                                            form.clearErrors('start_time' as never);
+                                            form.clearErrors('schedules.0.start_time' as never);
                                         }}
                                     >
                                         <SelectTrigger
@@ -652,12 +768,15 @@ export default function SectionScheduleModal({
                                             form.clearErrors(
                                                 'subj_id' as never,
                                             );
+                                            form.clearErrors(
+                                                'schedules.0.subj_id' as never,
+                                            );
                                         }}
                                     >
                                         <SelectTrigger
                                             className={cn(
                                                 'h-9.5 rounded-xl',
-                                                errors['schedules.0.subj_id'] &&
+                                                subjectError &&
                                                 'border-red-500 focus:ring-red-500/20',
                                             )}
                                         >
@@ -686,7 +805,7 @@ export default function SectionScheduleModal({
                                     </Select>
                                     <FormFieldError
                                         label="Subject"
-                                        message={errors['schedules.0.subj_id']}
+                                        message={subjectError}
                                     />
                                 </div>
                             </div>
@@ -719,30 +838,31 @@ export default function SectionScheduleModal({
                                     const dayError =
                                         errors[`schedules.${index}.days`] ??
                                         errors[`schedules.${index}.days.0`] ??
-                                        (mode === 'edit'
-                                            ? errors.day_of_week
+                                        (index === 0
+                                            ? (errors.day_of_week ?? errors.days)
                                             : undefined);
                                     const startTimeError =
                                         errors[
                                         `schedules.${index}.start_time`
                                         ] ??
-                                        (mode === 'edit'
-                                            ? errors.start_time
+                                        errors[`schedules.${index}.sect_id`] ??
+                                        (index === 0
+                                            ? (errors.start_time ?? errors.sect_id)
                                             : undefined);
                                     const endTimeError =
                                         errors[`schedules.${index}.end_time`] ??
-                                        (mode === 'edit'
+                                        (index === 0
                                             ? errors.end_time
                                             : undefined);
                                     const buildingError =
                                         errors[`schedules.${index}.buildingFilter`] ??
                                         errors[`schedules.${index}.building_id`] ??
-                                        (mode === 'edit'
-                                            ? errors.buildingFilter ?? errors.building_id
+                                        (index === 0
+                                            ? (errors.buildingFilter ?? errors.building_id)
                                             : undefined);
                                     const roomError =
                                         errors[`schedules.${index}.room_id`] ??
-                                        (mode === 'edit'
+                                        (index === 0
                                             ? errors.room_id
                                             : undefined);
 
@@ -1235,10 +1355,6 @@ export default function SectionScheduleModal({
                             )}
                         </div>
                     </form>
-
-                    {submitError && (
-                        <ErrorBanner message={submitError} />
-                    )}
 
                     <DialogFooter className="flex justify-end gap-2">
                         <Button
