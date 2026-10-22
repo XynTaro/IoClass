@@ -951,7 +951,7 @@ export default function StudentModal({
             form.setError(familyErrors);
             setEditTab('family');
             setSubmitError(
-                'Please fix the family information errors before saving.',
+                'Failed to update student. Please check the fields and try again.',
             );
             return;
         }
