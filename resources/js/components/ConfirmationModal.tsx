@@ -1,4 +1,4 @@
-import { Archive, RotateCcw, Loader2 } from 'lucide-react';
+import { Archive, RotateCcw, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { archiveModalConfirmClassName } from '@/lib/archive-ui';
@@ -14,7 +14,7 @@ interface ConfirmationModalProps {
     isLoading?: boolean;
     confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
     confirmClassName?: string;
-    type?: 'archive' | 'restore' | 'default';
+    type?: 'archive' | 'restore' | 'delete' | 'default';
 }
 
 export default function ConfirmationModal({
@@ -38,7 +38,7 @@ export default function ConfirmationModal({
     let glowShadow = '';
     let buttonGlow = '';
     let defaultConfirmText = confirmText || 'Confirm';
-    const defaultConfirmVariant = confirmVariant || 'default';
+    const defaultConfirmVariant = confirmVariant || (type === 'delete' ? 'destructive' : 'default');
     let defaultConfirmClassName = confirmClassName;
 
     if (type === 'archive') {
@@ -59,6 +59,15 @@ export default function ConfirmationModal({
         buttonGlow = 'hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] dark:hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]';
         defaultConfirmText = confirmText || 'Restore';
         defaultConfirmClassName = confirmClassName || 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600';
+    } else if (type === 'delete' || defaultConfirmVariant === 'destructive') {
+        icon = <Trash2 className="size-6 text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform duration-300" />;
+        iconBg = 'bg-red-500/10 dark:bg-red-500/20 ring-8 ring-red-500/5';
+        topStripe = 'bg-gradient-to-r from-red-500/20 via-red-500 to-red-500/20';
+        ambientBg = 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-500/5 dark:from-red-500/10 via-transparent to-transparent';
+        glowShadow = 'shadow-[0_20px_50px_-12px_rgba(239,68,68,0.12)] border-red-500/20 dark:border-red-500/30';
+        buttonGlow = 'hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] dark:hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+        defaultConfirmText = confirmText || 'Delete';
+        defaultConfirmClassName = confirmClassName || 'bg-red-600 hover:bg-red-700 text-white dark:bg-red-600 dark:hover:bg-red-500';
     } else {
         topStripe = 'bg-gradient-to-r from-primary/20 via-primary to-primary/20';
         ambientBg = 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent';

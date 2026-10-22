@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Pencil, Printer, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { IoMdAdd, IoMdSearch } from 'react-icons/io';
 import { route } from 'ziggy-js';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import { DataTable } from '@/components/DataTable';
 import SectionScheduleModal, {
     type ExistingSlot,
@@ -86,13 +87,30 @@ export default function Show() {
     const [addOpen, setAddOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<ScheduleSlot | null>(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [slotToDelete, setSlotToDelete] = useState<ScheduleSlot | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const handleDelete = (scheduleId: number) => {
-        if (!window.confirm('Delete this schedule slot? This cannot be undone.')) {
-            return;
-        }
+    const handleDeleteClick = (slot: ScheduleSlot) => {
+        setSlotToDelete(slot);
+        setDeleteConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (!slotToDelete) return;
+        setIsDeleting(true);
         router.delete(
-            route('admin.schedule.destroy', { schedule: scheduleId }),
+            route('admin.schedule.destroy', { schedule: slotToDelete.schedule_id }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setDeleteConfirmOpen(false);
+                    setSlotToDelete(null);
+                },
+                onFinish: () => {
+                    setIsDeleting(false);
+                },
+            },
         );
     };
 
@@ -375,7 +393,7 @@ export default function Show() {
                         size="sm"
                         variant="destructive"
                         className="rounded-xl active:scale-[0.97]"
-                        onClick={() => handleDelete(row.original.schedule_id)}
+                        onClick={() => handleDeleteClick(row.original)}
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -491,6 +509,31 @@ export default function Show() {
                 teachers={teachers}
                 rooms={rooms}
                 subjects={subjects}
+            />
+
+            {/* Delete confirmation modal */}
+            <ConfirmationModal
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    if (!isDeleting) {
+                        setDeleteConfirmOpen(false);
+                        setSlotToDelete(null);
+                    }
+                }}
+                onConfirm={handleConfirmDelete}
+                title="Delete Schedule"
+                description={
+                    slotToDelete
+                        ? `Are you sure you want to delete the schedule slot for ${
+                              slotToDelete.subject?.subj_name
+                                  ? `${slotToDelete.subject.subj_name} (${slotToDelete.subject.subj_code})`
+                                  : slotToDelete.subject?.subj_code ?? 'this subject'
+                          } on ${slotToDelete.day_of_week} (${formatTime(slotToDelete.start_time)} – ${formatTime(slotToDelete.end_time)})? This action cannot be undone.`
+                        : 'Are you sure you want to delete this schedule? This action cannot be undone.'
+                }
+                type="delete"
+                confirmText="Delete Schedule"
+                isLoading={isDeleting}
             />
         </AdminLayout>
     );
