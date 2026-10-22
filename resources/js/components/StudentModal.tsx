@@ -830,7 +830,9 @@ export default function StudentModal({
         if (Object.keys(errors).length > 0) {
             setLocalErrors(errors);
             setEditTab('student');
-            setSubmitError('Please fix the validation errors before saving.');
+            setSubmitError(
+                'Failed to update student. Please check the fields and try again.',
+            );
             return;
         }
 
@@ -840,7 +842,9 @@ export default function StudentModal({
                     'This RFID card is already registered to another person.',
             });
             setEditTab('student');
-            setSubmitError('Please fix the validation errors before saving.');
+            setSubmitError(
+                'This RFID card is already registered to another person.',
+            );
             return;
         }
 
@@ -849,7 +853,9 @@ export default function StudentModal({
                 rfid_uid: 'RFID UID is required.',
             });
             setEditTab('student');
-            setSubmitError('Please fix the validation errors before saving.');
+            setSubmitError(
+                'Failed to update student. Please check the fields and try again.',
+            );
             return;
         }
 
@@ -1006,8 +1012,10 @@ export default function StudentModal({
                     setEditTab('family');
                 }
                 const firstMsg = Object.values(errors)[0];
+                const isRequired =
+                    typeof firstMsg === 'string' && /required/i.test(firstMsg);
                 setSubmitError(
-                    typeof firstMsg === 'string'
+                    typeof firstMsg === 'string' && !isRequired
                         ? firstMsg
                         : 'Failed to update student. Please check the fields and try again.',
                 );

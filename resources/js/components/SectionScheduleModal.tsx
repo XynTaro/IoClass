@@ -368,7 +368,7 @@ export default function SectionScheduleModal({
                 form.setError(errors);
                 setSubmitError(
                     teacherConflict?.message ||
-                        'Please fix the validation errors before saving.',
+                        'Failed to update schedule slot. Please check the fields and try again.',
                 );
                 return;
             }
@@ -398,8 +398,10 @@ export default function SectionScheduleModal({
                     },
                     onError: (errors) => {
                         const first = Object.values(errors)[0];
+                        const isRequired =
+                            typeof first === 'string' && /required/i.test(first);
                         setSubmitError(
-                            typeof first === 'string'
+                            typeof first === 'string' && !isRequired
                                 ? first
                                 : 'Failed to update schedule slot. Please check the fields and try again.',
                         );
@@ -439,7 +441,10 @@ export default function SectionScheduleModal({
 
         if (Object.keys(createErrors).length > 0) {
             form.setError(createErrors as any);
-            setSubmitError(teacherConflict?.message || 'Please fix the validation errors before saving.');
+            setSubmitError(
+                teacherConflict?.message ||
+                    'Failed to add schedule slot. Please check the fields and try again.',
+            );
             return;
         }
         setSubmitError(null);
@@ -466,8 +471,10 @@ export default function SectionScheduleModal({
             },
             onError: (errs) => {
                 const first = Object.values(errs)[0];
+                const isRequired =
+                    typeof first === 'string' && /required/i.test(first);
                 setSubmitError(
-                    typeof first === 'string'
+                    typeof first === 'string' && !isRequired
                         ? first
                         : 'Failed to add schedule slot. Please check the fields and try again.',
                 );
@@ -574,12 +581,6 @@ export default function SectionScheduleModal({
                         }
                         description={`Teacher, subject, room, day, and time for Grade Level ${sectionGrLevel}`}
                     />
-
-                    {submitError && (
-                        <div className="pt-1">
-                            <ErrorBanner message={submitError} />
-                        </div>
-                    )}
 
                     <form
                         onSubmit={handleSubmit}

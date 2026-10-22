@@ -477,7 +477,9 @@ export default function TeacherModal({
 
         if (!validateStep1()) {
             setEditTab('details');
-            setSubmitError('Please fix the validation errors before saving.');
+            setSubmitError(
+                'Failed to update teacher. Please check the fields and try again.',
+            );
             return;
         }
 
@@ -511,8 +513,10 @@ export default function TeacherModal({
             },
             onError: (errors) => {
                 const firstMsg = Object.values(errors)[0];
+                const isRequired =
+                    typeof firstMsg === 'string' && /required/i.test(firstMsg);
                 setSubmitError(
-                    typeof firstMsg === 'string'
+                    typeof firstMsg === 'string' && !isRequired
                         ? firstMsg
                         : 'Failed to update teacher. Please check the fields and try again.',
                 );

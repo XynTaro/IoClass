@@ -297,7 +297,9 @@ export default function AdminModal({
 
         if (!validateStep1()) {
             setEditTab('details');
-            setSubmitError('Please fix the validation errors before saving.');
+            setSubmitError(
+                'Failed to update admin. Please check the fields and try again.',
+            );
             return;
         }
 
@@ -328,8 +330,10 @@ export default function AdminModal({
             },
             onError: (errors) => {
                 const first = Object.values(errors)[0];
+                const isRequired =
+                    typeof first === 'string' && /required/i.test(first);
                 setSubmitError(
-                    typeof first === 'string'
+                    typeof first === 'string' && !isRequired
                         ? first
                         : 'Failed to update admin. Please check the fields and try again.',
                 );
