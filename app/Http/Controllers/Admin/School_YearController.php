@@ -12,7 +12,18 @@ class School_YearController extends Controller
     {
         $archived = $request->boolean('archived');
 
-        $schoolYears = School_Year::select('sy_id', 'sy_label', 'start_date', 'end_date', 'is_active', 'is_deleted')
+        $schoolYears = School_Year::select(
+            'sy_id',
+            'sy_label',
+            'start_date',
+            'end_date',
+            'sem1_start_date',
+            'sem1_end_date',
+            'sem2_start_date',
+            'sem2_end_date',
+            'is_active',
+            'is_deleted'
+        )
             ->where('is_deleted', $archived)
             ->orderBy('sy_id', 'desc')
             ->paginate(8);
@@ -29,6 +40,10 @@ class School_YearController extends Controller
             'sy_label' => 'required|string|max:20|unique:school_year,sy_label',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'sem1_start_date' => 'nullable|date',
+            'sem1_end_date' => 'nullable|date|after_or_equal:sem1_start_date',
+            'sem2_start_date' => 'nullable|date',
+            'sem2_end_date' => 'nullable|date|after_or_equal:sem2_start_date',
             'is_active' => 'boolean',
         ], [
             'sy_label.required' => 'School year label is required.',
@@ -38,6 +53,12 @@ class School_YearController extends Controller
             'end_date.required' => 'End date is required.',
             'end_date.date' => 'End date must be a valid date.',
             'end_date.after_or_equal' => 'End date must be on or after the start date.',
+            'sem1_start_date.date' => '1st semester start date must be a valid date.',
+            'sem1_end_date.date' => '1st semester end date must be a valid date.',
+            'sem1_end_date.after_or_equal' => '1st semester end date must be on or after 1st semester start date.',
+            'sem2_start_date.date' => '2nd semester start date must be a valid date.',
+            'sem2_end_date.date' => '2nd semester end date must be a valid date.',
+            'sem2_end_date.after_or_equal' => '2nd semester end date must be on or after 2nd semester start date.',
         ]);
 
         if ($validated['is_active'] ?? false) {
@@ -58,6 +79,10 @@ class School_YearController extends Controller
             'sy_label' => 'required|string|max:20|unique:school_year,sy_label,'.$schoolYear->sy_id.',sy_id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'sem1_start_date' => 'nullable|date',
+            'sem1_end_date' => 'nullable|date|after_or_equal:sem1_start_date',
+            'sem2_start_date' => 'nullable|date',
+            'sem2_end_date' => 'nullable|date|after_or_equal:sem2_start_date',
             'is_active' => 'boolean',
         ], [
             'sy_label.required' => 'School year label is required.',
@@ -67,6 +92,12 @@ class School_YearController extends Controller
             'end_date.required' => 'End date is required.',
             'end_date.date' => 'End date must be a valid date.',
             'end_date.after_or_equal' => 'End date must be on or after the start date.',
+            'sem1_start_date.date' => '1st semester start date must be a valid date.',
+            'sem1_end_date.date' => '1st semester end date must be a valid date.',
+            'sem1_end_date.after_or_equal' => '1st semester end date must be on or after 1st semester start date.',
+            'sem2_start_date.date' => '2nd semester start date must be a valid date.',
+            'sem2_end_date.date' => '2nd semester end date must be a valid date.',
+            'sem2_end_date.after_or_equal' => '2nd semester end date must be on or after 2nd semester start date.',
         ]);
 
         if ($validated['is_active'] ?? false) {

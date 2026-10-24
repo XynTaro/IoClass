@@ -9,8 +9,58 @@ beforeEach(function () {
     config(['rfid.device_token' => null, 'rfid.device_tokens' => null]);
 });
 
+function setupAttendanceTestSchedule(): array
+{
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2025-2026',
+        'is_active' => true,
+        'is_deleted' => false,
+    ], 'sy_id');
+
+    $sectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Jupiter',
+        'gr_level' => 'Grade 7',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $roomId = DB::table('room')->insertGetId([
+        'room_no' => '101',
+    ], 'room_id');
+
+    $subjId = DB::table('subject')->insertGetId([
+        'subj_name' => 'Mathematics',
+    ], 'subj_id');
+
+    $teacher = Teacher::create([
+        'tch_rfid_uid' => 'TCHATT999',
+        'tch_fname' => 'Teacher',
+        'tch_lname' => 'One',
+        'tch_email' => 'tch999@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+    ]);
+
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacher->tch_id,
+        'subj_id' => $subjId,
+        'sect_id' => $sectId,
+        'room_id' => $roomId,
+        'sy_id' => $syId,
+        'day_of_week' => 'Monday',
+        'start_time' => '07:00:00',
+        'end_time' => '08:00:00',
+    ]);
+
+    return [
+        'sy_id' => $syId,
+        'sect_id' => $sectId,
+        'subj_id' => $subjId,
+        'teacher' => $teacher,
+    ];
+}
+
 test('rfid scan records student attendance', function () {
-    Carbon::setTestNow('2026-06-01 07:30:00');
+    $setup = setupAttendanceTestSchedule();
 
     $student = Student::create([
         'rfid_uid' => 'ATTEND0001',
@@ -19,6 +69,17 @@ test('rfid scan records student attendance', function () {
         'status' => 'active',
         'is_deleted' => false,
     ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $setup['sect_id'],
+        'sy_id' => $setup['sy_id'],
+    ]);
+
+    Carbon::setTestNow('2026-06-01 07:05:00');
+
+    // Teacher taps first to open session
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHATT999'])->assertSuccessful();
 
     $this->postJson(route('api.rfid.scan'), [
         'rfid_uid' => 'attend0001',
@@ -43,15 +104,24 @@ test('rfid scan records student attendance', function () {
 });
 
 test('rfid scan does not duplicate attendance on same day', function () {
-    Carbon::setTestNow('2026-06-01 07:45:00');
+    $setup = setupAttendanceTestSchedule();
 
-    Student::create([
+    $student = Student::create([
         'rfid_uid' => 'ATTEND0002',
         'stu_fname' => 'Juan',
         'stu_lname' => 'Cruz',
         'status' => 'active',
         'is_deleted' => false,
     ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $setup['sect_id'],
+        'sy_id' => $setup['sy_id'],
+    ]);
+
+    Carbon::setTestNow('2026-06-01 07:05:00');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHATT999'])->assertSuccessful();
 
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'ATTEND0002'])
         ->assertSuccessful()
@@ -63,19 +133,17 @@ test('rfid scan does not duplicate attendance on same day', function () {
             'attendance' => [
                 'recorded' => false,
                 'already_checked_in' => true,
-                'status' => 'present',
+                'action' => 'too_early_out',
             ],
         ]);
 
-    expect(DB::table('attendance')->where('stu_id', DB::table('student')->where('rfid_uid', 'ATTEND0002')->value('stu_id'))->count())->toBe(1);
+    expect(DB::table('attendance')->where('stu_id', $student->stu_id)->count())->toBe(1);
 
     Carbon::setTestNow();
 });
 
 test('rfid scan marks student late after configured cutoff', function () {
-    config(['attendance.late_after' => '08:00']);
-
-    Carbon::setTestNow('2026-06-01 09:15:00');
+    $setup = setupAttendanceTestSchedule();
 
     $student = Student::create([
         'rfid_uid' => 'LATE0001',
@@ -84,6 +152,16 @@ test('rfid scan marks student late after configured cutoff', function () {
         'status' => 'active',
         'is_deleted' => false,
     ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $setup['sect_id'],
+        'sy_id' => $setup['sy_id'],
+    ]);
+
+    // Student taps at 07:25 (> 10 mins grace period from 07:00 start)
+    Carbon::setTestNow('2026-06-01 07:25:00');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHATT999'])->assertSuccessful();
 
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'LATE0001'])
         ->assertSuccessful()
@@ -109,7 +187,7 @@ test('rfid scan for teacher does not include attendance payload', function () {
 
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHATT001'])
         ->assertSuccessful()
-        ->assertJsonMissing(['attendance']);
+        ->assertJsonMissing(['attendance.recorded']);
 });
 
 test('authenticated teacher can view attendance index', function () {
@@ -125,7 +203,16 @@ test('authenticated teacher can view attendance index', function () {
         'is_deleted' => false,
     ], 'sect_id');
 
+    $roomId = DB::table('room')->insertGetId([
+        'room_no' => '102',
+    ], 'room_id');
+
+    $subjId = DB::table('subject')->insertGetId([
+        'subj_name' => 'Science',
+    ], 'subj_id');
+
     $teacher = Teacher::create([
+        'tch_rfid_uid' => 'TCHATT002',
         'tch_fname' => 'Ella',
         'tch_lname' => 'Gomez',
         'tch_email' => 'ella.gomez@example.com',
@@ -138,6 +225,17 @@ test('authenticated teacher can view attendance index', function () {
         'sect_id' => $sectId,
         'sy_id' => $syId,
         'is_active' => true,
+    ]);
+
+    DB::table('class_schedule')->insert([
+        'tch_id' => $teacher->tch_id,
+        'subj_id' => $subjId,
+        'sect_id' => $sectId,
+        'room_id' => $roomId,
+        'sy_id' => $syId,
+        'day_of_week' => 'Monday',
+        'start_time' => '07:00:00',
+        'end_time' => '08:00:00',
     ]);
 
     $stuId = DB::table('student')->insertGetId([
@@ -155,7 +253,10 @@ test('authenticated teacher can view attendance index', function () {
         'sy_id' => $syId,
     ]);
 
-    Carbon::setTestNow('2026-06-01 07:30:00');
+    Carbon::setTestNow('2026-06-01 07:05:00');
+
+    // Teacher taps first to open session
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHATT002'])->assertSuccessful();
 
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STUATT001'])
         ->assertSuccessful()

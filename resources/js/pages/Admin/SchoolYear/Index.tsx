@@ -122,6 +122,36 @@ export default function Index() {
             cell: ({ row }) => formatMonthDay(row.original.end_date),
         },
         {
+            id: 'semesters',
+            header: 'Semesters',
+            cell: ({ row }) => {
+                const sy = row.original;
+                const hasSem1 = sy.sem1_start_date || sy.sem1_end_date;
+                const hasSem2 = sy.sem2_start_date || sy.sem2_end_date;
+
+                if (!hasSem1 && !hasSem2) {
+                    return <span className="text-xs italic text-muted-foreground/60">Auto Midpoint</span>;
+                }
+
+                return (
+                    <div className="flex flex-col gap-0.5 text-[11px]">
+                        {hasSem1 && (
+                            <span className="text-muted-foreground">
+                                <strong className="font-medium text-foreground">Sem 1:</strong>{' '}
+                                {formatMonthDay(sy.sem1_start_date)} – {formatMonthDay(sy.sem1_end_date)}
+                            </span>
+                        )}
+                        {hasSem2 && (
+                            <span className="text-muted-foreground">
+                                <strong className="font-medium text-foreground">Sem 2:</strong>{' '}
+                                {formatMonthDay(sy.sem2_start_date)} – {formatMonthDay(sy.sem2_end_date)}
+                            </span>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
             accessorKey: 'is_active',
             header: 'Status',
             cell: ({ row }) => {

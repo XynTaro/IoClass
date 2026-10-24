@@ -65,7 +65,17 @@ class TeacherSF2Controller extends Controller
             ->where('is_deleted', false)
             ->orderByDesc('is_active')
             ->orderByDesc('start_date')
-            ->get(['sy_id', 'sy_label', 'start_date', 'end_date', 'is_active']);
+            ->get([
+                'sy_id',
+                'sy_label',
+                'start_date',
+                'end_date',
+                'sem1_start_date',
+                'sem1_end_date',
+                'sem2_start_date',
+                'sem2_end_date',
+                'is_active',
+            ]);
 
         $activeSyId = $schoolYears->firstWhere('is_active', true)?->sy_id
             ?? $schoolYears->first()?->sy_id;
@@ -285,11 +295,22 @@ class TeacherSF2Controller extends Controller
         $schoolYearLabel = $schoolYear?->sy_label;
 
         $semester = 'First Semester';
-        if ($schoolYear?->start_date && $schoolYear?->end_date) {
+        $reportMonthStart = Carbon::createFromDate($selectedYear, $selectedMonth, 1)->startOfMonth();
+        $reportMonthEnd = $reportMonthStart->copy()->endOfMonth();
+
+        if ($schoolYear?->sem1_start_date && $schoolYear?->sem1_end_date && $reportMonthStart->gte(Carbon::parse($schoolYear->sem1_start_date)->startOfMonth()) && $reportMonthEnd->lte(Carbon::parse($schoolYear->sem1_end_date)->endOfMonth())) {
+            $semester = 'First Semester';
+        } elseif ($schoolYear?->sem2_start_date && $schoolYear?->sem2_end_date && $reportMonthStart->gte(Carbon::parse($schoolYear->sem2_start_date)->startOfMonth()) && $reportMonthEnd->lte(Carbon::parse($schoolYear->sem2_end_date)->endOfMonth())) {
+            $semester = 'Second Semester';
+        } elseif ($schoolYear?->sem1_end_date && $reportMonthStart->lte(Carbon::parse($schoolYear->sem1_end_date)->endOfMonth())) {
+            $semester = 'First Semester';
+        } elseif ($schoolYear?->sem2_start_date && $reportMonthStart->gte(Carbon::parse($schoolYear->sem2_start_date)->startOfMonth())) {
+            $semester = 'Second Semester';
+        } elseif ($schoolYear?->start_date && $schoolYear?->end_date) {
             $syStart = Carbon::parse($schoolYear->start_date);
             $syEnd = Carbon::parse($schoolYear->end_date);
             $midpoint = $syStart->copy()->addDays((int) ($syStart->diffInDays($syEnd) / 2));
-            $semester = Carbon::createFromDate($selectedYear, $selectedMonth, 1)->lte($midpoint)
+            $semester = $reportMonthStart->lte($midpoint)
                 ? 'First Semester'
                 : 'Second Semester';
         }

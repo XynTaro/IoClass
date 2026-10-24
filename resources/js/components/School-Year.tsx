@@ -24,6 +24,10 @@ export interface SchoolYear {
     sy_label: string | null;
     start_date: string | null;
     end_date: string | null;
+    sem1_start_date?: string | null;
+    sem1_end_date?: string | null;
+    sem2_start_date?: string | null;
+    sem2_end_date?: string | null;
     is_active: boolean;
 }
 
@@ -32,6 +36,10 @@ interface SchoolYearFormData {
     sy_label: string | null;
     start_date: string | null;
     end_date: string | null;
+    sem1_start_date: string | null;
+    sem1_end_date: string | null;
+    sem2_start_date: string | null;
+    sem2_end_date: string | null;
     is_active: boolean;
 }
 
@@ -84,6 +92,10 @@ export default function SchoolYearModal({
         sy_label: '',
         start_date: '',
         end_date: '',
+        sem1_start_date: '',
+        sem1_end_date: '',
+        sem2_start_date: '',
+        sem2_end_date: '',
         is_active: false,
     });
 
@@ -94,6 +106,10 @@ export default function SchoolYearModal({
                 sy_label: schoolYear.sy_label ?? '',
                 start_date: formatDateForInput(schoolYear.start_date),
                 end_date: formatDateForInput(schoolYear.end_date),
+                sem1_start_date: formatDateForInput(schoolYear.sem1_start_date),
+                sem1_end_date: formatDateForInput(schoolYear.sem1_end_date),
+                sem2_start_date: formatDateForInput(schoolYear.sem2_start_date),
+                sem2_end_date: formatDateForInput(schoolYear.sem2_end_date),
                 is_active: schoolYear.is_active ?? false,
             });
         }
@@ -152,6 +168,20 @@ export default function SchoolYearModal({
         }
         if (!String(form.data.sy_label ?? '').trim()) {
             errors.sy_label = 'School year label is required.';
+        }
+        if (
+            form.data.sem1_start_date &&
+            form.data.sem1_end_date &&
+            form.data.sem1_start_date > form.data.sem1_end_date
+        ) {
+            errors.sem1_end_date = '1st semester end date must be on or after 1st semester start date.';
+        }
+        if (
+            form.data.sem2_start_date &&
+            form.data.sem2_end_date &&
+            form.data.sem2_start_date > form.data.sem2_end_date
+        ) {
+            errors.sem2_end_date = '2nd semester end date must be on or after 2nd semester start date.';
         }
         form.setError(errors);
         return Object.keys(errors).length === 0;
@@ -311,6 +341,107 @@ export default function SchoolYearModal({
                             label="Label"
                             message={form.errors.sy_label}
                         />
+                    </div>
+
+                    {/* ── Semester Date Ranges (Option B / DepEd) ── */}
+                    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3.5 dark:bg-muted/10">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Semester Dates (Optional)
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/80">
+                                DepEd SF2 & Term Split
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            Specify start and end dates for each semester. If left empty, the system automatically uses the midpoint of the school year.
+                        </p>
+
+                        {/* 1st Semester */}
+                        <div className="space-y-1.5 pt-1">
+                            <span className="text-xs font-medium text-foreground">1st Semester</span>
+                            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                                <div>
+                                    <Label htmlFor="sem1_start_date" className="text-[11px] text-muted-foreground">
+                                        Start Date
+                                    </Label>
+                                    <Input
+                                        id="sem1_start_date"
+                                        type="date"
+                                        value={form.data.sem1_start_date ?? ''}
+                                        onChange={(e) => {
+                                            form.setData('sem1_start_date', e.target.value);
+                                            form.clearErrors('sem1_start_date');
+                                            setSubmitError(null);
+                                        }}
+                                        min={form.data.start_date ?? undefined}
+                                        max={form.data.end_date ?? undefined}
+                                    />
+                                    <FormFieldError label="1st Semester start" message={form.errors.sem1_start_date} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="sem1_end_date" className="text-[11px] text-muted-foreground">
+                                        End Date
+                                    </Label>
+                                    <Input
+                                        id="sem1_end_date"
+                                        type="date"
+                                        value={form.data.sem1_end_date ?? ''}
+                                        onChange={(e) => {
+                                            form.setData('sem1_end_date', e.target.value);
+                                            form.clearErrors('sem1_end_date');
+                                            setSubmitError(null);
+                                        }}
+                                        min={form.data.sem1_start_date || form.data.start_date || undefined}
+                                        max={form.data.end_date ?? undefined}
+                                    />
+                                    <FormFieldError label="1st Semester end" message={form.errors.sem1_end_date} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2nd Semester */}
+                        <div className="space-y-1.5 pt-1">
+                            <span className="text-xs font-medium text-foreground">2nd Semester</span>
+                            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                                <div>
+                                    <Label htmlFor="sem2_start_date" className="text-[11px] text-muted-foreground">
+                                        Start Date
+                                    </Label>
+                                    <Input
+                                        id="sem2_start_date"
+                                        type="date"
+                                        value={form.data.sem2_start_date ?? ''}
+                                        onChange={(e) => {
+                                            form.setData('sem2_start_date', e.target.value);
+                                            form.clearErrors('sem2_start_date');
+                                            setSubmitError(null);
+                                        }}
+                                        min={form.data.sem1_end_date || form.data.start_date || undefined}
+                                        max={form.data.end_date ?? undefined}
+                                    />
+                                    <FormFieldError label="2nd Semester start" message={form.errors.sem2_start_date} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="sem2_end_date" className="text-[11px] text-muted-foreground">
+                                        End Date
+                                    </Label>
+                                    <Input
+                                        id="sem2_end_date"
+                                        type="date"
+                                        value={form.data.sem2_end_date ?? ''}
+                                        onChange={(e) => {
+                                            form.setData('sem2_end_date', e.target.value);
+                                            form.clearErrors('sem2_end_date');
+                                            setSubmitError(null);
+                                        }}
+                                        min={form.data.sem2_start_date || form.data.start_date || undefined}
+                                        max={form.data.end_date ?? undefined}
+                                    />
+                                    <FormFieldError label="2nd Semester end" message={form.errors.sem2_end_date} />
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div

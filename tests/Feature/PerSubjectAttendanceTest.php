@@ -109,7 +109,8 @@ test('student tap records per-subject attendance when session has a subject', fu
         'sy_id' => $data['sy_id'],
     ]);
 
-    // Teacher opens session for subject 1 (07:00–08:00, test is at 07:30)
+    // Teacher opens session for subject 1 (07:00–08:00, test is at 07:05 within grace period)
+    Carbon::setTestNow('2026-06-01 07:05:00');
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])->assertSuccessful();
 
     // Student taps
@@ -142,16 +143,42 @@ test('same student tap within cooldown is rejected by cooldown guard', function 
         'sy_id' => $data['sy_id'],
     ]);
 
+    // Teacher opens session (07:00 - 08:00)
+    Carbon::setTestNow('2026-06-01 07:30:00');
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-TRANSFER'])->assertSuccessful();
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-IDEM-01'])->assertSuccessful();
 
-    // Second tap immediately (within cooldown)
+    // Second tap in middle of class (before tap out window) returns too_early_out
     $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-IDEM-01'])
         ->assertSuccessful()
         ->assertJsonPath('attendance.already_checked_in', true)
-        ->assertJsonPath('attendance.action', 'cooldown');
+        ->assertJsonPath('attendance.action', 'too_early_out');
 
     expect(DB::table('attendance')->where('stu_id', $student->stu_id)->value('time_out'))->toBeNull();
+
+    // When student taps in during tap-out window (e.g. 07:56), immediate second tap is rejected by cooldown
+    $student2 = Student::create([
+        'rfid_uid' => 'STU-IDEM-02',
+        'stu_fname' => 'Elena',
+        'stu_lname' => 'Ramos',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+    DB::table('student_section')->insert([
+        'stu_id' => $student2->stu_id,
+        'sect_id' => $data['sect_id'],
+        'sy_id' => $data['sy_id'],
+    ]);
+
+    Carbon::setTestNow('2026-06-01 07:56:00');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-IDEM-02'])->assertSuccessful();
+
+    // Second tap 5 seconds later is within 30s cooldown
+    Carbon::setTestNow('2026-06-01 07:56:05');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-IDEM-02'])
+        ->assertSuccessful()
+        ->assertJsonPath('attendance.already_checked_in', true)
+        ->assertJsonPath('attendance.action', 'cooldown');
 });
 
 test('student taps out after cooldown in same subject session', function () {

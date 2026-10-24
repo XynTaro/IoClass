@@ -13,7 +13,7 @@ beforeEach(function () {
     config(['rfid.device_token' => null]);
 });
 
-test('rfid scan resolves a student by uid and records attendance', function () {
+test('rfid scan resolves a student by uid and blocks when no active session', function () {
     Student::create([
         'rfid_uid' => 'A1B2C3D4',
         'stu_fname' => 'Maria',
@@ -36,8 +36,9 @@ test('rfid scan resolves a student by uid and records attendance', function () {
                 'status' => 'active',
             ],
             'attendance' => [
-                'recorded' => true,
-                'already_checked_in' => false,
+                'recorded' => false,
+                'action' => 'no_session',
+                'status' => 'blocked',
             ],
         ]);
 });
@@ -132,6 +133,12 @@ test('student scan after teacher tap links attendance to the active session', fu
         'stu_lname' => 'Cruz',
         'status' => 'active',
         'is_deleted' => false,
+    ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $section->sect_id,
+        'sy_id' => $schoolYear->sy_id,
     ]);
 
     $this->withHeader('X-Device-Token', 'esp32-room-a')

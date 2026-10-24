@@ -14,6 +14,7 @@ use App\Support\RfidCaptureCache;
 use App\Support\RfidRegistryCache;
 use App\Support\RfidSessionCache;
 use App\Support\RfidUid;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
@@ -28,7 +29,7 @@ class RfidController extends Controller
      * Resolve a scanned RFID UID.
      *
      * - Teacher tap  → opens a session for this device (links to current class schedule) & records daily attendance.
-     * - Student tap  → records attendance, linked to the active session if one exists.
+     * - Student tap  → records attendance only inside the active class window.
      * - Unknown card → stores UID in capture cache so admin can assign via web UI.
      */
     public function scan(RfidScanRequest $request): JsonResponse
@@ -61,6 +62,8 @@ class RfidController extends Controller
                 'session' => [
                     'sect_name' => $session['sect_name'],
                     'subj_name' => $session['subj_name'],
+                    'start_time' => $session['start_time'],
+                    'end_time' => $session['end_time'],
                     'auto_transferred' => $session['auto_transferred'],
                 ],
             ]);
@@ -144,9 +147,12 @@ class RfidController extends Controller
     /**
      * Open a teaching session for the given device key.
      *
-     * Tries to match the teacher's class schedule for the current day/time.
-     * If no exact match is found, the session stores only the teacher info
-     * and students can still tap to record daily attendance.
+     * Matches the teacher's class schedule for the current day/time (with a
+     * small early-tap tolerance) and stores the class start/end times so the
+     * attendance service can enforce the tap-in / tap-out windows.
+     *
+     * If no schedule matches, the session has null sect/subj/start/end and
+     * students will be blocked ("no class now").
      *
      * @return array{
      *     tch_id: int,
@@ -156,6 +162,8 @@ class RfidController extends Controller
      *     subj_id: int|null,
      *     subj_name: string|null,
      *     schedule_id: int|null,
+     *     start_time: string|null,
+     *     end_time: string|null,
      *     started_at: int,
      *     auto_transferred: int,
      * }
@@ -165,13 +173,16 @@ class RfidController extends Controller
         $now = now();
         $dayName = $now->format('l'); // e.g. "Monday"
         $timeNow = $now->format('H:i:s');
+        $earlyMinutes = (int) config('attendance.teacher_tap_early_minutes', 10);
+        $timeEarly = $now->copy()->addMinutes($earlyMinutes)->format('H:i:s');
 
         $schedule = Class_Schedule::query()
             ->where('tch_id', $teacher->tch_id)
             ->where('day_of_week', $dayName)
-            ->where('start_time', '<=', $timeNow)
+            ->where('start_time', '<=', $timeEarly)
             ->where('end_time', '>=', $timeNow)
             ->with(['section:sect_id,sect_name', 'subject:subj_id,subj_name'])
+            ->orderBy('start_time')
             ->first();
 
         $tchName = trim(collect([
@@ -188,10 +199,13 @@ class RfidController extends Controller
             'subj_id' => $schedule?->subj_id,
             'subj_name' => $schedule?->subject?->subj_name,
             'schedule_id' => $schedule?->schedule_id,
+            'start_time' => $schedule ? Carbon::parse($schedule->start_time)->format('H:i:s') : null,
+            'end_time' => $schedule ? Carbon::parse($schedule->end_time)->format('H:i:s') : null,
             'started_at' => $now->timestamp,
             'auto_transferred' => 0,
         ];
 
+        // Replaces any previous session on this device (e.g. previous period).
         RfidSessionCache::open($deviceKey, $session);
 
         return $session;

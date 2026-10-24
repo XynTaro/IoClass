@@ -69,3 +69,88 @@ test('updating a school year requires label, start_date, and end_date', function
 
     $response->assertSessionHasErrors(['sy_label', 'start_date', 'end_date']);
 });
+
+test('admin can store and update a school year with semester dates', function () {
+    $admin = Admin::factory()->create();
+
+    $response = $this->actingAs($admin, 'admin')->post(route('admin.school-year.store'), [
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-08-01',
+        'end_date' => '2028-05-31',
+        'sem1_start_date' => '2027-08-01',
+        'sem1_end_date' => '2027-12-18',
+        'sem2_start_date' => '2028-01-08',
+        'sem2_end_date' => '2028-05-31',
+        'is_active' => false,
+    ]);
+
+    $response->assertRedirect(route('admin.school-year.index'));
+    $created = School_Year::where('sy_label', '2027-2028')->first();
+    expect($created)->not->toBeNull();
+    expect($created->sem1_start_date?->format('Y-m-d'))->toBe('2027-08-01');
+    expect($created->sem1_end_date?->format('Y-m-d'))->toBe('2027-12-18');
+    expect($created->sem2_start_date?->format('Y-m-d'))->toBe('2028-01-08');
+    expect($created->sem2_end_date?->format('Y-m-d'))->toBe('2028-05-31');
+
+    // Update with new semester end dates
+    $updateResponse = $this->actingAs($admin, 'admin')->put(route('admin.school-year.update', ['id' => $created->sy_id]), [
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-08-01',
+        'end_date' => '2028-05-31',
+        'sem1_start_date' => '2027-08-01',
+        'sem1_end_date' => '2027-12-22',
+        'sem2_start_date' => '2028-01-10',
+        'sem2_end_date' => '2028-05-31',
+        'is_active' => false,
+    ]);
+
+    $updateResponse->assertRedirect(route('admin.school-year.index'));
+    $updated = $created->fresh();
+    expect($updated->sem1_end_date?->format('Y-m-d'))->toBe('2027-12-22');
+    expect($updated->sem2_start_date?->format('Y-m-d'))->toBe('2028-01-10');
+});
+
+test('sem1_end_date and sem2_end_date must be on or after their start dates', function () {
+    $admin = Admin::factory()->create();
+
+    $response = $this->actingAs($admin, 'admin')->post(route('admin.school-year.store'), [
+        'sy_label' => '2028-2029',
+        'start_date' => '2028-08-01',
+        'end_date' => '2029-05-31',
+        'sem1_start_date' => '2028-08-01',
+        'sem1_end_date' => '2028-07-31', // before start
+        'sem2_start_date' => '2029-01-08',
+        'sem2_end_date' => '2029-01-01', // before start
+    ]);
+
+    $response->assertSessionHasErrors(['sem1_end_date', 'sem2_end_date']);
+});
+
+test('school year model getSemester helper resolves accurate semesters', function () {
+    $sy = School_Year::create([
+        'sy_label' => '2025-2026',
+        'start_date' => '2025-08-01',
+        'end_date' => '2026-05-31',
+        'sem1_start_date' => '2025-08-01',
+        'sem1_end_date' => '2025-12-18',
+        'sem2_start_date' => '2026-01-05',
+        'sem2_end_date' => '2026-05-31',
+        'is_active' => true,
+    ]);
+
+    expect($sy->getSemester('2025-08-15'))->toBe('First Semester');
+    expect($sy->getSemester('2025-12-10'))->toBe('First Semester');
+    expect($sy->getSemester('2026-01-10'))->toBe('Second Semester');
+    expect($sy->getSemester('2026-04-20'))->toBe('Second Semester');
+
+    // Without explicit semester dates, it falls back cleanly to midpoint
+    $syFallback = School_Year::create([
+        'sy_label' => '2029-2030',
+        'start_date' => '2029-08-01',
+        'end_date' => '2030-05-31',
+        'is_active' => false,
+    ]);
+
+    expect($syFallback->getSemester('2029-09-01'))->toBe('First Semester');
+    expect($syFallback->getSemester('2030-03-01'))->toBe('Second Semester');
+});

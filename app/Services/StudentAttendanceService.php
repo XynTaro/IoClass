@@ -19,8 +19,18 @@ class StudentAttendanceService
     }
 
     /**
-     * Record attendance for a student, scoped per-subject when a session with a
-     * subject is active, or as a whole-day record when no subject is known.
+     * Record attendance for a student.
+     *
+     * Rules:
+     *  - Teacher must have an active session with a matched class schedule.
+     *  - Student must be enrolled in the session's section.
+     *  - Tap in is only allowed between class start (minus optional early
+     *    minutes) and class end.
+     *  - Tap out is only allowed in the last N minutes of class.
+     *
+     * Blocked actions returned: blocked (non-school day), no_session,
+     * not_your_class, outside_class_time, too_early_out, cooldown,
+     * already_timed_out.
      *
      * @param  array{
      *     tch_id: int,
@@ -30,28 +40,17 @@ class StudentAttendanceService
      *     subj_id: int|null,
      *     subj_name: string|null,
      *     schedule_id: int|null,
+     *     start_time: string|null,
+     *     end_time: string|null,
      *     started_at: int,
      * }|null $session
-     * @return array{
-     *     recorded: bool,
-     *     already_checked_in: bool,
-     *     status: string,
-     *     time_in: string,
-     *     time_out?: string|null,
-     *     action?: string,
-     *     already_timed_out?: bool,
-     *     message?: string,
-     *     non_school_day?: bool,
-     *     event_title?: string,
-     *     event_type?: string,
-     * }
      */
     public function recordForStudent(Student $student, ?CarbonInterface $scannedAt = null, ?array $session = null): array
     {
         $scannedAt = Carbon::instance($scannedAt ?? now());
         $attDate = $scannedAt->toDateString();
 
-        // Block attendance on non-school days (holidays, breaks, suspensions)
+        // ── Block attendance on non-school days (holidays, breaks, suspensions) ──
         $nonSchoolDay = CalendarEvent::nonSchoolDayInfo($attDate);
         if ($nonSchoolDay !== null) {
             return [
@@ -67,13 +66,37 @@ class StudentAttendanceService
             ];
         }
 
-        $subjId = ($session !== null && isset($session['subj_id'])) ? (int) $session['subj_id'] : null;
+        // ── Class-window rules ────────────────────────────────────────────────
+        if (
+            $session === null
+            || empty($session['schedule_id'])
+            || empty($session['sect_id'])
+            || empty($session['start_time'])
+            || empty($session['end_time'])
+        ) {
+            return $this->blocked('no_session', 'No active class. Teacher must tap first.', $scannedAt);
+        }
+
+        if (! $this->isEnrolledInSection((int) $student->stu_id, (int) $session['sect_id'])) {
+            return $this->blocked('not_your_class', 'You are not enrolled in this class.', $scannedAt);
+        }
+
+        $tz = $scannedAt->getTimezone();
+        $start = Carbon::parse($attDate.' '.$session['start_time'], $tz);
+        $end = Carbon::parse($attDate.' '.$session['end_time'], $tz);
+        $tapInOpens = $start->copy()->subMinutes((int) config('attendance.tap_in_early_minutes', 0));
+        $tapOutOpens = $end->copy()->subMinutes((int) config('attendance.tap_out_window_minutes', 5));
+
+        if ($scannedAt->lt($tapInOpens) || $scannedAt->gt($end)) {
+            return $this->blocked('outside_class_time', 'Outside class time.', $scannedAt);
+        }
+
+        $subjId = isset($session['subj_id']) ? (int) $session['subj_id'] : null;
 
         $query = Attendance::query()
             ->where('stu_id', $student->stu_id)
             ->whereDate('att_date', $attDate);
 
-        // When a subject is active scope to that subject; otherwise whole-day record.
         if ($subjId !== null) {
             $query->where('subj_id', $subjId);
         } else {
@@ -83,10 +106,11 @@ class StudentAttendanceService
         $existing = $query->first();
 
         if ($existing !== null) {
+            // Pre-marked absent/excused → a tap counts as time in.
             if (in_array($existing->status, ['absent', 'excused'], true)) {
                 $existing->forceFill([
                     'time_in' => $scannedAt,
-                    'status' => $this->resolveStatus($scannedAt),
+                    'status' => $this->resolveStatus($scannedAt, $start),
                 ])->save();
 
                 return [
@@ -99,75 +123,78 @@ class StudentAttendanceService
                 ];
             }
 
-            $cooldownSeconds = (int) config('attendance.tap_cooldown_seconds', 120);
-            $secondsSinceTimeIn = $existing->time_in
-                ? abs($scannedAt->diffInSeconds($existing->time_in))
-                : PHP_INT_MAX;
+            // Already timed out
+            if ($existing->time_out !== null) {
+                return [
+                    'recorded' => false,
+                    'action' => 'already_timed_out',
+                    'already_checked_in' => false,
+                    'already_timed_out' => true,
+                    'status' => $existing->status,
+                    'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
+                    'time_out' => $existing->time_out->toIso8601String(),
+                    'message' => 'Already timed out for this session.',
+                ];
+            }
 
-            if ($secondsSinceTimeIn < $cooldownSeconds) {
+            // Too early to tap out
+            if ($scannedAt->lt($tapOutOpens)) {
+                return [
+                    'recorded' => false,
+                    'action' => 'too_early_out',
+                    'already_checked_in' => true,
+                    'already_timed_out' => false,
+                    'status' => $existing->status,
+                    'tap_out_opens_at' => $tapOutOpens->format('H:i'),
+                    'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
+                    'time_out' => null,
+                    'message' => 'Tap out opens at '.$tapOutOpens->format('h:i A').'.',
+                ];
+            }
+
+            // Double-tap guard (e.g. student timed in during the last minutes)
+            $cooldown = (int) config('attendance.tap_cooldown_seconds', 30);
+            if ($existing->time_in && abs($scannedAt->diffInSeconds($existing->time_in)) < $cooldown) {
                 return [
                     'recorded' => false,
                     'action' => 'cooldown',
                     'already_checked_in' => true,
-                    'already_timed_out' => $existing->time_out !== null,
-                    'status' => $existing->status,
-                    'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
-                    'time_out' => $existing->time_out?->toIso8601String(),
-                    'message' => 'Tap cooldown active. Please wait before tapping out.',
-                ];
-            }
-
-            if ($existing->time_out === null) {
-                $existing->forceFill([
-                    'time_out' => $scannedAt,
-                ])->save();
-
-                // When student taps out (e.g. going home), check if they missed any earlier subjects today
-                $this->absenceNotifier->notifyMissedSubjectsForStudent($student, $scannedAt);
-
-                return [
-                    'recorded' => true,
-                    'action' => 'time_out',
-                    'already_checked_in' => false,
                     'already_timed_out' => false,
                     'status' => $existing->status,
-                    'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
-                    'time_out' => $existing->time_out->toIso8601String(),
+                    'time_in' => $existing->time_in->toIso8601String(),
+                    'time_out' => null,
+                    'message' => 'Please wait before tapping out.',
                 ];
             }
 
+            // ── Time out ──
+            $existing->forceFill(['time_out' => $scannedAt])->save();
+
+            // Check if the student missed any earlier subjects today
+            $this->absenceNotifier->notifyMissedSubjectsForStudent($student, $scannedAt);
+
             return [
-                'recorded' => false,
-                'action' => 'already_timed_out',
+                'recorded' => true,
+                'action' => 'time_out',
                 'already_checked_in' => false,
-                'already_timed_out' => true,
+                'already_timed_out' => false,
                 'status' => $existing->status,
                 'time_in' => $existing->time_in?->toIso8601String() ?? $scannedAt->toIso8601String(),
                 'time_out' => $existing->time_out->toIso8601String(),
-                'message' => 'Already timed out for this session.',
             ];
         }
 
-        // Resolve section and school year — prefer session data when available
-        if ($session !== null && $session['sect_id'] !== null) {
-            $sectId = $session['sect_id'];
-            $syId = $this->resolveActiveSyId();
-            $sessionId = $session['schedule_id'];
-        } else {
-            [$sectId, $syId] = $this->resolveEnrollment($student->stu_id);
-            $sessionId = null;
-        }
-
+        // ── First tap: time in ────────────────────────────────────────────────
         $attendance = Attendance::create([
             'stu_id' => $student->stu_id,
-            'session_id' => $sessionId,
+            'session_id' => $session['schedule_id'],
             'subj_id' => $subjId,
-            'sect_id' => $sectId,
-            'sy_id' => $syId,
+            'sect_id' => (int) $session['sect_id'],
+            'sy_id' => $this->resolveActiveSyId(),
             'att_date' => $attDate,
             'time_in' => $scannedAt,
             'time_out' => null,
-            'status' => $this->resolveStatus($scannedAt),
+            'status' => $this->resolveStatus($scannedAt, $start),
         ]);
 
         return [
@@ -184,8 +211,8 @@ class StudentAttendanceService
      * Auto-transfer present/late students from the previous period into a new
      * subject attendance record when a teacher opens a new session.
      *
-     * Only students enrolled in $sectId who were present or late for $prevSubjId
-     * today and do NOT yet have a record for $newSubjId are inserted.
+     * NOTE: Not called anywhere. With tap-in-only-in-class rules, calling this
+     * would mark students present without a tap.
      *
      * @return int Number of students auto-transferred
      */
@@ -197,7 +224,6 @@ class StudentAttendanceService
     ): int {
         $today = now()->toDateString();
 
-        // Find students in this section who were present/late for any subject today
         $transferred = DB::table('attendance as a')
             ->join('student_section as ss', function ($join) use ($sectId, $newSyId) {
                 $join->on('ss.stu_id', '=', 'a.stu_id')
@@ -238,33 +264,33 @@ class StudentAttendanceService
         return count($rows);
     }
 
-    /**
-     * @return array{0: ?int, 1: ?int}
-     */
-    private function resolveEnrollment(int $studentId): array
-    {
-        $activeSyId = $this->resolveActiveSyId();
-
-        if (! $activeSyId) {
-            return [null, null];
-        }
-
-        $enrollment = DB::table('student_section')
-            ->where('stu_id', $studentId)
-            ->where('sy_id', $activeSyId)
-            ->orderBy('stu_sect_id')
-            ->first(['sect_id', 'sy_id']);
-
-        if ($enrollment === null) {
-            return [null, (int) $activeSyId];
-        }
-
-        return [(int) $enrollment->sect_id, (int) $enrollment->sy_id];
-    }
-
     public function resolveActiveSyIdPublic(): ?int
     {
         return $this->resolveActiveSyId();
+    }
+
+    private function blocked(string $action, string $message, CarbonInterface $at): array
+    {
+        return [
+            'recorded' => false,
+            'action' => $action,
+            'already_checked_in' => false,
+            'status' => 'blocked',
+            'time_in' => $at->toIso8601String(),
+            'time_out' => null,
+            'message' => $message,
+        ];
+    }
+
+    private function isEnrolledInSection(int $stuId, int $sectId): bool
+    {
+        $syId = $this->resolveActiveSyId();
+
+        return $syId !== null && DB::table('student_section')
+            ->where('stu_id', $stuId)
+            ->where('sect_id', $sectId)
+            ->where('sy_id', $syId)
+            ->exists();
     }
 
     private function resolveActiveSyId(): ?int
@@ -276,11 +302,21 @@ class StudentAttendanceService
         return $id !== null ? (int) $id : null;
     }
 
-    private function resolveStatus(CarbonInterface $scannedAt): string
+    /**
+     * Late = after (class start + grace minutes). Falls back to the fixed
+     * daily cutoff when no class start is known.
+     */
+    private function resolveStatus(CarbonInterface $scannedAt, ?CarbonInterface $classStart = null): string
     {
-        $lateAfter = (string) config('attendance.late_after', '08:00');
         $moment = Carbon::instance($scannedAt);
-        $cutoff = $moment->copy()->startOfDay()->setTimeFromTimeString($lateAfter);
+
+        if ($classStart !== null) {
+            $cutoff = Carbon::instance($classStart)
+                ->addMinutes((int) config('attendance.late_grace_minutes', 10));
+        } else {
+            $cutoff = $moment->copy()->startOfDay()
+                ->setTimeFromTimeString((string) config('attendance.late_after', '08:00'));
+        }
 
         return $moment->greaterThan($cutoff) ? 'late' : 'present';
     }

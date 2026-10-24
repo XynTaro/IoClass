@@ -479,6 +479,8 @@ test('student tapping out of another subject alerts guardian of earlier missed s
         'subj_id' => $subj2Id,
         'subj_name' => 'Science 9',
         'schedule_id' => $sched2Id,
+        'start_time' => '08:00:00',
+        'end_time' => '09:00:00',
         'started_at' => now()->timestamp,
     ];
 
