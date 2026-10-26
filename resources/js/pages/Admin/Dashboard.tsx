@@ -54,6 +54,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface Stats {
     totalStudents: number;
+    totalTeachers: number;
     checkedInToday: number;
     presentToday: number;
     lateToday: number;
@@ -384,7 +385,7 @@ function DonutChart({ breakdown }: { breakdown: BreakdownItem[] }) {
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
-type StatCardAccent = 'emerald' | 'blue' | 'violet' | 'amber';
+type StatCardAccent = 'emerald' | 'blue' | 'violet' | 'amber' | 'indigo';
 
 type StatCardProps = {
     label: string;
@@ -432,6 +433,12 @@ const ACCENT_STYLES: Record<
         iconBg: 'bg-amber-100 dark:bg-amber-950/40',
         iconText: 'text-amber-600 dark:text-amber-400',
         changeBg: 'bg-amber-50 dark:bg-amber-950/40',
+    },
+    indigo: {
+        glow: 'hover:shadow-lg hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/5',
+        iconBg: 'bg-indigo-100 dark:bg-indigo-950/40',
+        iconText: 'text-indigo-600 dark:text-indigo-400',
+        changeBg: 'bg-indigo-50 dark:bg-indigo-950/40',
     },
 };
 
@@ -767,7 +774,7 @@ export default function AdminDashboard({
                 )}
 
                 {/* ── Stat cards ── */}
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                     <StatCard
                         label="Total Students"
                         value={stats.totalStudents}
@@ -779,6 +786,18 @@ export default function AdminDashboard({
                         href={admin.student.index.url()}
                         className="dash-fade-up"
                         style={{ animationDelay: '50ms' }}
+                    />
+                    <StatCard
+                        label="Total Teachers"
+                        value={stats.totalTeachers}
+                        change={0}
+                        icon={GraduationCap}
+                        accent="indigo"
+                        hideChange
+                        footnote="Active faculty members"
+                        href={admin.teacher.index.url()}
+                        className="dash-fade-up"
+                        style={{ animationDelay: '75ms' }}
                     />
                     <StatCard
                         label="Checked In Today"

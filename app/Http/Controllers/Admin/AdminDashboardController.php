@@ -21,6 +21,7 @@ class AdminDashboardController extends Controller
         // ── Eager stats ───────────────────────────────────────────────────────
 
         $totalStudents = DB::table('student')->where('is_deleted', false)->count();
+        $totalTeachers = DB::table('teacher')->where('is_deleted', false)->count();
 
         $presentToday = DB::table('attendance')
             ->whereDate('att_date', $today)
@@ -122,6 +123,7 @@ class AdminDashboardController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'totalStudents' => $totalStudents,
+                'totalTeachers' => $totalTeachers,
                 'checkedInToday' => $checkedInToday,
                 'presentToday' => $presentToday,
                 'lateToday' => $lateToday,
