@@ -114,10 +114,50 @@ class AdminStudentController extends Controller
             ->orderBy('s.stu_lname')
             ->orderBy('s.stu_fname');
 
+        $search = trim((string) $request->query('q', ''));
+        $gradeLevel = $request->query('gradeLevel');
+        $section = $request->query('section');
+
+        if ($search !== '') {
+            $query->where(function ($b) use ($search) {
+                $b->where('s.stu_fname', 'like', "%{$search}%")
+                    ->orWhere('s.stu_mname', 'like', "%{$search}%")
+                    ->orWhere('s.stu_lname', 'like', "%{$search}%")
+                    ->orWhere('s.lrn', 'like', "%{$search}%")
+                    ->orWhere('s.rfid_uid', 'like', "%{$search}%");
+            });
+        }
+
+        if (is_string($gradeLevel) && $gradeLevel !== '' && $gradeLevel !== 'all') {
+            if ($gradeLevel === 'unassigned') {
+                $query->whereNull('ss.sect_id');
+            } else {
+                $query->where('sec.gr_level', $gradeLevel);
+            }
+        }
+
+        if (is_string($section) && $section !== '' && $section !== 'all') {
+            if ($section === 'unassigned') {
+                $query->whereNull('ss.sect_id');
+            } elseif (is_numeric($section)) {
+                $query->where('ss.sect_id', (int) $section);
+            } else {
+                $query->where('sec.sect_name', $section);
+            }
+        }
+
         $sections = Section::where('is_deleted', false)
             ->orderBy('gr_level')
             ->orderBy('sect_name')
             ->get(['sect_id', 'sect_name', 'gr_level']);
+
+        $gradeLevels = Section::where('is_deleted', false)
+            ->distinct()
+            ->orderBy('gr_level')
+            ->pluck('gr_level')
+            ->filter()
+            ->values()
+            ->toArray();
 
         $promotedSectionIds = $activeSyId
             ? DB::table('student_section as source')
@@ -132,12 +172,20 @@ class AdminStudentController extends Controller
                 ->toArray()
             : [];
 
+        $students = $query->paginate(8)->withQueryString();
+
         return inertia('Admin/Student/index', [
-            'students' => $query->paginate(8),
+            'students' => $students,
             'archived' => $archived,
             'sections' => $sections,
+            'gradeLevels' => $gradeLevels,
             'activeSchoolYear' => $activeSchoolYear,
             'promotedSectionIds' => $promotedSectionIds,
+            'filters' => [
+                'q' => $search !== '' ? $search : null,
+                'gradeLevel' => $gradeLevel && $gradeLevel !== 'all' ? $gradeLevel : 'all',
+                'section' => $section && $section !== 'all' ? $section : 'all',
+            ],
         ]);
     }
 

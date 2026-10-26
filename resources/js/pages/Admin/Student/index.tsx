@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Archive, ArrowDownCircle, ArrowUpCircle, RotateCcw, Trash2, UserPlus, Users } from 'lucide-react';
+import { Archive, ArrowDownCircle, ArrowUpCircle, Filter, RotateCcw, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { IoMdAdd, IoMdCreate, IoMdSearch } from 'react-icons/io';
 import { route } from 'ziggy-js';
@@ -16,6 +16,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { invalidateRfidRegistryCache } from '@/hooks/use-rfid-registry';
 import AdminLayout from '@/layouts/admin/admin-layout';
 import { archiveRowButtonClassName, archiveModalConfirmClassName } from '@/lib/archive-ui';
@@ -26,14 +33,22 @@ export default function Index() {
         students,
         archived = false,
         sections = [],
+        gradeLevels = [],
         activeSchoolYear = null,
         promotedSectionIds = [],
+        filters = {},
     } = usePage<{
         students: any;
         archived: boolean;
         sections: SectionOption[];
+        gradeLevels?: string[];
         activeSchoolYear: { sy_id: number; sy_label: string } | null;
         promotedSectionIds: number[];
+        filters?: {
+            q?: string | null;
+            gradeLevel?: string | null;
+            section?: string | null;
+        };
     }>().props;
 
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -45,7 +60,9 @@ export default function Index() {
     const [toSectId, setToSectId] = useState<number | ''>('');
     const [promoting, setPromoting] = useState(false);
     const [promoteErrors, setPromoteErrors] = useState<Record<string, string>>({});
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(filters?.q ?? '');
+    const [selectedGrade, setSelectedGrade] = useState<string>(filters?.gradeLevel ?? 'all');
+    const [selectedSection, setSelectedSection] = useState<string>(filters?.section ?? 'all');
 
     const [studentList, setStudentList] = useState<Student[]>(
         students?.data ?? [],
@@ -55,26 +72,113 @@ export default function Index() {
         setStudentList(students?.data ?? []);
     }, [students]);
 
-    const filteredStudents = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return studentList;
-        return studentList.filter((s) => {
-            const haystack = [
-                s.lrn ?? '',
-                s.stu_fname ?? '',
-                s.stu_mname ?? '',
-                s.stu_lname ?? '',
-                s.gender ?? '',
-                s.gr_level ?? '',
-                s.sect ?? '',
-                s.rfid_uid ?? '',
-                s.status ?? '',
-            ]
-                .join(' ')
-                .toLowerCase();
-            return haystack.includes(q);
-        });
-    }, [search, studentList]);
+    useEffect(() => {
+        setSearch(filters?.q ?? '');
+        setSelectedGrade(filters?.gradeLevel ?? 'all');
+        setSelectedSection(filters?.section ?? 'all');
+    }, [filters?.q, filters?.gradeLevel, filters?.section]);
+
+    const applyFilters = (
+        next?: Partial<{
+            q: string;
+            gradeLevel: string;
+            section: string;
+        }>,
+    ) => {
+        const nextQ = (next?.q !== undefined ? next.q : search).trim();
+        const nextGrade = next?.gradeLevel !== undefined ? next.gradeLevel : selectedGrade;
+        const nextSection = next?.section !== undefined ? next.section : selectedSection;
+
+        const queryParams: Record<string, any> = {};
+        if (archived) {
+            queryParams.archived = 1;
+        }
+        if (nextQ !== '') {
+            queryParams.q = nextQ;
+        }
+        if (nextGrade && nextGrade !== 'all') {
+            queryParams.gradeLevel = nextGrade;
+        }
+        if (nextSection && nextSection !== 'all') {
+            queryParams.section = nextSection;
+        }
+
+        router.get(
+            route('admin.student.index'),
+            queryParams,
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
+
+    useEffect(() => {
+        const normalized = search.trim();
+        const current = (filters?.q ?? '').trim();
+
+        if (normalized === current) {
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            applyFilters({ q: search });
+        }, 350);
+
+        return () => clearTimeout(timeout);
+    }, [search]);
+
+    const availableGradeLevels = useMemo(() => {
+        const set = new Set<string>([
+            ...(gradeLevels ?? []),
+            ...sections.map((s) => s.gr_level).filter(Boolean),
+        ]);
+        return Array.from(set).sort((a, b) =>
+            a.localeCompare(b, undefined, { numeric: true }),
+        );
+    }, [gradeLevels, sections]);
+
+    const filteredSectionOptions = useMemo(() => {
+        if (!selectedGrade || selectedGrade === 'all') {
+            return sections;
+        }
+        return sections.filter((s) => s.gr_level === selectedGrade);
+    }, [selectedGrade, sections]);
+
+    const handleGradeChange = (grade: string) => {
+        setSelectedGrade(grade);
+        let nextSection = selectedSection;
+        if (grade !== 'all') {
+            const belongs = sections.some(
+                (s) =>
+                    s.gr_level === grade &&
+                    (String(s.sect_id) === selectedSection || s.sect_name === selectedSection),
+            );
+            if (!belongs) {
+                nextSection = 'all';
+                setSelectedSection('all');
+            }
+        }
+        applyFilters({ gradeLevel: grade, section: nextSection });
+    };
+
+    const handleSectionChange = (sect: string) => {
+        setSelectedSection(sect);
+        applyFilters({ section: sect });
+    };
+
+    const clearFilters = () => {
+        setSearch('');
+        setSelectedGrade('all');
+        setSelectedSection('all');
+        applyFilters({ q: '', gradeLevel: 'all', section: 'all' });
+    };
+
+    const isFilterActive =
+        (search && search.trim() !== '') ||
+        (selectedGrade && selectedGrade !== 'all') ||
+        (selectedSection && selectedSection !== 'all');
 
     const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
     const [itemToArchive, setItemToArchive] = useState<Student | null>(null);
@@ -337,7 +441,7 @@ export default function Index() {
                         )}
                         <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs">
                             <Users className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                            {studentList.length} {archived ? 'Archived' : 'Students'}
+                            {students?.total ?? studentList.length} {archived ? 'Archived' : 'Students'}
                         </span>
                     </div>
                 </div>
@@ -345,22 +449,86 @@ export default function Index() {
                 {/* ── Table Card ── */}
                 <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
                     <CardHeader className="border-b border-border/50 pb-4 pt-5">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="relative w-full sm:w-72">
-                                <IoMdSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search by name, LRN, or RFID..."
-                                    className="h-9 rounded-xl border-border/60 bg-muted/30 pl-9 text-xs placeholder:text-muted-foreground focus:ring-1 focus:ring-emerald-500"
-                                />
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                            {/* Filters row: Search + Grade + Section */}
+                            <div className="flex flex-1 flex-wrap items-center gap-2.5">
+                                <div className="relative w-full sm:w-60 lg:w-64">
+                                    <IoMdSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Search by name, LRN, or RFID..."
+                                        className="h-9 rounded-xl border-border/60 bg-muted/30 pl-9 text-xs placeholder:text-muted-foreground focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                {/* Grade Level Filter */}
+                                <Select value={selectedGrade} onValueChange={handleGradeChange}>
+                                    <SelectTrigger className="h-9 w-full sm:w-36 rounded-xl border-border/60 bg-muted/30 text-xs">
+                                        <SelectValue placeholder="All Grades" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all" className="text-xs">
+                                            All Grades
+                                        </SelectItem>
+                                        {availableGradeLevels.map((lvl) => (
+                                            <SelectItem key={lvl} value={lvl} className="text-xs">
+                                                {lvl}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Section Filter */}
+                                <Select value={selectedSection} onValueChange={handleSectionChange}>
+                                    <SelectTrigger className="h-9 w-full sm:w-44 rounded-xl border-border/60 bg-muted/30 text-xs">
+                                        <SelectValue placeholder="All Sections" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all" className="text-xs">
+                                            All Sections
+                                        </SelectItem>
+                                        {filteredSectionOptions.map((s) => (
+                                            <SelectItem key={s.sect_id} value={String(s.sect_id)} className="text-xs">
+                                                {selectedGrade === 'all' && s.gr_level
+                                                    ? `${s.gr_level} - ${s.sect_name}`
+                                                    : s.sect_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Reset Filter Button */}
+                                {isFilterActive && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearFilters}
+                                        className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 rounded-xl cursor-pointer"
+                                        title="Reset filters"
+                                    >
+                                        <RotateCcw className="size-3.5" />
+                                        Reset
+                                    </Button>
+                                )}
                             </div>
+
+                            {/* Action Buttons */}
                             <div className="flex flex-wrap items-center gap-2">
                                 <Link
                                     href={
                                         archived
-                                            ? route('admin.student.index')
-                                            : route('admin.student.index', { archived: 1 })
+                                            ? route('admin.student.index', {
+                                                  ...(selectedGrade && selectedGrade !== 'all' ? { gradeLevel: selectedGrade } : {}),
+                                                  ...(selectedSection && selectedSection !== 'all' ? { section: selectedSection } : {}),
+                                                  ...(search ? { q: search } : {}),
+                                              })
+                                            : route('admin.student.index', {
+                                                  archived: 1,
+                                                  ...(selectedGrade && selectedGrade !== 'all' ? { gradeLevel: selectedGrade } : {}),
+                                                  ...(selectedSection && selectedSection !== 'all' ? { section: selectedSection } : {}),
+                                                  ...(search ? { q: search } : {}),
+                                              })
                                     }
                                     className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                                 >
@@ -370,7 +538,7 @@ export default function Index() {
                                 {!archived && (
                                     <Button
                                         onClick={() => setChoiceOpen(true)}
-                                        className="gap-1.5 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                                        className="gap-1.5 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
                                     >
                                         <IoMdAdd className="size-4" />
                                         ADD STUDENT
@@ -381,7 +549,7 @@ export default function Index() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="p-4">
-                            <DataTable columns={columns} data={filteredStudents} />
+                            <DataTable columns={columns} data={studentList} />
                         </div>
                         {/* Pagination */}
                         {students?.links && students.links.length > 0 && (
