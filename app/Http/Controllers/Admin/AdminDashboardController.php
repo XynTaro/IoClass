@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
+use App\Services\Sms\SmsBalanceService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -11,6 +12,10 @@ use Inertia\Response;
 
 class AdminDashboardController extends Controller
 {
+    public function __construct(
+        protected SmsBalanceService $smsBalanceService,
+    ) {}
+
     public function index(): Response
     {
         $today = now()->toDateString();
@@ -120,6 +125,8 @@ class AdminDashboardController extends Controller
                 ];
             });
 
+        $messagesRemaining = $this->smsBalanceService->getRemainingMessages();
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'totalStudents' => $totalStudents,
@@ -128,6 +135,7 @@ class AdminDashboardController extends Controller
                 'presentToday' => $presentToday,
                 'lateToday' => $lateToday,
                 'absentToday' => $absentToday,
+                'messagesRemaining' => $messagesRemaining,
                 'activeRfid' => $activeRfid,
                 'avgRateToday' => $avgRateToday,
                 'presentChange' => $presentChange,

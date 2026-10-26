@@ -12,6 +12,7 @@ import {
     CalendarDays,
     CalendarOff,
     Search,
+    MessageSquare,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
@@ -59,7 +60,8 @@ interface Stats {
     presentToday: number;
     lateToday: number;
     absentToday: number;
-    activeRfid: number;
+    messagesRemaining?: number | null;
+    activeRfid?: number;
     avgRateToday: number;
     presentChange: number;
     avgChange: number;
@@ -385,7 +387,7 @@ function DonutChart({ breakdown }: { breakdown: BreakdownItem[] }) {
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
-type StatCardAccent = 'emerald' | 'blue' | 'violet' | 'amber' | 'indigo';
+type StatCardAccent = 'emerald' | 'blue' | 'violet' | 'amber' | 'indigo' | 'rose';
 
 type StatCardProps = {
     label: string;
@@ -439,6 +441,12 @@ const ACCENT_STYLES: Record<
         iconBg: 'bg-indigo-100 dark:bg-indigo-950/40',
         iconText: 'text-indigo-600 dark:text-indigo-400',
         changeBg: 'bg-indigo-50 dark:bg-indigo-950/40',
+    },
+    rose: {
+        glow: 'hover:shadow-lg hover:shadow-rose-500/10 dark:hover:shadow-rose-500/5',
+        iconBg: 'bg-rose-100 dark:bg-rose-950/40',
+        iconText: 'text-rose-600 dark:text-rose-400',
+        changeBg: 'bg-rose-50 dark:bg-rose-950/40',
     },
 };
 
@@ -821,14 +829,27 @@ export default function AdminDashboard({
                         style={{ animationDelay: '150ms' }}
                     />
                     <StatCard
-                        label="Active RFID Cards"
-                        value={stats.activeRfid}
+                        label="Messages Left"
+                        value={
+                            stats.messagesRemaining !== null && stats.messagesRemaining !== undefined
+                                ? stats.messagesRemaining
+                                : '—'
+                        }
                         change={0}
-                        icon={Wifi}
-                        accent="amber"
+                        icon={MessageSquare}
+                        accent={
+                            typeof stats.messagesRemaining === 'number' && stats.messagesRemaining < 50
+                                ? 'rose'
+                                : 'amber'
+                        }
                         hideChange
-                        footnote="Assigned to students"
-                        href={admin.student.index.url()}
+                        footnote={
+                            typeof stats.messagesRemaining === 'number'
+                                ? stats.messagesRemaining < 50
+                                    ? 'Low credit warning'
+                                    : 'SMS credits remaining'
+                                : 'Gateway not configured'
+                        }
                         className="dash-fade-up"
                         style={{ animationDelay: '200ms' }}
                     />
