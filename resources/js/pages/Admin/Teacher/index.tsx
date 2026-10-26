@@ -158,24 +158,23 @@ export default function Index() {
 
     const columns: ColumnDef<Teacher>[] = [
         {
-            accessorKey: 'profile',
-            header: 'Profile',
+            id: 'avatar',
+            header: '',
             cell: ({ row }) => {
                 const teacher = row.original;
                 const initials = `${teacher.tch_fname?.[0] ?? ''}${teacher.tch_lname?.[0] ?? ''}`.toUpperCase() || 'T';
                 return (
-                    <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
-                            <AvatarImage src={teacher.avatar} alt={teacher.tch_fname} />
-                            <AvatarFallback className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">{initials}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-foreground">
-                            {teacher.tch_fname} {teacher.tch_mname ? `${teacher.tch_mname} ` : ''}{teacher.tch_lname}
-                        </span>
-                    </div>
+                    <Avatar className="h-8 w-8 rounded-full border border-border bg-muted shadow-xs">
+                        <AvatarImage src={teacher.avatar} alt={teacher.tch_fname} />
+                        <AvatarFallback className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 font-bold">
+                            {initials}
+                        </AvatarFallback>
+                    </Avatar>
                 );
-            }
+            },
         },
+        { accessorKey: 'tch_fname', header: 'First Name' },
+        { accessorKey: 'tch_lname', header: 'Last Name' },
         { accessorKey: 'tch_email', header: 'Email' },
         {
             accessorKey: 'tch_rfid_uid',
@@ -206,7 +205,7 @@ export default function Index() {
                                 isActive ? 'bg-emerald-500' : 'bg-red-500',
                             )}
                         />
-                        {row.original.status ?? '—'}
+                        {row.original.status ?? (isActive ? 'active' : 'inactive')}
                     </span>
                 );
             },

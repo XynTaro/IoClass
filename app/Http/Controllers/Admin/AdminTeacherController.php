@@ -44,6 +44,7 @@ class AdminTeacherController extends Controller
                 'tch_lname',
                 'tch_email',
                 'contact_number',
+                'status',
                 'is_deleted',
                 'avatar',
             )
@@ -53,6 +54,11 @@ class AdminTeacherController extends Controller
 
         $teachers->through(function ($teacher) {
             $teacher->avatar = app(AvatarService::class)->url($teacher->avatar);
+            if ($teacher->is_deleted) {
+                $teacher->status = 'inactive';
+            } elseif (! $teacher->status) {
+                $teacher->status = 'active';
+            }
 
             return $teacher;
         });
@@ -115,6 +121,7 @@ class AdminTeacherController extends Controller
 
         $tempPw = Str::random(10);
         $validated['tch_pw'] = $tempPw;
+        $validated['status'] = 'active';
         $validated['is_deleted'] = false;
         $validated['must_change_password'] = true;
         $this->normalizeRfidFields($validated);
@@ -233,7 +240,10 @@ class AdminTeacherController extends Controller
 
     public function destroy(Teacher $teacher): RedirectResponse
     {
-        $teacher->update(['is_deleted' => true]);
+        $teacher->update([
+            'is_deleted' => true,
+            'status' => 'inactive',
+        ]);
 
         return redirect()->back()
             ->with('success', 'Teacher archived successfully.');
@@ -242,7 +252,10 @@ class AdminTeacherController extends Controller
     public function restore(int $id): RedirectResponse
     {
         $teacher = Teacher::findOrFail($id);
-        $teacher->update(['is_deleted' => false]);
+        $teacher->update([
+            'is_deleted' => false,
+            'status' => 'active',
+        ]);
 
         return redirect()->back()
             ->with('success', 'Teacher restored successfully.');

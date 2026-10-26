@@ -38,6 +38,7 @@ class Teacher extends Model implements Authenticatable
         'tch_email',
         'tch_pw',
         'contact_number',
+        'status',
         'is_deleted',
         'must_change_password',
         'avatar',
