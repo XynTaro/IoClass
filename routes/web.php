@@ -126,7 +126,9 @@ Route::middleware(['auth:admin', 'admin.password.changed', 'audit.admin'])->pref
     Route::put('teacher-attendance/{teacherId}', [AdminTeacherAttendanceController::class, 'update'])->name('teacher-attendance.update');
 
     Route::get('schedule', [ScheduleController::class, 'index'])->name('schedule.index');
+    Route::get('schedule/section', fn () => redirect()->route('admin.schedule.index'));
     Route::get('schedule/section/{sectionId}', [ScheduleController::class, 'showSection'])->name('schedule.section.show');
+    Route::get('schedule/{schedule}', fn () => redirect()->route('admin.schedule.index'))->whereNumber('schedule');
     Route::post('schedule', [ScheduleController::class, 'store'])->name('schedule.store');
     Route::put('schedule/{schedule}', [ScheduleController::class, 'update'])->name('schedule.update');
     Route::delete('schedule/{schedule}', [ScheduleController::class, 'destroy'])->name('schedule.destroy');
@@ -172,6 +174,13 @@ Route::middleware(['auth:admin', 'admin.password.changed', 'audit.admin'])->pref
     Route::delete('room/{id}/force-delete', [RoomController::class, 'forceDelete'])->name('room.forceDelete');
 
     Route::get('section', [SectionController::class, 'index'])->name('section.index');
+    Route::get('section/{id}', function (int $id) {
+        $exists = DB::table('section')->where('sect_id', $id)->where('is_deleted', false)->exists();
+
+        return $exists
+            ? redirect()->route('admin.schedule.section.show', ['sectionId' => $id])
+            : redirect()->route('admin.section.index');
+    })->whereNumber('id');
     Route::post('section', [SectionController::class, 'store'])->name('section.store');
     Route::put('section/{id}', [SectionController::class, 'update'])->name('section.update');
     Route::delete('section/{section}', [SectionController::class, 'destroy'])->name('section.destroy');

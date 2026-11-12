@@ -803,3 +803,31 @@ test('schedule section show endpoint passes allSchedules prop to view', function
         ->has('subjects')
     );
 });
+
+test('get requests to schedule mutation and fallback urls redirect safely instead of 405', function () {
+    $admin = Admin::factory()->create();
+
+    $this->actingAs($admin, 'admin')
+        ->get('/admin/schedule/123')
+        ->assertRedirect(route('admin.schedule.index'));
+
+    $this->actingAs($admin, 'admin')
+        ->get('/admin/schedule/section')
+        ->assertRedirect(route('admin.schedule.index'));
+});
+
+test('get requests to section id url safely redirect to schedule view or section index instead of 405', function () {
+    $admin = Admin::factory()->create();
+    $fixtures = seedTeacherScheduleFixtures();
+    $sectId = $fixtures['sectIds'][0];
+
+    // Existing section redirects to its schedule view
+    $this->actingAs($admin, 'admin')
+        ->get("/admin/section/{$sectId}")
+        ->assertRedirect(route('admin.schedule.section.show', ['sectionId' => $sectId]));
+
+    // Non-existent section redirects back to section index
+    $this->actingAs($admin, 'admin')
+        ->get('/admin/section/999999')
+        ->assertRedirect(route('admin.section.index'));
+});
