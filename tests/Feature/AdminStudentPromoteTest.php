@@ -6,8 +6,13 @@ use Illuminate\Support\Facades\DB;
 
 function makePromoteFixture(): array
 {
-    $syId = DB::table('school_year')->insertGetId([
+    $prevSyId = DB::table('school_year')->insertGetId([
         'sy_label' => '2025-2026',
+        'is_active' => false,
+    ], 'sy_id');
+
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2026-2027',
         'is_active' => true,
     ], 'sy_id');
 
@@ -23,12 +28,12 @@ function makePromoteFixture(): array
         'is_deleted' => false,
     ], 'sect_id');
 
-    return compact('syId', 'fromSectId', 'toSectId');
+    return compact('prevSyId', 'syId', 'fromSectId', 'toSectId');
 }
 
 test('cannot promote the same section twice in the same school year', function () {
     $admin = Admin::factory()->create();
-    ['syId' => $syId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
+    ['prevSyId' => $prevSyId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
 
     $student = Student::create([
         'rfid_uid' => 'PROMOTE004',
@@ -41,7 +46,7 @@ test('cannot promote the same section twice in the same school year', function (
     DB::table('student_section')->insert([
         'stu_id' => $student->stu_id,
         'sect_id' => $fromSectId,
-        'sy_id' => $syId,
+        'sy_id' => $prevSyId,
     ]);
 
     // First promotion — should succeed
@@ -63,7 +68,7 @@ test('cannot promote the same section twice in the same school year', function (
 
 test('admin can promote students from one section to another', function () {
     $admin = Admin::factory()->create();
-    ['syId' => $syId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
+    ['prevSyId' => $prevSyId, 'syId' => $syId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
 
     $student = Student::create([
         'rfid_uid' => 'PROMOTE001',
@@ -76,7 +81,7 @@ test('admin can promote students from one section to another', function () {
     DB::table('student_section')->insert([
         'stu_id' => $student->stu_id,
         'sect_id' => $fromSectId,
-        'sy_id' => $syId,
+        'sy_id' => $prevSyId,
     ]);
 
     $this->actingAs($admin, 'admin')
@@ -96,9 +101,58 @@ test('admin can promote students from one section to another', function () {
     )->toBeTrue();
 });
 
+test('cannot promote students enrolled in current school year when next school year is not created', function () {
+    $admin = Admin::factory()->create();
+
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2026-2027',
+        'is_active' => true,
+    ], 'sy_id');
+
+    $fromSectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Grade 7 - Rizal',
+        'gr_level' => 'Grade 7',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $toSectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Grade 8 - Bonifacio',
+        'gr_level' => 'Grade 8',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $student = Student::create([
+        'rfid_uid' => 'PROMOTE005',
+        'stu_fname' => 'Carlo',
+        'stu_lname' => 'Mendoza',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $fromSectId,
+        'sy_id' => $syId,
+    ]);
+
+    $this->actingAs($admin, 'admin')
+        ->post(route('admin.student.promote'), [
+            'from_sect_id' => $fromSectId,
+            'to_sect_id' => $toSectId,
+        ])
+        ->assertSessionHasErrors(['from_sect_id']);
+
+    expect(
+        DB::table('student_section')
+            ->where('stu_id', $student->stu_id)
+            ->where('sect_id', $toSectId)
+            ->exists()
+    )->toBeFalse();
+});
+
 test('returns an error when the section has already been promoted this school year', function () {
     $admin = Admin::factory()->create();
-    ['syId' => $syId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
+    ['prevSyId' => $prevSyId, 'syId' => $syId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
 
     $student = Student::create([
         'rfid_uid' => 'PROMOTE002',
@@ -108,9 +162,9 @@ test('returns an error when the section has already been promoted this school ye
         'is_deleted' => false,
     ]);
 
-    // Student already promoted: has records in both from and to sections for the active SY
+    // Student already promoted: has record in fromSection for prev SY and toSection for active SY
     DB::table('student_section')->insert([
-        ['stu_id' => $student->stu_id, 'sect_id' => $fromSectId, 'sy_id' => $syId],
+        ['stu_id' => $student->stu_id, 'sect_id' => $fromSectId, 'sy_id' => $prevSyId],
         ['stu_id' => $student->stu_id, 'sect_id' => $toSectId,   'sy_id' => $syId],
     ]);
 
@@ -124,7 +178,7 @@ test('returns an error when the section has already been promoted this school ye
 
 test('promoting skips archived students', function () {
     $admin = Admin::factory()->create();
-    ['syId' => $syId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
+    ['prevSyId' => $prevSyId, 'fromSectId' => $fromSectId, 'toSectId' => $toSectId] = makePromoteFixture();
 
     $archived = Student::create([
         'rfid_uid' => 'PROMOTE003',
@@ -137,7 +191,7 @@ test('promoting skips archived students', function () {
     DB::table('student_section')->insert([
         'stu_id' => $archived->stu_id,
         'sect_id' => $fromSectId,
-        'sy_id' => $syId,
+        'sy_id' => $prevSyId,
     ]);
 
     $this->actingAs($admin, 'admin')

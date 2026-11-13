@@ -166,6 +166,7 @@ class AdminStudentController extends Controller
                         ->where('dest.sy_id', $activeSyId)
                         ->whereColumn('source.sect_id', '!=', 'dest.sect_id');
                 })
+                ->where('source.sy_id', '!=', $activeSyId)
                 ->select('source.sect_id')
                 ->distinct()
                 ->pluck('sect_id')
@@ -438,15 +439,26 @@ class AdminStudentController extends Controller
             'to_sect_id.different' => 'Destination section must be different from the source section.',
         ]);
 
-        $activeSyId = DB::table('school_year')->where('is_active', true)->value('sy_id');
+        $activeSchoolYear = DB::table('school_year')
+            ->where('is_active', true)
+            ->first(['sy_id', 'sy_label']);
 
-        $alreadyPromoted = (bool) $activeSyId && DB::table('student_section as source')
+        if (! $activeSchoolYear) {
+            return back()->withErrors([
+                'from_sect_id' => 'No active school year found. Please create and activate a school year first.',
+            ]);
+        }
+
+        $activeSyId = $activeSchoolYear->sy_id;
+
+        $alreadyPromoted = DB::table('student_section as source')
             ->join('student_section as dest', function ($join) use ($activeSyId) {
                 $join->on('source.stu_id', '=', 'dest.stu_id')
                     ->where('dest.sy_id', $activeSyId)
                     ->whereColumn('source.sect_id', '!=', 'dest.sect_id');
             })
             ->where('source.sect_id', $validated['from_sect_id'])
+            ->where('source.sy_id', '!=', $activeSyId)
             ->exists();
 
         if ($alreadyPromoted) {
@@ -457,8 +469,51 @@ class AdminStudentController extends Controller
 
         $studentIds = DB::table('student_section')
             ->where('sect_id', $validated['from_sect_id'])
+            ->where('sy_id', '!=', $activeSyId)
             ->pluck('stu_id')
             ->unique();
+
+        if ($studentIds->isEmpty()) {
+            $hasCurrentSyStudents = DB::table('student_section as ss')
+                ->join('student as s', 's.stu_id', '=', 'ss.stu_id')
+                ->where('ss.sect_id', $validated['from_sect_id'])
+                ->where('ss.sy_id', $activeSyId)
+                ->where('s.is_deleted', false)
+                ->exists();
+
+            if ($hasCurrentSyStudents) {
+                $currentLabel = $activeSchoolYear->sy_label ?? 'the current school year';
+                $nextLabel = null;
+                if (preg_match('/^(\d{4})\s*-\s*(\d{4})$/', (string) $currentLabel, $matches)) {
+                    $nextLabel = ((int) $matches[1] + 1).'-'.((int) $matches[2] + 1);
+                }
+
+                $nextSyExists = $nextLabel
+                    ? DB::table('school_year')
+                        ->where('sy_label', $nextLabel)
+                        ->where(function ($q) {
+                            $q->whereNull('is_deleted')->orWhere('is_deleted', false);
+                        })
+                        ->exists()
+                    : false;
+
+                if ($nextLabel && ! $nextSyExists) {
+                    return back()->withErrors([
+                        'from_sect_id' => "Cannot promote students to SY {$nextLabel} because school year {$nextLabel} has not been created yet. Please create and activate it in School Year Management first.",
+                    ]);
+                }
+
+                $targetText = $nextLabel ? "SY {$nextLabel}" : 'the next school year';
+
+                return back()->withErrors([
+                    'from_sect_id' => "Students in this section are already enrolled in SY {$currentLabel}. Please set {$targetText} as Active in School Year Management before promoting.",
+                ]);
+            }
+
+            return back()->withErrors([
+                'from_sect_id' => 'No eligible students from a previous school year were found in this section.',
+            ]);
+        }
 
         $activeStudentIds = Student::whereIn('stu_id', $studentIds)
             ->where('is_deleted', false)
