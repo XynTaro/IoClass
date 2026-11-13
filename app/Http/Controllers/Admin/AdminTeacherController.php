@@ -251,7 +251,7 @@ class AdminTeacherController extends Controller
             }
 
             return redirect()->route('admin.teacher.index')
-                ->with('success', "Teacher updated successfully. Temporary password sent via SMS. (Temp Password: {$newPassword})");
+                ->with('success', 'Teacher updated successfully. Temporary password sent via SMS.');
         }
 
         return redirect()->route('admin.teacher.index')

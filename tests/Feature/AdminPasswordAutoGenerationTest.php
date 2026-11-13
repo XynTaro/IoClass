@@ -106,6 +106,7 @@ test('resetting a teacher password on edit sends temporary password via sms and 
         ]);
 
     $response->assertRedirect(route('admin.teacher.index'));
+    $response->assertSessionHas('success', 'Teacher updated successfully. Temporary password sent via SMS.');
 
     $teacher->refresh();
 
