@@ -73,3 +73,44 @@ test('admin with must_change_password true is forced to change password', functi
 
     $response->assertRedirect(route('admin.profile.show'));
 });
+
+test('resetting a teacher password on edit sends temporary password via sms and sets must_change_password to true', function () {
+    $sms = new RecordingSmsSender;
+    $this->app->instance(SmsSender::class, $sms);
+
+    $admin = Admin::factory()->create([
+        'must_change_password' => false,
+    ]);
+
+    $teacher = Teacher::create([
+        'tch_rfid_uid' => 'TEACH-RESET-001',
+        'tch_fname' => 'Elena',
+        'tch_lname' => 'Reyes',
+        'tch_email' => 'elena.reyes@example.com',
+        'contact_number' => '09179998888',
+        'tch_pw' => 'OldPassword123',
+        'status' => 'active',
+        'is_deleted' => false,
+        'must_change_password' => false,
+    ]);
+
+    $response = $this->actingAs($admin, 'admin')
+        ->put(route('admin.teacher.update', $teacher->tch_id), [
+            'tch_rfid_uid' => 'TEACH-RESET-001',
+            'tch_fname' => 'Elena',
+            'tch_lname' => 'Reyes',
+            'tch_email' => 'elena.reyes@example.com',
+            'contact_number' => '09179998888',
+            'tch_pw' => 'TempPass99',
+            'tch_pw_confirmation' => 'TempPass99',
+        ]);
+
+    $response->assertRedirect(route('admin.teacher.index'));
+
+    $teacher->refresh();
+
+    expect($teacher->must_change_password)->toBeTrue();
+    expect(count($sms->messages))->toBe(1);
+    expect($sms->messages[0]['to'])->toBe('09179998888');
+    expect($sms->messages[0]['message'])->toContain('TempPass99');
+});

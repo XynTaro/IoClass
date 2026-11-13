@@ -26,6 +26,7 @@ interface Teacher {
     tch_mname?: string | null;
     tch_lname: string;
     tch_email: string;
+    contact_number?: string | null;
     status: Status | null;
     avatar?: string | null;
     address?: {

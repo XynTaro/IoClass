@@ -1278,8 +1278,10 @@ export default function TeacherModal({
                                         </div>
 
                                         <p className="text-xs text-muted-foreground">
-                                            Auto-generated password — copy it
-                                            before saving.
+                                            Auto-generated temporary password —
+                                            copy it if needed. It will also be
+                                            sent via SMS to the teacher's
+                                            contact number upon saving.
                                         </p>
                                     </>
                                 ) : (

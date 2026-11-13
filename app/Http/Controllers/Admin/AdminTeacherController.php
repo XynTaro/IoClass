@@ -190,8 +190,12 @@ class AdminTeacherController extends Controller
         $validated['tch_mname'] = $this->formatName($validated['tch_mname'] ?? null);
         $validated['tch_lname'] = $this->formatName($validated['tch_lname']);
 
+        $newPassword = null;
         if (empty($validated['tch_pw'])) {
             unset($validated['tch_pw']);
+        } else {
+            $newPassword = $validated['tch_pw'];
+            $validated['must_change_password'] = true;
         }
 
         $this->normalizeRfidFields($validated);
@@ -225,7 +229,7 @@ class AdminTeacherController extends Controller
 
             $teacherFields = array_intersect_key($validated, array_flip([
                 'tch_rfid_uid', 'master_card', 'tch_fname', 'tch_mname', 'tch_lname',
-                'tch_email', 'contact_number', 'add_id', 'tch_pw',
+                'tch_email', 'contact_number', 'add_id', 'tch_pw', 'must_change_password',
             ]));
 
             $teacherModel->update($teacherFields);
@@ -233,6 +237,22 @@ class AdminTeacherController extends Controller
 
         $teacherModel->refresh();
         RfidRegistryCache::forget();
+
+        if ($newPassword !== null) {
+            try {
+                if ($teacherModel->contact_number) {
+                    $this->sms->send(
+                        $teacherModel->contact_number,
+                        "Your teacher account password has been reset. You can now log in using your temporary password: {$newPassword}. Please change your password after logging in."
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send teacher password reset SMS: '.$e->getMessage());
+            }
+
+            return redirect()->route('admin.teacher.index')
+                ->with('success', "Teacher updated successfully. Temporary password sent via SMS. (Temp Password: {$newPassword})");
+        }
 
         return redirect()->route('admin.teacher.index')
             ->with('success', 'Teacher updated successfully.');
