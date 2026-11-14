@@ -14,7 +14,7 @@ import {
     UserRound,
     WifiOff,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import AddressModal, {
     AddressSection,
@@ -36,6 +36,13 @@ import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { FormFieldError, inputErrorClass } from '@/components/form-field-error';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useWirelessRfidCapture } from '@/hooks/use-wireless-rfid-capture';
 import { normalizeRfidUid } from '@/lib/rfid';
@@ -74,6 +81,8 @@ interface Teacher {
     contact_number?: string | null;
     status: Status | null;
     avatar?: string | null;
+    is_adviser?: boolean;
+    adviser_sect_id?: number | null;
     address?: {
         add_id?: number;
         region?: string | null;
@@ -96,6 +105,8 @@ interface TeacherFormData {
     tch_pw_confirmation: string;
     auto_password: boolean;
     reset_password: boolean;
+    is_adviser: boolean;
+    adviser_sect_id: number | '';
     region: string;
     province: string;
     municipality: string;
@@ -127,7 +138,28 @@ export default function TeacherModal({
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [copied, setCopied] = useState<'pw' | 'confirm' | null>(null);
     const [editTab, setEditTab] = useState<'details' | 'address'>('details');
+    const [adviserGradeFilter, setAdviserGradeFilter] = useState('');
     const addressCascade = useCascade();
+
+    const gradeLevels = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    sections
+                        .map((s) => s.gr_level)
+                        .filter((g): g is string => Boolean(g)),
+                ),
+            ),
+        [sections],
+    );
+
+    const adviserSections = useMemo(
+        () =>
+            adviserGradeFilter
+                ? sections.filter((s) => s.gr_level === adviserGradeFilter)
+                : sections,
+        [sections, adviserGradeFilter],
+    );
 
     // Wizard state (create mode only)
     const { isOnline } = useOnlineStatus();
@@ -213,6 +245,8 @@ export default function TeacherModal({
         tch_pw_confirmation: '',
         auto_password: true,
         reset_password: false,
+        is_adviser: false,
+        adviser_sect_id: '',
         region: '',
         province: '',
         municipality: '',
@@ -242,6 +276,13 @@ export default function TeacherModal({
     // Populate form when editing or when teacher changes
     useEffect(() => {
         if (teacher && mode === 'edit') {
+            const matchedSection = teacher.adviser_sect_id
+                ? sections.find(
+                      (s) => s.sect_id === Number(teacher.adviser_sect_id),
+                  )
+                : undefined;
+            setAdviserGradeFilter(matchedSection?.gr_level ?? '');
+
             form.setData({
                 tch_id: teacher.tch_id ?? '',
                 tch_rfid_uid: (teacher.tch_rfid_uid as string | null) ?? '',
@@ -255,6 +296,8 @@ export default function TeacherModal({
                 tch_pw_confirmation: '',
                 auto_password: true,
                 reset_password: false,
+                is_adviser: Boolean(teacher.is_adviser),
+                adviser_sect_id: teacher.adviser_sect_id ?? '',
                 region: teacher.address?.region ?? '',
                 province: teacher.address?.province ?? '',
                 municipality: teacher.address?.municipality ?? '',
@@ -300,6 +343,7 @@ export default function TeacherModal({
             setShowConfirmPassword(false);
             setStep(1);
             setEditTab('details');
+            setAdviserGradeFilter('');
             addressCascade.reset();
             setPendingTeacherData(null);
             setPendingAddressData(null);
@@ -443,6 +487,15 @@ export default function TeacherModal({
                 errors.tch_pw_confirmation =
                     'Password confirmation does not match.';
             }
+        }
+
+        if (
+            mode === 'edit' &&
+            form.data.is_adviser &&
+            !form.data.adviser_sect_id
+        ) {
+            errors.adviser_sect_id =
+                'Please select an advisory section when assigning as class adviser.';
         }
 
         setLocalErrors(errors);
@@ -682,6 +735,8 @@ export default function TeacherModal({
                                             'master_card',
                                             'tch_pw',
                                             'tch_pw_confirmation',
+                                            'is_adviser',
+                                            'adviser_sect_id',
                                         ].includes(k),
                                 )
                                 .map(([k, msg]) => (
@@ -984,6 +1039,178 @@ export default function TeacherModal({
                                     />
                                 </div>
                             </div>
+
+                            {/* Advisory Assignment (Edit Mode) */}
+                            {mode === 'edit' && (
+                                <div className="space-y-3 rounded-xl border bg-card p-3 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <UserRound className="size-4 text-emerald-600 dark:text-emerald-400" />
+                                        <p className="text-sm font-semibold text-foreground">
+                                            Advisory Assignment
+                                        </p>
+                                    </div>
+
+                                    <label
+                                        htmlFor="edit_is_adviser"
+                                        className={cn(
+                                            'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
+                                            form.data.is_adviser
+                                                ? 'border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-950/20'
+                                                : 'border-border/60 hover:bg-muted/40',
+                                        )}
+                                    >
+                                        <Checkbox
+                                            id="edit_is_adviser"
+                                            checked={form.data.is_adviser}
+                                            onCheckedChange={(checked) => {
+                                                const isChecked =
+                                                    Boolean(checked);
+                                                form.setData(
+                                                    'is_adviser',
+                                                    isChecked,
+                                                );
+                                                if (!isChecked) {
+                                                    form.setData(
+                                                        'adviser_sect_id',
+                                                        '',
+                                                    );
+                                                    setAdviserGradeFilter('');
+                                                }
+                                                clearFieldErrors(
+                                                    'adviser_sect_id',
+                                                );
+                                            }}
+                                        />
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-medium">
+                                                This teacher is an adviser
+                                            </span>
+                                            <span className="block text-xs text-muted-foreground">
+                                                Assign or update this teacher’s
+                                                advisory section for the active
+                                                school year.
+                                            </span>
+                                        </span>
+                                    </label>
+
+                                    {form.data.is_adviser && (
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-muted-foreground">
+                                                    Advisory Grade Level
+                                                </Label>
+                                                <Select
+                                                    value={
+                                                        adviserGradeFilter ||
+                                                        'all'
+                                                    }
+                                                    onValueChange={(value) => {
+                                                        setAdviserGradeFilter(
+                                                            value === 'all'
+                                                                ? ''
+                                                                : value,
+                                                        );
+                                                        form.setData(
+                                                            'adviser_sect_id',
+                                                            '',
+                                                        );
+                                                        clearFieldErrors(
+                                                            'adviser_sect_id',
+                                                        );
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-9 rounded-xl">
+                                                        <SelectValue placeholder="All grade levels" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="all">
+                                                            All grade levels
+                                                        </SelectItem>
+                                                        {gradeLevels.map(
+                                                            (g) => (
+                                                                <SelectItem
+                                                                    key={g}
+                                                                    value={g}
+                                                                >
+                                                                    {g}
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-muted-foreground">
+                                                    Advisory Section{' '}
+                                                    <span className="text-destructive">
+                                                        *
+                                                    </span>
+                                                </Label>
+                                                <Select
+                                                    value={
+                                                        form.data
+                                                            .adviser_sect_id ===
+                                                        ''
+                                                            ? ''
+                                                            : String(
+                                                                  form.data
+                                                                      .adviser_sect_id,
+                                                              )
+                                                    }
+                                                    onValueChange={(v) => {
+                                                        form.setData(
+                                                            'adviser_sect_id',
+                                                            Number(v),
+                                                        );
+                                                        clearFieldErrors(
+                                                            'adviser_sect_id',
+                                                        );
+                                                    }}
+                                                >
+                                                    <SelectTrigger
+                                                        className={cn(
+                                                            'h-9 rounded-xl',
+                                                            Boolean(
+                                                                getFieldError(
+                                                                    'adviser_sect_id',
+                                                                ),
+                                                            ) &&
+                                                                'border-red-500 focus:ring-red-500/20',
+                                                        )}
+                                                    >
+                                                        <SelectValue placeholder="Select section" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        {adviserSections.map(
+                                                            (s) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        s.sect_id
+                                                                    }
+                                                                    value={String(
+                                                                        s.sect_id,
+                                                                    )}
+                                                                >
+                                                                    {adviserGradeFilter
+                                                                        ? s.sect_name
+                                                                        : `${s.gr_level} — ${s.sect_name}`}
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormFieldError
+                                                    label="Advisory section"
+                                                    message={getFieldError(
+                                                        'adviser_sect_id',
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Security */}
                             <div className="space-y-2 rounded-xl border bg-card p-3 shadow-sm">

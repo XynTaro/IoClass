@@ -310,3 +310,72 @@ test('student with both parents marked deceased requires guardian on edit', func
         ->and($guardian->guardian_lname)->toBe('Cruz')
         ->and($guardian->contact_number)->toBe('09199998877');
 });
+
+test('teacher adviser assignment can be added, changed, and removed on edit', function () {
+    $teacher = Teacher::create([
+        'tch_fname' => 'Elena',
+        'tch_lname' => 'Gomez',
+        'tch_email' => 'elena.gomez@example.com',
+        'contact_number' => '09181234567',
+        'tch_pw' => bcrypt('password123'),
+        'tch_rfid_uid' => 'TCHRFID099',
+        'is_deleted' => false,
+    ]);
+
+    // 1. Assign as adviser of sectionA
+    $this->actingAs($this->admin, 'admin')->put(route('admin.teacher.update', $teacher->tch_id), [
+        'tch_fname' => 'Elena',
+        'tch_lname' => 'Gomez',
+        'tch_email' => 'elena.gomez@example.com',
+        'contact_number' => '09181234567',
+        'tch_rfid_uid' => 'TCHRFID099',
+        'is_adviser' => true,
+        'adviser_sect_id' => $this->sectionA->sect_id,
+    ])->assertRedirect(route('admin.teacher.index'))
+        ->assertSessionHasNoErrors();
+
+    expect(DB::table('adviser')
+        ->where('tch_id', $teacher->tch_id)
+        ->where('sy_id', $this->syId)
+        ->where('is_active', true)
+        ->value('sect_id')
+    )->toBe($this->sectionA->sect_id);
+
+    // 2. Switch advisory section to sectionB
+    $this->actingAs($this->admin, 'admin')->put(route('admin.teacher.update', $teacher->tch_id), [
+        'tch_fname' => 'Elena',
+        'tch_lname' => 'Gomez',
+        'tch_email' => 'elena.gomez@example.com',
+        'contact_number' => '09181234567',
+        'tch_rfid_uid' => 'TCHRFID099',
+        'is_adviser' => true,
+        'adviser_sect_id' => $this->sectionB->sect_id,
+    ])->assertRedirect(route('admin.teacher.index'))
+        ->assertSessionHasNoErrors();
+
+    expect(DB::table('adviser')
+        ->where('tch_id', $teacher->tch_id)
+        ->where('sy_id', $this->syId)
+        ->where('is_active', true)
+        ->value('sect_id')
+    )->toBe($this->sectionB->sect_id);
+
+    // 3. Uncheck is_adviser -> deactivates advisory record
+    $this->actingAs($this->admin, 'admin')->put(route('admin.teacher.update', $teacher->tch_id), [
+        'tch_fname' => 'Elena',
+        'tch_lname' => 'Gomez',
+        'tch_email' => 'elena.gomez@example.com',
+        'contact_number' => '09181234567',
+        'tch_rfid_uid' => 'TCHRFID099',
+        'is_adviser' => false,
+        'adviser_sect_id' => null,
+    ])->assertRedirect(route('admin.teacher.index'))
+        ->assertSessionHasNoErrors();
+
+    expect(DB::table('adviser')
+        ->where('tch_id', $teacher->tch_id)
+        ->where('sy_id', $this->syId)
+        ->where('is_active', true)
+        ->exists()
+    )->toBeFalse();
+});

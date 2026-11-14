@@ -170,12 +170,42 @@ class ClassScheduleService
 
     public function createAdviser(int $teacherId, int $sectionId): void
     {
+        $this->syncAdviser($teacherId, true, $sectionId);
+    }
+
+    public function syncAdviser(int $teacherId, bool $isAdviser, ?int $sectionId): void
+    {
         $syId = DB::table('school_year')->where('is_active', true)->value('sy_id');
 
         if ($syId === null) {
-            throw ValidationException::withMessages([
-                'adviser_sect_id' => 'No active school year is configured.',
+            if ($isAdviser) {
+                throw ValidationException::withMessages([
+                    'adviser_sect_id' => 'No active school year is configured.',
+                ]);
+            }
+
+            return;
+        }
+
+        if (! $isAdviser || $sectionId === null) {
+            Adviser::where('tch_id', $teacherId)
+                ->where('sy_id', $syId)
+                ->update(['is_active' => false]);
+
+            return;
+        }
+
+        $existing = Adviser::where('tch_id', $teacherId)
+            ->where('sy_id', $syId)
+            ->first();
+
+        if ($existing !== null) {
+            $existing->update([
+                'sect_id' => $sectionId,
+                'is_active' => true,
             ]);
+
+            return;
         }
 
         Adviser::create([

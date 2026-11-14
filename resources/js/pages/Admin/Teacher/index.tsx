@@ -29,6 +29,8 @@ interface Teacher {
     contact_number?: string | null;
     status: Status | null;
     avatar?: string | null;
+    is_adviser?: boolean;
+    adviser_sect_id?: number | null;
     address?: {
         add_id?: number;
         region?: string | null;

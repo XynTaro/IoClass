@@ -52,13 +52,25 @@ class AdminTeacherController extends Controller
             ->orderBy('tch_id', 'desc')
             ->paginate(8);
 
-        $teachers->through(function ($teacher) {
+        $activeSyId = DB::table('school_year')->where('is_active', true)->value('sy_id');
+        $advisoryMap = $activeSyId
+            ? DB::table('adviser')
+                ->where('sy_id', $activeSyId)
+                ->where('is_active', true)
+                ->pluck('sect_id', 'tch_id')
+            : collect();
+
+        $teachers->through(function ($teacher) use ($advisoryMap) {
             $teacher->avatar = app(AvatarService::class)->url($teacher->avatar);
             if ($teacher->is_deleted) {
                 $teacher->status = 'inactive';
             } elseif (! $teacher->status) {
                 $teacher->status = 'active';
             }
+
+            $adviserSectId = $advisoryMap[$teacher->tch_id] ?? null;
+            $teacher->adviser_sect_id = $adviserSectId !== null ? (int) $adviserSectId : null;
+            $teacher->is_adviser = $teacher->adviser_sect_id !== null;
 
             return $teacher;
         });
@@ -148,7 +160,7 @@ class AdminTeacherController extends Controller
     {
         $teacherModel = Teacher::findOrFail($teacher);
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'tch_rfid_uid' => ['required', 'string', 'max:100', 'different:master_card', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
             'master_card' => ['nullable', 'string', 'max:100', 'different:tch_rfid_uid', new UniqueRfidUid(ignoreTeacherId: $teacherModel->tch_id)],
             'tch_fname' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/', new UniqueFullName('teacher', ignoreId: $teacherModel->tch_id)],
@@ -166,7 +178,7 @@ class AdminTeacherController extends Controller
             'perm_province' => 'nullable|string|max:100',
             'perm_municipality' => 'nullable|string|max:100',
             'perm_barangay' => 'nullable|string|max:100',
-        ], [
+        ], ClassScheduleService::adviserValidationRules()), array_merge([
             'tch_rfid_uid.required' => 'RFID UID is required.',
             'tch_rfid_uid.string' => 'RFID UID must be a valid string.',
             'tch_rfid_uid.max' => 'RFID UID must not exceed 100 characters.',
@@ -184,7 +196,7 @@ class AdminTeacherController extends Controller
             'tch_pw.min' => 'Password must be at least 8 characters.',
             'tch_pw.confirmed' => 'Password confirmation does not match.',
             'contact_number.regex' => 'Contact number must contain only numbers.',
-        ]);
+        ], ClassScheduleService::adviserValidationMessages()));
 
         $validated['tch_fname'] = $this->formatName($validated['tch_fname']);
         $validated['tch_mname'] = $this->formatName($validated['tch_mname'] ?? null);
@@ -233,6 +245,19 @@ class AdminTeacherController extends Controller
             ]));
 
             $teacherModel->update($teacherFields);
+
+            if ($request->has('is_adviser')) {
+                $isAdviser = (bool) ($validated['is_adviser'] ?? false);
+                $adviserSectId = $isAdviser && ! empty($validated['adviser_sect_id'])
+                    ? (int) $validated['adviser_sect_id']
+                    : null;
+
+                $this->classScheduleService->syncAdviser(
+                    $teacherModel->tch_id,
+                    $isAdviser,
+                    $adviserSectId,
+                );
+            }
         });
 
         $teacherModel->refresh();
