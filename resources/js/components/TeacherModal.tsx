@@ -147,9 +147,9 @@ export default function TeacherModal({
                 new Set(
                     sections
                         .map((s) => s.gr_level)
-                        .filter((g): g is string => Boolean(g)),
+                        .filter((g): g is string => Boolean(g && g.trim())),
                 ),
-            ),
+            ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
         [sections],
     );
 
@@ -157,7 +157,7 @@ export default function TeacherModal({
         () =>
             adviserGradeFilter
                 ? sections.filter((s) => s.gr_level === adviserGradeFilter)
-                : sections,
+                : [],
         [sections, adviserGradeFilter],
     );
 
@@ -1097,18 +1097,16 @@ export default function TeacherModal({
                                         <div className="grid gap-3 sm:grid-cols-2">
                                             <div className="space-y-1.5">
                                                 <Label className="text-xs font-medium text-muted-foreground">
-                                                    Advisory Grade Level
+                                                    Advisory Grade Level{' '}
+                                                    <span className="text-destructive">
+                                                        *
+                                                    </span>
                                                 </Label>
                                                 <Select
-                                                    value={
-                                                        adviserGradeFilter ||
-                                                        'all'
-                                                    }
+                                                    value={adviserGradeFilter}
                                                     onValueChange={(value) => {
                                                         setAdviserGradeFilter(
-                                                            value === 'all'
-                                                                ? ''
-                                                                : value,
+                                                            value,
                                                         );
                                                         form.setData(
                                                             'adviser_sect_id',
@@ -1120,12 +1118,9 @@ export default function TeacherModal({
                                                     }}
                                                 >
                                                     <SelectTrigger className="h-9 rounded-xl">
-                                                        <SelectValue placeholder="All grade levels" />
+                                                        <SelectValue placeholder="Select grade level" />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
-                                                        <SelectItem value="all">
-                                                            All grade levels
-                                                        </SelectItem>
                                                         {gradeLevels.map(
                                                             (g) => (
                                                                 <SelectItem
@@ -1158,6 +1153,9 @@ export default function TeacherModal({
                                                                       .adviser_sect_id,
                                                               )
                                                     }
+                                                    disabled={
+                                                        !adviserGradeFilter
+                                                    }
                                                     onValueChange={(v) => {
                                                         form.setData(
                                                             'adviser_sect_id',
@@ -1179,7 +1177,13 @@ export default function TeacherModal({
                                                                 'border-red-500 focus:ring-red-500/20',
                                                         )}
                                                     >
-                                                        <SelectValue placeholder="Select section" />
+                                                        <SelectValue
+                                                            placeholder={
+                                                                adviserGradeFilter
+                                                                    ? 'Select section'
+                                                                    : 'Select grade first'
+                                                            }
+                                                        />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
                                                         {adviserSections.map(
@@ -1192,9 +1196,9 @@ export default function TeacherModal({
                                                                         s.sect_id,
                                                                     )}
                                                                 >
-                                                                    {adviserGradeFilter
-                                                                        ? s.sect_name
-                                                                        : `${s.gr_level} — ${s.sect_name}`}
+                                                                    {
+                                                                        s.sect_name
+                                                                    }
                                                                 </SelectItem>
                                                             ),
                                                         )}

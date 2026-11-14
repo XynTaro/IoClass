@@ -190,7 +190,7 @@ function ScheduleSlotEditor({
     const filteredSections =
         slot.gradeFilter && slot.gradeFilter !== 'all'
             ? sections.filter((s) => s.gr_level === slot.gradeFilter)
-            : sections;
+            : [];
 
     const filteredRooms =
         slot.buildingFilter && slot.buildingFilter !== 'all'
@@ -295,24 +295,21 @@ function ScheduleSlotEditor({
             <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground/80">
-                        Grade Level
+                        Grade Level <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                        value={slot.gradeFilter || 'all'}
+                        value={slot.gradeFilter || ''}
                         onValueChange={(value) =>
                             updateSlot({
-                                gradeFilter: value === 'all' ? '' : value,
+                                gradeFilter: value,
                                 sect_id: '',
                             })
                         }
                     >
                         <SelectTrigger className="h-9.5 rounded-xl">
-                            <SelectValue placeholder="All grade levels" />
+                            <SelectValue placeholder="Select grade level" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
-                            <SelectItem value="all">
-                                All grade levels
-                            </SelectItem>
                             {gradeLevels.map((g) => (
                                 <SelectItem key={g} value={g}>
                                     {g}
@@ -328,6 +325,7 @@ function ScheduleSlotEditor({
                     </Label>
                     <Select
                         value={slot.sect_id === '' ? '' : String(slot.sect_id)}
+                        disabled={!slot.gradeFilter || slot.gradeFilter === 'all'}
                         onValueChange={(v) =>
                             updateSlot({ sect_id: Number(v) })
                         }
@@ -338,7 +336,13 @@ function ScheduleSlotEditor({
                                 sectError && 'border-red-500 focus:ring-red-500/20',
                             )}
                         >
-                            <SelectValue placeholder="Select section" />
+                            <SelectValue
+                                placeholder={
+                                    !slot.gradeFilter || slot.gradeFilter === 'all'
+                                        ? 'Select grade first'
+                                        : 'Select section'
+                                }
+                            />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
                             {filteredSections.map((s) => (
@@ -346,10 +350,7 @@ function ScheduleSlotEditor({
                                     key={s.sect_id}
                                     value={String(s.sect_id)}
                                 >
-                                    {slot.gradeFilter &&
-                                    slot.gradeFilter !== 'all'
-                                        ? s.sect_name
-                                        : `${s.gr_level} — ${s.sect_name}`}
+                                    {s.sect_name}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -688,7 +689,7 @@ export default function ScheduleModal({
         () =>
             adviserGradeFilter && adviserGradeFilter !== 'all'
                 ? sections.filter((s) => s.gr_level === adviserGradeFilter)
-                : sections,
+                : [],
         [sections, adviserGradeFilter],
     );
 
@@ -1188,17 +1189,16 @@ export default function ScheduleModal({
                                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-semibold text-foreground/80">
-                                                Advisory Grade Level
+                                                Advisory Grade Level{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </Label>
                                             <Select
-                                                value={
-                                                    adviserGradeFilter || 'all'
-                                                }
+                                                value={adviserGradeFilter}
                                                 onValueChange={(value) => {
                                                     setAdviserGradeFilter(
-                                                        value === 'all'
-                                                            ? ''
-                                                            : value,
+                                                        value,
                                                     );
                                                     adviserForm.setData(
                                                         'adviser_sect_id',
@@ -1207,12 +1207,9 @@ export default function ScheduleModal({
                                                 }}
                                             >
                                                 <SelectTrigger className="h-9.5 rounded-xl">
-                                                    <SelectValue placeholder="All grade levels" />
+                                                    <SelectValue placeholder="Select grade level" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl">
-                                                    <SelectItem value="all">
-                                                        All grade levels
-                                                    </SelectItem>
                                                     {gradeLevels.map((g) => (
                                                         <SelectItem
                                                             key={g}
@@ -1242,6 +1239,7 @@ export default function ScheduleModal({
                                                                   .adviser_sect_id,
                                                           )
                                                 }
+                                                disabled={!adviserGradeFilter}
                                                 onValueChange={(v) => {
                                                     adviserForm.setData(
                                                         'adviser_sect_id',
@@ -1256,7 +1254,13 @@ export default function ScheduleModal({
                                                             'border-red-500 focus:ring-red-500/20',
                                                     )}
                                                 >
-                                                    <SelectValue placeholder="Select section" />
+                                                    <SelectValue
+                                                        placeholder={
+                                                            adviserGradeFilter
+                                                                ? 'Select section'
+                                                                : 'Select grade first'
+                                                        }
+                                                    />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl">
                                                     {adviserSections.map(
@@ -1267,9 +1271,7 @@ export default function ScheduleModal({
                                                                     s.sect_id,
                                                                 )}
                                                             >
-                                                                {adviserGradeFilter
-                                                                    ? s.sect_name
-                                                                    : `${s.gr_level} — ${s.sect_name}`}
+                                                                {s.sect_name}
                                                             </SelectItem>
                                                         ),
                                                     )}
