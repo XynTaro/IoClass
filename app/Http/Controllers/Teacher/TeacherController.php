@@ -1,11 +1,7 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Teacher;
 
-class TeacherController extends Controller
-{
-    public function __construct()
-    {
-        $this->middleware('auth:teacher');
-    }
-}
+use App\Http\Controllers\Controller;
+
+class TeacherController extends Controller {}

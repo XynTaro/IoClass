@@ -306,3 +306,24 @@ test('rfid capture stores uid without lookup', function () {
             'rfid_uid' => 'CAPTURE999',
         ]);
 });
+
+test('inactive teacher rfid scan is rejected', function () {
+    Teacher::create([
+        'tch_rfid_uid' => 'TEACHINACTIVE',
+        'tch_fname' => 'Inactive',
+        'tch_lname' => 'Teacher',
+        'tch_email' => 'inactive.rfid@example.com',
+        'tch_pw' => 'password123',
+        'status' => 'inactive',
+        'is_deleted' => false,
+    ]);
+
+    $this->postJson(route('api.rfid.scan'), [
+        'rfid_uid' => 'teachinactive',
+    ])
+        ->assertSuccessful()
+        ->assertJson([
+            'success' => false,
+            'message' => 'RFID UID not recognized.',
+        ]);
+});

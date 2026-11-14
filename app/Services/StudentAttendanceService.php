@@ -207,63 +207,6 @@ class StudentAttendanceService
         ];
     }
 
-    /**
-     * Auto-transfer present/late students from the previous period into a new
-     * subject attendance record when a teacher opens a new session.
-     *
-     * NOTE: Not called anywhere. With tap-in-only-in-class rules, calling this
-     * would mark students present without a tap.
-     *
-     * @return int Number of students auto-transferred
-     */
-    public function transferFromPreviousSubject(
-        int $sectId,
-        int $newSubjId,
-        int $newSessionId,
-        int $newSyId,
-    ): int {
-        $today = now()->toDateString();
-
-        $transferred = DB::table('attendance as a')
-            ->join('student_section as ss', function ($join) use ($sectId, $newSyId) {
-                $join->on('ss.stu_id', '=', 'a.stu_id')
-                    ->where('ss.sect_id', $sectId)
-                    ->where('ss.sy_id', $newSyId);
-            })
-            ->whereDate('a.att_date', $today)
-            ->whereIn('a.status', ['present', 'late'])
-            ->whereNotNull('a.subj_id')
-            ->where('a.subj_id', '!=', $newSubjId)
-            ->whereNotExists(function ($sub) use ($today, $newSubjId) {
-                $sub->from('attendance')
-                    ->whereColumn('attendance.stu_id', 'a.stu_id')
-                    ->whereDate('attendance.att_date', $today)
-                    ->where('attendance.subj_id', $newSubjId);
-            })
-            ->select('a.stu_id')
-            ->distinct()
-            ->pluck('stu_id');
-
-        if ($transferred->isEmpty()) {
-            return 0;
-        }
-
-        $rows = $transferred->map(fn ($stuId) => [
-            'stu_id' => $stuId,
-            'session_id' => $newSessionId,
-            'subj_id' => $newSubjId,
-            'sect_id' => $sectId,
-            'sy_id' => $newSyId,
-            'att_date' => $today,
-            'time_in' => now(),
-            'status' => 'present',
-        ])->all();
-
-        DB::table('attendance')->insertOrIgnore($rows);
-
-        return count($rows);
-    }
-
     public function resolveActiveSyIdPublic(): ?int
     {
         return $this->resolveActiveSyId();

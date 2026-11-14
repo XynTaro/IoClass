@@ -117,3 +117,36 @@ test('login page shows inactivity notice when reason query parameter is set', fu
     $response->assertOk();
     $response->assertSee('You were automatically logged out due to 30 minutes of inactivity.');
 });
+
+test('inactive or deleted teachers cannot authenticate using the login form', function () {
+    Teacher::create([
+        'tch_fname' => 'Inactive',
+        'tch_lname' => 'Teacher',
+        'tch_email' => 'inactive-teacher@school.test',
+        'tch_pw' => 'password',
+        'status' => 'inactive',
+        'is_deleted' => false,
+    ]);
+
+    $this->post(route('login.submit'), [
+        'email' => 'inactive-teacher@school.test',
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest('teacher');
+});
+
+test('deleted admins cannot authenticate using the login form', function () {
+    Admin::factory()->create([
+        'email' => 'deleted-admin@school.test',
+        'pw' => 'password',
+        'is_deleted' => true,
+    ]);
+
+    $this->post(route('login.submit'), [
+        'email' => 'deleted-admin@school.test',
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest('admin');
+});

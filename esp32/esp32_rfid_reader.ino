@@ -12,17 +12,33 @@
 // =========================================================================
 // 1. NETWORK & API CONFIGURATION
 // =========================================================================
+// Copy esp32/config.h.example to esp32/config.h to override Wi-Fi & token settings
+#if __has_include("config.h")
+#include "config.h"
+#endif
+
 // IMPORTANT: ESP32 only supports 2.4 GHz Wi-Fi!
 // - If using phone hotspot (iPhone): Turn ON "Maximize Compatibility".
 // - If using Android hotspot: Set AP Band to "2.4 GHz Band".
-const char* WIFI_SSID        = "IoClass";   // Change to your hotspot/Wi-Fi name (e.g. "Okieee")
-const char* WIFI_PASS        = "11111111";  // Must match your Wi-Fi password
+#ifndef WIFI_SSID
+#define WIFI_SSID "IoClass"
+#endif
 
-// Production Laravel Cloud API Endpoint (HTTPS)
-const char* SCAN_URL         = "https://ioclass-production-1n8wom.laravel.cloud/api/rfid/scan";
+#ifndef WIFI_PASS
+#define WIFI_PASS "11111111"
+#endif
 
-// Must match RFID_DEVICE_TOKEN or be included in RFID_DEVICE_TOKENS in Laravel settings
-const char* DEVICE_TOKEN     = "esp32-room-b";
+#ifndef SCAN_URL
+#ifdef SERVER_BASE
+#define SCAN_URL SERVER_BASE "/scan"
+#else
+#define SCAN_URL "https://ioclass-production-1n8wom.laravel.cloud/api/rfid/scan"
+#endif
+#endif
+
+#ifndef DEVICE_TOKEN
+#define DEVICE_TOKEN "esp32-room-b"
+#endif
 
 const unsigned long HTTP_TIMEOUT_MS = 15000; // 15s timeout for cloud SSL roundtrip
 const unsigned long SCAN_COOLDOWN   = 2500;  // ms between scans to prevent duplicate taps

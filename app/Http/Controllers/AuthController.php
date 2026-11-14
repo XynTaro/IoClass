@@ -29,7 +29,7 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        if (Auth::guard('admin')->attempt($credentials)) {
+        if (Auth::guard('admin')->attempt($this->adminCredentials($credentials))) {
             $request->session()->regenerate();
 
             /** @var Admin $admin */
@@ -55,17 +55,49 @@ class AuthController extends Controller
     }
 
     /**
-     * Map login form fields to teacher table columns.
+     * Map login form fields to active admin table columns.
      *
      * @param  array{email: string, password: string}  $credentials
-     * @return array{tch_email: string, password: string}
+     * @return array<string, mixed>
+     */
+    private function adminCredentials(array $credentials): array
+    {
+        $mapped = [
+            'email' => $credentials['email'],
+            'password' => $credentials['password'],
+        ];
+
+        $table = (new Admin)->getTable();
+        if (Schema::hasTable($table) && Schema::hasColumn($table, 'is_deleted')) {
+            $mapped['is_deleted'] = false;
+        }
+
+        return $mapped;
+    }
+
+    /**
+     * Map login form fields to active teacher table columns.
+     *
+     * @param  array{email: string, password: string}  $credentials
+     * @return array<string, mixed>
      */
     private function teacherCredentials(array $credentials): array
     {
-        return [
+        $mapped = [
             'tch_email' => $credentials['email'],
             'password' => $credentials['password'],
         ];
+
+        $table = (new Teacher)->getTable();
+        if (Schema::hasColumn($table, 'is_deleted')) {
+            $mapped['is_deleted'] = false;
+        }
+
+        if (Schema::hasColumn($table, 'status')) {
+            $mapped['status'] = 'active';
+        }
+
+        return $mapped;
     }
 
     /**

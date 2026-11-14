@@ -16,6 +16,7 @@ use App\Support\RfidSessionCache;
 use App\Support\RfidUid;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class RfidController extends Controller
@@ -42,6 +43,9 @@ class RfidController extends Controller
         // ── Teacher tap: record attendance & open a session ───────────────────
         $teacher = Teacher::query()
             ->where('is_deleted', false)
+            ->where(function ($query): void {
+                $query->where('status', 'active')->orWhereNull('status');
+            })
             ->where(function ($query) use ($uid): void {
                 $query
                     ->where('tch_rfid_uid', $uid)
@@ -176,8 +180,17 @@ class RfidController extends Controller
         $earlyMinutes = (int) config('attendance.teacher_tap_early_minutes', 10);
         $timeEarly = $now->copy()->addMinutes($earlyMinutes)->format('H:i:s');
 
+        $activeSyId = DB::table('school_year')
+            ->where('is_active', true)
+            ->value('sy_id');
+
         $schedule = Class_Schedule::query()
             ->where('tch_id', $teacher->tch_id)
+            ->when($activeSyId, function ($query) use ($activeSyId): void {
+                $query->where(function ($sub) use ($activeSyId): void {
+                    $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
+                });
+            })
             ->where('day_of_week', $dayName)
             ->where('start_time', '<=', $timeEarly)
             ->where('end_time', '>=', $timeNow)
@@ -236,6 +249,7 @@ class RfidController extends Controller
             'tch_lname' => $lname,
             'tch_email' => $email,
             'tch_pw' => bcrypt('changeme123'),
+            'status' => 'active',
             'is_deleted' => false,
         ]);
 

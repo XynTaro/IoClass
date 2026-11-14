@@ -7,6 +7,7 @@ use App\Models\AuditTrail;
 use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -185,10 +186,10 @@ class TeacherSF2Controller extends Controller
 
                 for ($day = 1; $day <= $daysInMonth; $day++) {
                     $date = Carbon::createFromDate($selectedYear, $selectedMonth, $day)->toDateString();
-                    $record = $stuRecords->firstWhere('att_date', $date);
+                    $resolvedStatus = $this->resolveDailyStatus($stuRecords, $date);
 
-                    if ($record) {
-                        $status = strtolower((string) $record->status);
+                    if ($resolvedStatus !== null) {
+                        $status = $resolvedStatus;
                     } else {
                         $currentDate = Carbon::createFromDate($selectedYear, $selectedMonth, $day);
                         $dateStr = $currentDate->toDateString();
@@ -508,8 +509,7 @@ class TeacherSF2Controller extends Controller
 
             foreach ($dayToCol as $dayNum => $col) {
                 $date = Carbon::createFromDate($selectedYear, $selectedMonth, $dayNum)->toDateString();
-                $record = $stuRecords->firstWhere('att_date', $date);
-                $status = $record ? strtolower((string) $record->status) : 'absent';
+                $status = $this->resolveDailyStatus($stuRecords, $date) ?? 'absent';
 
                 if ($status === 'absent') {
                     $sheet->setCellValue($col.$row, 'X');
@@ -553,8 +553,7 @@ class TeacherSF2Controller extends Controller
 
             foreach ($dayToCol as $dayNum => $col) {
                 $date = Carbon::createFromDate($selectedYear, $selectedMonth, $dayNum)->toDateString();
-                $record = $stuRecords->firstWhere('att_date', $date);
-                $status = $record ? strtolower((string) $record->status) : 'absent';
+                $status = $this->resolveDailyStatus($stuRecords, $date) ?? 'absent';
 
                 if ($status === 'absent') {
                     $sheet->setCellValue($col.$row, 'X');
@@ -641,5 +640,33 @@ class TeacherSF2Controller extends Controller
                 'Expires' => '0',
             ],
         )->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Resolve a deterministic daily attendance status when a student may have
+     * multiple per-subject attendance rows on the same date.
+     *
+     * Priority: present > late > excused > absent.
+     *
+     * @param  Collection<int, object>  $stuRecords
+     */
+    private function resolveDailyStatus(Collection $stuRecords, string $date): ?string
+    {
+        $statuses = $stuRecords
+            ->where('att_date', $date)
+            ->map(fn ($rec) => strtolower((string) $rec->status))
+            ->values();
+
+        if ($statuses->isEmpty()) {
+            return null;
+        }
+
+        foreach (['present', 'late', 'excused', 'absent'] as $priorityStatus) {
+            if ($statuses->contains($priorityStatus)) {
+                return $priorityStatus;
+            }
+        }
+
+        return $statuses->first();
     }
 }

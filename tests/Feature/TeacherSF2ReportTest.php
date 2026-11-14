@@ -162,3 +162,82 @@ test('sf2 report exports isolated month sheet and maps all weekday columns clean
         @unlink($tempFile);
     }
 });
+
+test('sf2 report aggregates multiple per-subject attendance rows on the same date deterministically', function () {
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2025-2026',
+        'start_date' => '2025-06-01',
+        'end_date' => '2026-05-31',
+        'is_active' => true,
+        'is_deleted' => false,
+    ], 'sy_id');
+
+    $sectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Saturn',
+        'gr_level' => '7',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $teacher = Teacher::create([
+        'tch_fname' => 'Clara',
+        'tch_lname' => 'Lim',
+        'tch_email' => 'clara.lim.sf2@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+        'must_change_password' => false,
+    ]);
+
+    DB::table('adviser')->insert([
+        'tch_id' => $teacher->tch_id,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+        'is_active' => true,
+    ]);
+
+    $stuId = DB::table('student')->insertGetId([
+        'stu_fname' => 'Marco',
+        'stu_lname' => 'Reyes',
+        'gender' => 'male',
+        'status' => 'active',
+        'is_deleted' => false,
+    ], 'stu_id');
+
+    DB::table('student_section')->insert([
+        'stu_id' => $stuId,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    $subj1Id = DB::table('subject')->insertGetId(['subj_code' => 'MATH', 'subj_name' => 'Math'], 'subj_id');
+    $subj2Id = DB::table('subject')->insertGetId(['subj_code' => 'ENG', 'subj_name' => 'English'], 'subj_id');
+
+    // Absent in period 1 (inserted first), present in period 2 on 2025-09-01
+    DB::table('attendance')->insert([
+        [
+            'stu_id' => $stuId,
+            'sect_id' => $sectId,
+            'subj_id' => $subj1Id,
+            'sy_id' => $syId,
+            'att_date' => '2025-09-01',
+            'status' => 'absent',
+        ],
+        [
+            'stu_id' => $stuId,
+            'sect_id' => $sectId,
+            'subj_id' => $subj2Id,
+            'sy_id' => $syId,
+            'att_date' => '2025-09-01',
+            'status' => 'present',
+        ],
+    ]);
+
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.sf2-reports.index', [
+            'sy_id' => $syId,
+            'month' => 9,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('rows.0.days.1', 'present')
+        );
+});
