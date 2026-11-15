@@ -663,6 +663,12 @@ export default function MyAttendanceIndex() {
                                         text: 'text-red-700 dark:text-red-400 bg-red-500/10',
                                         bg: 'bg-card hover:bg-red-500/[0.02]',
                                     },
+                                    no_class: {
+                                        border: 'border-zinc-200 dark:border-zinc-800/40 hover:border-zinc-400',
+                                        dot: 'bg-zinc-400',
+                                        text: 'text-zinc-700 dark:text-zinc-300 bg-zinc-500/10',
+                                        bg: 'bg-card hover:bg-zinc-500/[0.02]',
+                                    },
                                 };
 
                                 const currentStyles =

@@ -768,6 +768,13 @@ export default function TeacherAttendanceIndex() {
                                     text: 'text-rose-700 dark:text-rose-400 bg-rose-500/10',
                                     bg: 'bg-card hover:bg-rose-500/[0.02]',
                                 },
+                                no_class: {
+                                    border: 'border-zinc-200 dark:border-zinc-800/40 hover:border-zinc-400',
+                                    ring: 'ring-zinc-500/20',
+                                    dot: 'bg-zinc-400',
+                                    text: 'text-zinc-700 dark:text-zinc-300 bg-zinc-500/10',
+                                    bg: 'bg-card hover:bg-zinc-500/[0.02]',
+                                },
                             };
                             
                             const currentStyles = statusStyles[student.attendance_status ?? 'absent'];
@@ -804,7 +811,9 @@ export default function TeacherAttendanceIndex() {
                                         {/* Status and Time */}
                                         <div className="flex flex-col gap-1.5 pt-2.5 border-t border-border/60">
                                             <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${currentStyles.text}`}>
-                                                {student.attendance_status}
+                                                {student.attendance_status === 'no_class'
+                                                    ? 'No Class'
+                                                    : student.attendance_status}
                                             </span>
                                             <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-medium text-muted-foreground tabular-nums">
                                                 {student.time_in ? (
