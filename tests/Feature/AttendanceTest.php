@@ -283,3 +283,32 @@ test('guests are redirected from teacher attendance index', function () {
     $this->get(route('teacher.attendance.index'))
         ->assertRedirect(route('login'));
 });
+
+test('teacher attendance index shows no_class instead of absent on days with no scheduled class', function () {
+    $setup = setupAttendanceTestSchedule();
+
+    $student = Student::create([
+        'rfid_uid' => 'STUNOCLASS01',
+        'stu_fname' => 'Kaye',
+        'stu_lname' => 'Ramos',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $setup['sect_id'],
+        'sy_id' => $setup['sy_id'],
+    ]);
+
+    // 2026-11-15 is a Sunday (schedule is only on Monday)
+    $this->actingAs($setup['teacher'], 'teacher')
+        ->get(route('teacher.attendance.index', ['date' => '2026-11-15']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Teacher/Attendance/index')
+            ->where('summary.absent', 0)
+            ->has('attendance.data', 1)
+            ->where('attendance.data.0.attendance_status', 'no_class')
+        );
+});

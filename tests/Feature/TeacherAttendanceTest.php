@@ -267,3 +267,52 @@ test('teacher can view personal attendance page', function () {
             ->where('summary.present', 1)
         );
 });
+
+test('admin teacher attendance shows no_class instead of absent when teacher has no class scheduled on that day', function () {
+    $admin = Admin::create([
+        'adm_fname' => 'Super',
+        'adm_lname' => 'Admin',
+        'adm_email' => 'admin.noclass@example.com',
+        'adm_pw' => 'password123',
+        'is_deleted' => false,
+        'must_change_password' => false,
+    ]);
+
+    $teacher = Teacher::create([
+        'tch_fname' => 'Paolo',
+        'tch_lname' => 'Rivera',
+        'tch_email' => 'paolo.rivera@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+    ]);
+
+    $this->actingAs($admin, 'admin')
+        ->get(route('admin.teacher-attendance.index', ['date' => '2026-11-15']))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/TeacherAttendance/Index')
+            ->where('summary.absent', 0)
+            ->where('attendance.data.0.tch_id', $teacher->tch_id)
+            ->where('attendance.data.0.attendance_status', 'no_class')
+        );
+});
+
+test('teacher personal attendance does not count unscheduled date as absent', function () {
+    $teacher = Teacher::create([
+        'tch_fname' => 'Marco',
+        'tch_lname' => 'Diaz',
+        'tch_email' => 'marco.diaz@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+        'must_change_password' => false,
+    ]);
+
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.my-attendance.index', ['date' => '2026-11-15']))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Teacher/MyAttendance/Index')
+            ->where('summary.absent', 0)
+            ->where('summary.total', 0)
+        );
+});

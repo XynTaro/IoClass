@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditTrail;
+use App\Models\CalendarEvent;
 use App\Services\StudentAbsenceNotifier;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -136,6 +137,17 @@ class TeacherVerificationController extends Controller
         $subjId = (int) $selected->subj_id;
         $sectId = (int) $selected->sect_id;
 
+        $dayOfWeek = Carbon::parse($attDate)->format('l');
+        $nonSchoolDay = CalendarEvent::nonSchoolDayInfo($attDate, $activeSyId);
+
+        $isScheduledOnDate = $nonSchoolDay === null && DB::table('class_schedule')
+            ->where('tch_id', $tchId)
+            ->where('subj_id', $subjId)
+            ->where('sect_id', $sectId)
+            ->where('day_of_week', $dayOfWeek)
+            ->when($activeSyId, fn ($builder) => $builder->where('sy_id', $activeSyId))
+            ->exists();
+
         $rows = DB::table('student as s')
             ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
             ->join('section as sec', 'sec.sect_id', '=', 'ss.sect_id')
@@ -162,8 +174,8 @@ class TeacherVerificationController extends Controller
             ->orderBy('s.stu_lname')
             ->orderBy('s.stu_fname')
             ->get()
-            ->map(function ($row) {
-                $row->attendance_status = $row->attendance_status ?? 'absent';
+            ->map(function ($row) use ($isScheduledOnDate) {
+                $row->attendance_status = $row->attendance_status ?? ($isScheduledOnDate ? 'absent' : 'no_class');
                 $row->time_in = $row->time_in
                     ? Carbon::parse($row->time_in)->format('H:i')
                     : null;
@@ -185,6 +197,13 @@ class TeacherVerificationController extends Controller
             ->filter(fn ($row) => $row->attendance_status === 'absent')
             ->values();
 
+        $message = null;
+        if ($nonSchoolDay !== null) {
+            $message = "No classes on {$attDate} ({$nonSchoolDay['title']}).";
+        } elseif (! $isScheduledOnDate) {
+            $message = "No class is scheduled for {$selected->subj_name} ({$selected->sect_name}) on {$dayOfWeek}.";
+        }
+
         return Inertia::render('Teacher/Verification/index', [
             'date' => $attDate,
             'assignments' => $assignments,
@@ -198,7 +217,7 @@ class TeacherVerificationController extends Controller
             ],
             'rows' => $rows,
             'summary' => $summary,
-            'message' => null,
+            'message' => $message,
         ]);
     }
 

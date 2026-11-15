@@ -195,3 +195,37 @@ test('teacher cannot verify a subject they do not teach', function () {
 
     expect(DB::table('attendance')->where('stu_id', $stuId)->exists())->toBeFalse();
 });
+
+test('subject verification does not mark students absent when subject is not scheduled on that day', function () {
+    ['syId' => $syId, 'sectId' => $sectId, 'subjId' => $subjId, 'teacher' => $teacher] = seedVerificationAssignment();
+
+    $stuId = DB::table('student')->insertGetId([
+        'lrn' => '555555555555',
+        'rfid_uid' => 'VERIFNC001',
+        'stu_fname' => 'Zoe',
+        'stu_lname' => 'Lim',
+        'status' => 'active',
+        'is_deleted' => false,
+    ], 'stu_id');
+
+    DB::table('student_section')->insert([
+        'stu_id' => $stuId,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    // 2026-11-15 is a Sunday (subject is only scheduled on Monday)
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.verification.index', [
+            'date' => '2026-11-15',
+            'subj_id' => $subjId,
+            'sect_id' => $sectId,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Teacher/Verification/index')
+            ->where('date', '2026-11-15')
+            ->where('summary.absent', 0)
+            ->has('rows', 0)
+        );
+});

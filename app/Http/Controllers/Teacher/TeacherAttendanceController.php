@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +28,13 @@ class TeacherAttendanceController extends Controller
         $activeSyId = DB::table('school_year')
             ->where('is_active', true)
             ->value('sy_id');
+        $activeSyId = $activeSyId !== null ? (int) $activeSyId : null;
+
+        $dayOfWeek = Carbon::parse($attDate)->format('l');
+        $isNonSchoolDay = CalendarEvent::isNonSchoolDay($attDate, $activeSyId);
 
         $sectionIds = collect();
+        $scheduledSectionIdsOnDate = collect();
 
         if ($activeSyId) {
             $advisorySectionIds = DB::table('adviser')
@@ -46,7 +52,32 @@ class TeacherAttendanceController extends Controller
                 ->merge($scheduleSectionIds)
                 ->unique()
                 ->values();
+
+            if (! $isNonSchoolDay && $sectionIds->isNotEmpty()) {
+                $teacherScheduledSects = DB::table('class_schedule')
+                    ->where('tch_id', $tchId)
+                    ->where('sy_id', $activeSyId)
+                    ->where('day_of_week', $dayOfWeek)
+                    ->pluck('sect_id');
+
+                $advisoryScheduledSects = $advisorySectionIds->isNotEmpty()
+                    ? DB::table('class_schedule')
+                        ->whereIn('sect_id', $advisorySectionIds)
+                        ->where('sy_id', $activeSyId)
+                        ->where('day_of_week', $dayOfWeek)
+                        ->pluck('sect_id')
+                    : collect();
+
+                $scheduledSectionIdsOnDate = $teacherScheduledSects
+                    ->merge($advisoryScheduledSects)
+                    ->unique()
+                    ->map(fn ($id) => (int) $id)
+                    ->values();
+            }
         }
+
+        $scheduledSectionList = $scheduledSectionIdsOnDate->all();
+        $scheduledSectionSet = array_flip($scheduledSectionList);
 
         $query = DB::table('student as s')
             ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
@@ -68,6 +99,7 @@ class TeacherAttendanceController extends Controller
                 's.lrn',
                 's.stu_fname',
                 's.stu_lname',
+                'sec.sect_id',
                 'sec.gr_level',
                 'sec.sect_name as sect',
                 'a.status as attendance_status',
@@ -104,18 +136,29 @@ class TeacherAttendanceController extends Controller
         if ($attendanceFilter === 'present' || $attendanceFilter === 'late') {
             $query->where('a.status', $attendanceFilter);
         } elseif ($attendanceFilter === 'absent') {
-            $query->where(function ($builder) {
-                $builder->whereNull('a.status')
-                    ->orWhere('a.status', 'absent');
+            $query->where(function ($builder) use ($isNonSchoolDay, $scheduledSectionList): void {
+                $builder->where('a.status', 'absent');
+                if (! $isNonSchoolDay && ! empty($scheduledSectionList)) {
+                    $builder->orWhere(function ($sub) use ($scheduledSectionList): void {
+                        $sub->whereNull('a.status')
+                            ->whereIn('sec.sect_id', $scheduledSectionList);
+                    });
+                }
             });
         } elseif ($attendanceFilter === 'excused') {
             $query->where('a.status', 'excused');
+        } elseif ($attendanceFilter === 'no_class') {
+            $query->whereNull('a.status');
+            if (! $isNonSchoolDay && ! empty($scheduledSectionList)) {
+                $query->whereNotIn('sec.sect_id', $scheduledSectionList);
+            }
         }
 
         $rows = $query->paginate(15)->withQueryString();
 
-        $rows->getCollection()->transform(function ($row) {
-            $row->attendance_status = $row->attendance_status ?? 'absent';
+        $rows->getCollection()->transform(function ($row) use ($isNonSchoolDay, $scheduledSectionSet) {
+            $hasClassToday = ! $isNonSchoolDay && isset($scheduledSectionSet[(int) $row->sect_id]);
+            $row->attendance_status = $row->attendance_status ?? ($hasClassToday ? 'absent' : 'no_class');
             $row->time_in = $row->time_in
                 ? Carbon::parse($row->time_in)->format('H:i')
                 : null;
@@ -157,7 +200,18 @@ class TeacherAttendanceController extends Controller
         $presentCount = (clone $summaryQuery)->where('a.status', 'present')->distinct()->count('s.stu_id');
         $lateCount = (clone $summaryQuery)->where('a.status', 'late')->distinct()->count('s.stu_id');
         $excusedCount = (clone $summaryQuery)->where('a.status', 'excused')->distinct()->count('s.stu_id');
-        $absentCount = max(0, $totalStudents - $presentCount - $lateCount - $excusedCount);
+        $absentCount = (clone $summaryQuery)
+            ->where(function ($builder) use ($isNonSchoolDay, $scheduledSectionList): void {
+                $builder->where('a.status', 'absent');
+                if (! $isNonSchoolDay && ! empty($scheduledSectionList)) {
+                    $builder->orWhere(function ($sub) use ($scheduledSectionList): void {
+                        $sub->whereNull('a.status')
+                            ->whereIn('sec.sect_id', $scheduledSectionList);
+                    });
+                }
+            })
+            ->distinct()
+            ->count('s.stu_id');
 
         return Inertia::render('Teacher/Attendance/index', [
             'attendance' => $rows,

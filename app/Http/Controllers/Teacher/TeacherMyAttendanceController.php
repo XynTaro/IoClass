@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,10 +71,27 @@ class TeacherMyAttendanceController extends Controller
         $absentCount = (clone $summaryQuery)->where('status', 'absent')->count();
         $totalDays = (clone $summaryQuery)->count();
 
-        // If specific date and no attendance record exists, total is 1, absent is 1 (if weekday)
         if ($specificDate !== null && $totalDays === 0) {
-            $totalDays = 1;
-            $absentCount = 1;
+            $activeSyId = DB::table('school_year')
+                ->where('is_active', true)
+                ->value('sy_id');
+            $activeSyId = $activeSyId !== null ? (int) $activeSyId : null;
+
+            $dayOfWeek = Carbon::parse($specificDate)->format('l');
+            $isNonSchoolDay = CalendarEvent::isNonSchoolDay($specificDate, $activeSyId);
+
+            $hasClassThatDay = ! $isNonSchoolDay && DB::table('class_schedule')
+                ->where('tch_id', $tchId)
+                ->where('day_of_week', $dayOfWeek)
+                ->when($activeSyId, fn ($q) => $q->where(function ($sub) use ($activeSyId): void {
+                    $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
+                }))
+                ->exists();
+
+            if ($hasClassThatDay) {
+                $totalDays = 1;
+                $absentCount = 1;
+            }
         }
 
         return Inertia::render('Teacher/MyAttendance/Index', [

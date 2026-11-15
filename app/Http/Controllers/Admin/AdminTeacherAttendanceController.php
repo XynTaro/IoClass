@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditTrail;
+use App\Models\CalendarEvent;
 use App\Models\Teacher;
 use App\Models\TeacherAttendance;
 use App\Services\AvatarService;
@@ -25,6 +26,28 @@ class AdminTeacherAttendanceController extends Controller
         $attDate = is_string($dateInput) && $dateInput !== ''
             ? Carbon::parse($dateInput)->toDateString()
             : now()->toDateString();
+
+        $activeSyId = DB::table('school_year')
+            ->where('is_active', true)
+            ->value('sy_id');
+        $activeSyId = $activeSyId !== null ? (int) $activeSyId : null;
+
+        $dayOfWeek = Carbon::parse($attDate)->format('l');
+        $isNonSchoolDay = CalendarEvent::isNonSchoolDay($attDate, $activeSyId);
+
+        $scheduledTeacherIds = $isNonSchoolDay
+            ? []
+            : DB::table('class_schedule')
+                ->where('day_of_week', $dayOfWeek)
+                ->when($activeSyId, fn ($q) => $q->where(function ($sub) use ($activeSyId): void {
+                    $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
+                }))
+                ->distinct()
+                ->pluck('tch_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+        $scheduledTeacherSet = array_flip($scheduledTeacherIds);
 
         $query = DB::table('teacher as t')
             ->leftJoin('teacher_attendance as ta', function ($join) use ($attDate): void {
@@ -62,10 +85,20 @@ class AdminTeacherAttendanceController extends Controller
         if ($statusFilter === 'present' || $statusFilter === 'late' || $statusFilter === 'excused') {
             $query->where('ta.status', $statusFilter);
         } elseif ($statusFilter === 'absent') {
-            $query->where(function ($builder): void {
-                $builder->whereNull('ta.status')
-                    ->orWhere('ta.status', 'absent');
+            $query->where(function ($builder) use ($isNonSchoolDay, $scheduledTeacherIds): void {
+                $builder->where('ta.status', 'absent');
+                if (! $isNonSchoolDay && ! empty($scheduledTeacherIds)) {
+                    $builder->orWhere(function ($sub) use ($scheduledTeacherIds): void {
+                        $sub->whereNull('ta.status')
+                            ->whereIn('t.tch_id', $scheduledTeacherIds);
+                    });
+                }
             });
+        } elseif ($statusFilter === 'no_class') {
+            $query->whereNull('ta.status');
+            if (! $isNonSchoolDay && ! empty($scheduledTeacherIds)) {
+                $query->whereNotIn('t.tch_id', $scheduledTeacherIds);
+            }
         }
 
         $summaryQuery = DB::table('teacher as t')
@@ -79,7 +112,17 @@ class AdminTeacherAttendanceController extends Controller
         $presentCount = (clone $summaryQuery)->where('ta.status', 'present')->count('t.tch_id');
         $lateCount = (clone $summaryQuery)->where('ta.status', 'late')->count('t.tch_id');
         $excusedCount = (clone $summaryQuery)->where('ta.status', 'excused')->count('t.tch_id');
-        $absentCount = max(0, $totalTeachers - $presentCount - $lateCount - $excusedCount);
+        $absentCount = (clone $summaryQuery)
+            ->where(function ($builder) use ($isNonSchoolDay, $scheduledTeacherIds): void {
+                $builder->where('ta.status', 'absent');
+                if (! $isNonSchoolDay && ! empty($scheduledTeacherIds)) {
+                    $builder->orWhere(function ($sub) use ($scheduledTeacherIds): void {
+                        $sub->whereNull('ta.status')
+                            ->whereIn('t.tch_id', $scheduledTeacherIds);
+                    });
+                }
+            })
+            ->count('t.tch_id');
 
         $rows = $query
             ->orderBy('t.tch_lname')
@@ -87,8 +130,9 @@ class AdminTeacherAttendanceController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $rows->getCollection()->transform(function ($row) {
-            $row->attendance_status = $row->attendance_status ?? 'absent';
+        $rows->getCollection()->transform(function ($row) use ($isNonSchoolDay, $scheduledTeacherSet) {
+            $hasClassToday = ! $isNonSchoolDay && isset($scheduledTeacherSet[(int) $row->tch_id]);
+            $row->attendance_status = $row->attendance_status ?? ($hasClassToday ? 'absent' : 'no_class');
             $row->time_in_formatted = $row->time_in
                 ? Carbon::parse($row->time_in)->format('h:i A')
                 : null;

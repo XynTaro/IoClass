@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 
 // ── Type Definitions ──────────────────────────────────────────────────
 
-type AttendanceStatus = 'present' | 'late' | 'excused' | 'absent';
+type AttendanceStatus = 'present' | 'late' | 'excused' | 'absent' | 'no_class';
 
 interface TeacherAttendanceRow {
     id: number;
@@ -144,6 +144,11 @@ function statusBadge(status: AttendanceStatus) {
             label: 'Absent',
             style: 'bg-rose-500/10 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 ring-rose-500/20 border-rose-200/50 dark:border-rose-800/50',
             dot: 'bg-rose-500',
+        },
+        no_class: {
+            label: 'No Class',
+            style: 'bg-zinc-500/10 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300 ring-zinc-500/20 border-zinc-200/50 dark:border-zinc-800/50',
+            dot: 'bg-zinc-400',
         },
     };
 

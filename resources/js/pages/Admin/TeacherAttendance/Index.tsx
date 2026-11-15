@@ -44,7 +44,7 @@ import AdminLayout from '@/layouts/admin/admin-layout';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
-type AttendanceStatus = 'present' | 'late' | 'absent' | 'excused';
+type AttendanceStatus = 'present' | 'late' | 'absent' | 'excused' | 'no_class';
 
 interface TeacherAttendanceRow {
     tch_id: number;
@@ -205,7 +205,11 @@ export default function TeacherAttendanceIndex() {
 
     const openEditModal = (row: TeacherAttendanceRow) => {
         setEditingTeacher(row);
-        setEditStatus(row.attendance_status);
+        setEditStatus(
+            row.attendance_status === 'no_class'
+                ? 'present'
+                : row.attendance_status,
+        );
         setEditTimeIn(row.time_in ? row.time_in.substring(11, 16) : '07:30');
         setEditRemarks(row.remarks ?? '');
     };
@@ -312,6 +316,11 @@ export default function TeacherAttendanceIndex() {
                 label: 'Absent',
                 style: 'bg-rose-500/10 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 ring-rose-500/20 border-rose-200/50 dark:border-rose-800/50',
                 dot: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]',
+            },
+            no_class: {
+                label: 'No Class',
+                style: 'bg-zinc-500/10 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300 ring-zinc-500/20 border-zinc-200/50 dark:border-zinc-800/50',
+                dot: 'bg-zinc-400',
             },
         };
 
