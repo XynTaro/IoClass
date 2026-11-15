@@ -88,6 +88,17 @@ class StudentAttendanceService
         $tapOutOpens = $end->copy()->subMinutes((int) config('attendance.tap_out_window_minutes', 5));
 
         if ($scannedAt->lt($tapInOpens) || $scannedAt->gt($end)) {
+            if ($scannedAt->gt($end) && ! empty($session['subj_id']) && ! empty($session['sect_id'])) {
+                $this->absenceNotifier->finalizeScheduleSession(
+                    subjId: (int) $session['subj_id'],
+                    sectId: (int) $session['sect_id'],
+                    scheduleId: isset($session['schedule_id']) ? (int) $session['schedule_id'] : null,
+                    date: $attDate,
+                    subjectName: isset($session['subj_name']) && is_string($session['subj_name']) ? $session['subj_name'] : null,
+                    sectionName: isset($session['sect_name']) && is_string($session['sect_name']) ? $session['sect_name'] : null,
+                );
+            }
+
             return $this->blocked('outside_class_time', 'Outside class time.', $scannedAt);
         }
 

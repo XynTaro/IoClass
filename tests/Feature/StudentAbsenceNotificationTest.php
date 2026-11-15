@@ -501,3 +501,165 @@ test('student tapping out of another subject alerts guardian of earlier missed s
 
     Carbon::setTestNow();
 });
+
+test('when teacher ends session and student did not time out student is marked absent and parent is notified', function () {
+    ['syId' => $syId, 'sectId' => $sectId, 'subjId' => $subjId, 'teacher' => $teacher] = seedAbsenceTestEnvironment();
+
+    $teacher->update(['tch_rfid_uid' => 'TCH-END-SESSION']);
+
+    // Student 1: taps in AND taps out -> stays present, no SMS
+    $completedStudent = Student::create([
+        'lrn' => '888800001111',
+        'rfid_uid' => 'STU-COMPLETED',
+        'stu_fname' => 'Nina',
+        'stu_lname' => 'Reyes',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    // Student 2: taps in but DOES NOT tap out -> marked absent when teacher ends session, parent receives SMS
+    $noTimeOutStudent = Student::create([
+        'lrn' => '888800002222',
+        'rfid_uid' => 'STU-NO-TIMEOUT',
+        'stu_fname' => 'Marco',
+        'stu_lname' => 'Polo',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    $guardian1 = Guardian::create([
+        'name' => 'Parent Reyes',
+        'contact_number' => '09171000001',
+        'is_deleted' => false,
+    ]);
+    $guardian2 = Guardian::create([
+        'name' => 'Parent Polo',
+        'contact_number' => '09171000002',
+        'is_deleted' => false,
+    ]);
+
+    ParentGuardian::create(['stu_par_id' => $completedStudent->stu_id, 'guardian_id' => $guardian1->guardian_id]);
+    ParentGuardian::create(['stu_par_id' => $noTimeOutStudent->stu_id, 'guardian_id' => $guardian2->guardian_id]);
+
+    DB::table('student_section')->insert([
+        ['stu_id' => $completedStudent->stu_id, 'sect_id' => $sectId, 'sy_id' => $syId],
+        ['stu_id' => $noTimeOutStudent->stu_id, 'sect_id' => $sectId, 'sy_id' => $syId],
+    ]);
+
+    // Monday 09:00 - 10:00 (English 8)
+    Carbon::setTestNow('2026-06-01 09:02:00');
+
+    // Teacher taps to start session
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-END-SESSION'])
+        ->assertSuccessful()
+        ->assertJsonPath('action', 'session_started');
+
+    // Both students tap in at 09:05
+    Carbon::setTestNow('2026-06-01 09:05:00');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-COMPLETED'])
+        ->assertSuccessful()
+        ->assertJsonPath('attendance.action', 'time_in')
+        ->assertJsonPath('attendance.status', 'present');
+
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-NO-TIMEOUT'])
+        ->assertSuccessful()
+        ->assertJsonPath('attendance.action', 'time_in')
+        ->assertJsonPath('attendance.status', 'present');
+
+    // At 09:56 (inside tap-out window), only Student 1 taps out
+    Carbon::setTestNow('2026-06-01 09:56:00');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STU-COMPLETED'])
+        ->assertSuccessful()
+        ->assertJsonPath('action', 'time_out');
+
+    expect($this->sms->messages)->toBeEmpty();
+
+    // At 10:00, Teacher taps again to end their session
+    Carbon::setTestNow('2026-06-01 10:00:00');
+    $this->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCH-END-SESSION'])
+        ->assertSuccessful()
+        ->assertJsonPath('action', 'session_ended')
+        ->assertJsonPath('session.absences_marked', 1)
+        ->assertJsonPath('session.notifications_sent', 1);
+
+    // Student 1 remains present
+    expect(DB::table('attendance')
+        ->where('stu_id', $completedStudent->stu_id)
+        ->where('subj_id', $subjId)
+        ->whereDate('att_date', '2026-06-01')
+        ->value('status')
+    )->toBe('present');
+
+    // Student 2 (did not time out) is automatically marked absent
+    expect(DB::table('attendance')
+        ->where('stu_id', $noTimeOutStudent->stu_id)
+        ->where('subj_id', $subjId)
+        ->whereDate('att_date', '2026-06-01')
+        ->value('status')
+    )->toBe('absent');
+
+    // Parent of Student 2 automatically received the absence SMS for English 8
+    expect($this->sms->messages)->toHaveCount(1)
+        ->and($this->sms->messages[0]['to'])->toBe('09171000002')
+        ->and($this->sms->messages[0]['message'])->toContain('Marco Polo was marked ABSENT in English 8 (Diamond)');
+
+    Carbon::setTestNow();
+});
+
+test('when subject time ends student who tapped in but did not time out is marked absent and parent is notified', function () {
+    ['syId' => $syId, 'sectId' => $sectId, 'subjId' => $subjId] = seedAbsenceTestEnvironment();
+
+    $student = Student::create([
+        'lrn' => '888800003333',
+        'rfid_uid' => 'STU-HALF-ATTEND',
+        'stu_fname' => 'Paolo',
+        'stu_lname' => 'Gomez',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    $guardian = Guardian::create([
+        'name' => 'Mrs. Gomez',
+        'contact_number' => '09171000003',
+        'is_deleted' => false,
+    ]);
+
+    ParentGuardian::create(['stu_par_id' => $student->stu_id, 'guardian_id' => $guardian->guardian_id]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    // Student tapped in at 09:05 for English 8 (09:00 - 10:00), but never tapped out (time_out is null)
+    DB::table('attendance')->insert([
+        'stu_id' => $student->stu_id,
+        'subj_id' => $subjId,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+        'att_date' => '2026-06-01',
+        'status' => 'present',
+        'time_in' => '2026-06-01 09:05:00',
+        'time_out' => null,
+    ]);
+
+    // Subject ends at 10:00
+    $this->artisan('attendance:notify-subject-absences', [
+        '--date' => '2026-06-01',
+        '--before' => '10:00',
+    ])
+        ->assertSuccessful()
+        ->expectsOutputToContain('found 1 subject absence(s), sent 1 notification(s)');
+
+    expect(DB::table('attendance')
+        ->where('stu_id', $student->stu_id)
+        ->where('subj_id', $subjId)
+        ->whereDate('att_date', '2026-06-01')
+        ->value('status')
+    )->toBe('absent');
+
+    expect($this->sms->messages)->toHaveCount(1)
+        ->and($this->sms->messages[0]['to'])->toBe('09171000003')
+        ->and($this->sms->messages[0]['message'])->toContain('Paolo Gomez was marked ABSENT in English 8 (Diamond)');
+});

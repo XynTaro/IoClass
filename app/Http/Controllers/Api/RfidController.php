@@ -8,6 +8,7 @@ use App\Http\Requests\Api\RfidScanRequest;
 use App\Models\Class_Schedule;
 use App\Models\Student;
 use App\Models\Teacher;
+use App\Services\StudentAbsenceNotifier;
 use App\Services\StudentAttendanceService;
 use App\Services\TeacherAttendanceService;
 use App\Support\RfidCaptureCache;
@@ -21,15 +22,21 @@ use Illuminate\Support\Str;
 
 class RfidController extends Controller
 {
+    private StudentAbsenceNotifier $absenceNotifier;
+
     public function __construct(
         private StudentAttendanceService $studentAttendanceService,
         private TeacherAttendanceService $teacherAttendanceService,
-    ) {}
+        ?StudentAbsenceNotifier $absenceNotifier = null,
+    ) {
+        $this->absenceNotifier = $absenceNotifier ?? app(StudentAbsenceNotifier::class);
+    }
 
     /**
      * Resolve a scanned RFID UID.
      *
-     * - Teacher tap  → opens a session for this device (links to current class schedule) & records daily attendance.
+     * - Teacher tap  → opens a session for this device (links to current class schedule) & records daily attendance,
+     *                  or ends the active session on second tap and marks students who did not time out as absent.
      * - Student tap  → records attendance only inside the active class window.
      * - Unknown card → stores UID in capture cache so admin can assign via web UI.
      */
@@ -40,7 +47,7 @@ class RfidController extends Controller
 
         RfidCaptureCache::store($deviceKey, $uid);
 
-        // ── Teacher tap: record attendance & open a session ───────────────────
+        // ── Teacher tap: record attendance & open/end a session ───────────────
         $teacher = Teacher::query()
             ->where('is_deleted', false)
             ->where(function ($query): void {
@@ -55,7 +62,39 @@ class RfidController extends Controller
 
         if ($teacher !== null) {
             $teacherAttendance = $this->teacherAttendanceService->recordForTeacher($teacher);
-            $session = $this->openSession($deviceKey, $teacher);
+            $existingSession = RfidSessionCache::get($deviceKey);
+            $matchingSchedule = $this->findMatchingSchedule($teacher);
+
+            if ($this->shouldEndSession($existingSession, $teacher, $matchingSchedule)) {
+                $finalized = $this->closeAndFinalizeSession($deviceKey, $existingSession);
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'teacher',
+                    'action' => 'session_ended',
+                    'data' => $teacher->only(['tch_id', 'tch_fname', 'tch_mname', 'tch_lname']),
+                    'attendance' => $teacherAttendance,
+                    'session' => [
+                        'sect_name' => $existingSession['sect_name'] ?? null,
+                        'subj_name' => $existingSession['subj_name'] ?? null,
+                        'start_time' => $existingSession['start_time'] ?? null,
+                        'end_time' => $existingSession['end_time'] ?? null,
+                        'absences_marked' => $finalized['absences_found'],
+                        'notifications_sent' => $finalized['notified_count'],
+                    ],
+                ]);
+            }
+
+            if (
+                $existingSession !== null
+                && ! empty($existingSession['subj_id'])
+                && ! empty($existingSession['sect_id'])
+                && (int) ($existingSession['schedule_id'] ?? 0) !== (int) ($matchingSchedule?->schedule_id ?? 0)
+            ) {
+                $this->closeAndFinalizeSession($deviceKey, $existingSession);
+            }
+
+            $session = $this->openSession($deviceKey, $teacher, $matchingSchedule);
 
             return response()->json([
                 'success' => true,
@@ -149,6 +188,93 @@ class RfidController extends Controller
     }
 
     /**
+     * Find the teacher's matching class schedule for the current time.
+     */
+    private function findMatchingSchedule(Teacher $teacher): ?Class_Schedule
+    {
+        $now = now();
+        $dayName = $now->format('l');
+        $timeNow = $now->format('H:i:s');
+        $earlyMinutes = (int) config('attendance.teacher_tap_early_minutes', 10);
+        $timeEarly = $now->copy()->addMinutes($earlyMinutes)->format('H:i:s');
+
+        $activeSyId = DB::table('school_year')
+            ->where('is_active', true)
+            ->value('sy_id');
+
+        return Class_Schedule::query()
+            ->where('tch_id', $teacher->tch_id)
+            ->when($activeSyId, function ($query) use ($activeSyId): void {
+                $query->where(function ($sub) use ($activeSyId): void {
+                    $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
+                });
+            })
+            ->where('day_of_week', $dayName)
+            ->where('start_time', '<=', $timeEarly)
+            ->where('end_time', '>=', $timeNow)
+            ->with(['section:sect_id,sect_name', 'subject:subj_id,subj_name'])
+            ->orderBy('start_time')
+            ->first();
+    }
+
+    /**
+     * Determine whether a teacher tap should end the currently active session.
+     *
+     * @param  array<string, mixed>|null  $existingSession
+     */
+    private function shouldEndSession(?array $existingSession, Teacher $teacher, ?Class_Schedule $matchingSchedule): bool
+    {
+        if (
+            $existingSession === null
+            || (int) ($existingSession['tch_id'] ?? 0) !== (int) $teacher->tch_id
+            || empty($existingSession['schedule_id'])
+        ) {
+            return false;
+        }
+
+        $cooldown = (int) config('attendance.tap_cooldown_seconds', 30);
+        $elapsed = isset($existingSession['started_at'])
+            ? abs(now()->timestamp - (int) $existingSession['started_at'])
+            : $cooldown;
+
+        if ($elapsed < $cooldown) {
+            return false;
+        }
+
+        return $matchingSchedule === null
+            || (int) $matchingSchedule->schedule_id === (int) $existingSession['schedule_id'];
+    }
+
+    /**
+     * Close the active session on the device and finalize attendance:
+     * any student who did not tap in or did not tap out (time_out is null)
+     * is marked absent and their guardian is notified via SMS.
+     *
+     * @param  array<string, mixed>  $session
+     * @return array{absences_found: int, notified_count: int}
+     */
+    private function closeAndFinalizeSession(string $deviceKey, array $session): array
+    {
+        RfidSessionCache::close($deviceKey);
+
+        if (empty($session['subj_id']) || empty($session['sect_id'])) {
+            return [
+                'absences_found' => 0,
+                'notified_count' => 0,
+            ];
+        }
+
+        return $this->absenceNotifier->finalizeScheduleSession(
+            subjId: (int) $session['subj_id'],
+            sectId: (int) $session['sect_id'],
+            scheduleId: isset($session['schedule_id']) ? (int) $session['schedule_id'] : null,
+            date: isset($session['date']) && is_string($session['date']) ? $session['date'] : now()->toDateString(),
+            subjectName: isset($session['subj_name']) && is_string($session['subj_name']) ? $session['subj_name'] : null,
+            sectionName: isset($session['sect_name']) && is_string($session['sect_name']) ? $session['sect_name'] : null,
+        );
+    }
+
+    /**
      * Open a teaching session for the given device key.
      *
      * Matches the teacher's class schedule for the current day/time (with a
@@ -168,35 +294,15 @@ class RfidController extends Controller
      *     schedule_id: int|null,
      *     start_time: string|null,
      *     end_time: string|null,
+     *     date: string,
      *     started_at: int,
      *     auto_transferred: int,
      * }
      */
-    private function openSession(string $deviceKey, Teacher $teacher): array
+    private function openSession(string $deviceKey, Teacher $teacher, ?Class_Schedule $schedule = null): array
     {
         $now = now();
-        $dayName = $now->format('l'); // e.g. "Monday"
-        $timeNow = $now->format('H:i:s');
-        $earlyMinutes = (int) config('attendance.teacher_tap_early_minutes', 10);
-        $timeEarly = $now->copy()->addMinutes($earlyMinutes)->format('H:i:s');
-
-        $activeSyId = DB::table('school_year')
-            ->where('is_active', true)
-            ->value('sy_id');
-
-        $schedule = Class_Schedule::query()
-            ->where('tch_id', $teacher->tch_id)
-            ->when($activeSyId, function ($query) use ($activeSyId): void {
-                $query->where(function ($sub) use ($activeSyId): void {
-                    $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
-                });
-            })
-            ->where('day_of_week', $dayName)
-            ->where('start_time', '<=', $timeEarly)
-            ->where('end_time', '>=', $timeNow)
-            ->with(['section:sect_id,sect_name', 'subject:subj_id,subj_name'])
-            ->orderBy('start_time')
-            ->first();
+        $schedule ??= $this->findMatchingSchedule($teacher);
 
         $tchName = trim(collect([
             $teacher->tch_fname,
@@ -214,6 +320,7 @@ class RfidController extends Controller
             'schedule_id' => $schedule?->schedule_id,
             'start_time' => $schedule ? Carbon::parse($schedule->start_time)->format('H:i:s') : null,
             'end_time' => $schedule ? Carbon::parse($schedule->end_time)->format('H:i:s') : null,
+            'date' => $now->toDateString(),
             'started_at' => $now->timestamp,
             'auto_transferred' => 0,
         ];

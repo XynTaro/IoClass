@@ -271,6 +271,7 @@ class TeacherVerificationController extends Controller
                         'att_date' => $attDate,
                         'status' => 'absent',
                         'time_in' => null,
+                        'time_out' => null,
                     ];
 
                     DB::table('attendance')->updateOrInsert(
@@ -285,6 +286,7 @@ class TeacherVerificationController extends Controller
                     continue;
                 }
 
+                $now = now();
                 $payload = [
                     'stu_id' => $stuId,
                     'session_id' => null,
@@ -293,7 +295,8 @@ class TeacherVerificationController extends Controller
                     'subj_id' => $subjId,
                     'att_date' => $attDate,
                     'status' => $status,
-                    'time_in' => in_array($status, ['present', 'late'], true) ? now() : null,
+                    'time_in' => in_array($status, ['present', 'late'], true) ? $now : null,
+                    'time_out' => in_array($status, ['present', 'late'], true) ? $now : null,
                 ];
 
                 DB::table('attendance')->updateOrInsert(

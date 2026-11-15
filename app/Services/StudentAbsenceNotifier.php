@@ -233,92 +233,177 @@ class StudentAbsenceNotifier
 
             $checkedSchedules++;
 
-            $enrolled = DB::table('student as s')
-                ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
-                ->where('ss.sect_id', $schedule->sect_id)
-                ->where('ss.sy_id', $activeSyId)
-                ->where('s.is_deleted', false)
-                ->where('s.status', 'active')
-                ->when($studentId, fn ($q) => $q->where('s.stu_id', $studentId))
-                ->select('s.stu_id')
-                ->get();
+            $finalized = $this->finalizeScheduleSession(
+                subjId: (int) $schedule->subj_id,
+                sectId: (int) $schedule->sect_id,
+                scheduleId: (int) $schedule->schedule_id,
+                date: $dateStr,
+                subjectName: $schedule->subject?->subj_name,
+                sectionName: $schedule->section?->sect_name,
+                studentId: $studentId,
+                force: $force,
+            );
 
-            if ($enrolled->isEmpty()) {
-                continue;
-            }
-
-            $enrolledStuIds = $enrolled->pluck('stu_id')->all();
-
-            $attendedStudentIds = DB::table('attendance')
-                ->where('subj_id', $schedule->subj_id)
-                ->whereDate('att_date', $dateStr)
-                ->whereIn('status', ['present', 'late', 'excused'])
-                ->whereIn('stu_id', $enrolledStuIds)
-                ->pluck('stu_id')
-                ->all();
-
-            $attendedSet = array_flip($attendedStudentIds);
-
-            $absentStudentIds = array_values(array_filter(
-                $enrolledStuIds,
-                fn ($id) => ! isset($attendedSet[$id]),
-            ));
-
-            if (empty($absentStudentIds)) {
-                continue;
-            }
-
-            $absencesFound += count($absentStudentIds);
-
-            // Ensure an absent attendance record exists in DB for proper logging & reporting
-            $existingRecords = DB::table('attendance')
-                ->where('subj_id', $schedule->subj_id)
-                ->whereDate('att_date', $dateStr)
-                ->whereIn('stu_id', $absentStudentIds)
-                ->pluck('stu_id')
-                ->all();
-            $existingSet = array_flip($existingRecords);
-
-            $missingRows = [];
-            foreach ($absentStudentIds as $absentId) {
-                if (! isset($existingSet[$absentId])) {
-                    $missingRows[] = [
-                        'stu_id' => $absentId,
-                        'session_id' => $schedule->schedule_id,
-                        'subj_id' => $schedule->subj_id,
-                        'sect_id' => $schedule->sect_id,
-                        'sy_id' => $activeSyId,
-                        'att_date' => $dateStr,
-                        'status' => 'absent',
-                        'time_in' => null,
-                        'time_out' => null,
-                    ];
-                }
-            }
-
-            if (! empty($missingRows)) {
-                DB::table('attendance')->insertOrIgnore($missingRows);
-            }
-
-            // Send notification to guardians
-            foreach ($absentStudentIds as $absentId) {
-                $sent = $this->notify(
-                    student: $absentId,
-                    date: $dateStr,
-                    subjectName: $schedule->subject?->subj_name,
-                    sectionName: $schedule->section?->sect_name,
-                    force: $force,
-                );
-
-                if ($sent) {
-                    $notifiedCount++;
-                }
-            }
+            $absencesFound += $finalized['absences_found'];
+            $notifiedCount += $finalized['notified_count'];
         }
 
         return [
             'checked_schedules' => $checkedSchedules,
             'absences_found' => $absencesFound,
+            'notified_count' => $notifiedCount,
+        ];
+    }
+
+    /**
+     * Finalize attendance for a single class schedule/session that has ended:
+     * - Marks students who never tapped in as 'absent'
+     * - Marks students who tapped in (present/late) but did NOT tap out (time_out is null) as 'absent'
+     * - Sends SMS notifications to guardians of all absent students for that subject.
+     *
+     * @return array{
+     *     absences_found: int,
+     *     notified_count: int,
+     * }
+     */
+    public function finalizeScheduleSession(
+        int $subjId,
+        int $sectId,
+        ?int $scheduleId = null,
+        ?string $date = null,
+        ?string $subjectName = null,
+        ?string $sectionName = null,
+        ?int $studentId = null,
+        bool $force = false,
+    ): array {
+        $dateStr = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
+
+        if (CalendarEvent::isNonSchoolDay($dateStr)) {
+            return [
+                'absences_found' => 0,
+                'notified_count' => 0,
+            ];
+        }
+
+        $activeSyId = DB::table('school_year')
+            ->where('is_active', true)
+            ->value('sy_id');
+
+        if (! $activeSyId) {
+            return [
+                'absences_found' => 0,
+                'notified_count' => 0,
+            ];
+        }
+
+        $enrolled = DB::table('student as s')
+            ->join('student_section as ss', 'ss.stu_id', '=', 's.stu_id')
+            ->where('ss.sect_id', $sectId)
+            ->where('ss.sy_id', $activeSyId)
+            ->where('s.is_deleted', false)
+            ->where('s.status', 'active')
+            ->when($studentId, fn ($q) => $q->where('s.stu_id', $studentId))
+            ->select('s.stu_id')
+            ->get();
+
+        if ($enrolled->isEmpty()) {
+            return [
+                'absences_found' => 0,
+                'notified_count' => 0,
+            ];
+        }
+
+        $enrolledStuIds = $enrolled->pluck('stu_id')->all();
+
+        // A student has completed attendance only if marked excused,
+        // or if marked present/late AND they have tapped out (time_out is not null).
+        $attendedStudentIds = DB::table('attendance')
+            ->where('subj_id', $subjId)
+            ->whereDate('att_date', $dateStr)
+            ->whereIn('stu_id', $enrolledStuIds)
+            ->where(function ($query): void {
+                $query->where('status', 'excused')
+                    ->orWhere(function ($q): void {
+                        $q->whereIn('status', ['present', 'late'])
+                            ->whereNotNull('time_out');
+                    });
+            })
+            ->pluck('stu_id')
+            ->all();
+
+        $attendedSet = array_flip($attendedStudentIds);
+
+        $absentStudentIds = array_values(array_filter(
+            $enrolledStuIds,
+            fn ($id) => ! isset($attendedSet[$id]),
+        ));
+
+        if (empty($absentStudentIds)) {
+            return [
+                'absences_found' => 0,
+                'notified_count' => 0,
+            ];
+        }
+
+        // Students who tapped in (present/late) but did NOT tap out become absent
+        DB::table('attendance')
+            ->where('subj_id', $subjId)
+            ->whereDate('att_date', $dateStr)
+            ->whereIn('stu_id', $absentStudentIds)
+            ->whereIn('status', ['present', 'late'])
+            ->whereNull('time_out')
+            ->update(['status' => 'absent']);
+
+        // Ensure an absent attendance record exists in DB for students who never tapped in at all
+        $existingRecords = DB::table('attendance')
+            ->where('subj_id', $subjId)
+            ->whereDate('att_date', $dateStr)
+            ->whereIn('stu_id', $absentStudentIds)
+            ->pluck('stu_id')
+            ->all();
+        $existingSet = array_flip($existingRecords);
+
+        $missingRows = [];
+        foreach ($absentStudentIds as $absentId) {
+            if (! isset($existingSet[$absentId])) {
+                $missingRows[] = [
+                    'stu_id' => $absentId,
+                    'session_id' => $scheduleId,
+                    'subj_id' => $subjId,
+                    'sect_id' => $sectId,
+                    'sy_id' => $activeSyId,
+                    'att_date' => $dateStr,
+                    'status' => 'absent',
+                    'time_in' => null,
+                    'time_out' => null,
+                ];
+            }
+        }
+
+        if (! empty($missingRows)) {
+            DB::table('attendance')->insertOrIgnore($missingRows);
+        }
+
+        $resolvedSubjectName = $subjectName ?? DB::table('subject')->where('subj_id', $subjId)->value('subj_name');
+        $resolvedSectionName = $sectionName ?? DB::table('section')->where('sect_id', $sectId)->value('sect_name');
+
+        $notifiedCount = 0;
+        foreach ($absentStudentIds as $absentId) {
+            $sent = $this->notify(
+                student: $absentId,
+                date: $dateStr,
+                subjectName: $resolvedSubjectName,
+                sectionName: $resolvedSectionName,
+                force: $force,
+            );
+
+            if ($sent) {
+                $notifiedCount++;
+            }
+        }
+
+        return [
+            'absences_found' => count($absentStudentIds),
             'notified_count' => $notifiedCount,
         ];
     }

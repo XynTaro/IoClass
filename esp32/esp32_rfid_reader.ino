@@ -327,7 +327,7 @@ void sendScan(const String& uid) {
   const char* action = doc["action"] | "";
   JsonObject  data   = doc["data"];
 
-  // ── CASE 2: TEACHER TAP (Session Opened / Attendance Recorded) ─────────
+  // ── CASE 2: TEACHER TAP (Session Opened / Ended / Attendance Recorded) ──
   if (strcmp(action, "session_started") == 0) {
     String name = lcdTruncate(buildName(data, "teacher"));
 
@@ -340,6 +340,13 @@ void sendScan(const String& uid) {
       showLCD("SESSION OPEN", name.c_str());
     }
     beepSuccess();
+    return;
+  }
+
+  if (strcmp(action, "session_ended") == 0) {
+    String name = lcdTruncate(buildName(data, "teacher"));
+    showLCD("SESSION ENDED", name.c_str());
+    beepTapOut();
     return;
   }
 
