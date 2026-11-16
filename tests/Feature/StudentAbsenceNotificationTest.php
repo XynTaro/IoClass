@@ -380,6 +380,7 @@ test('attendance:notify-subject-absences sends specific subject absence alerts t
         ->where('subj_id', $subjId)
         ->where('att_date', '2026-06-01')
         ->where('status', 'absent')
+        ->whereNull('session_id')
         ->exists()
     )->toBeTrue();
 });

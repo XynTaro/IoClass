@@ -368,7 +368,7 @@ class StudentAbsenceNotifier
             if (! isset($existingSet[$absentId])) {
                 $missingRows[] = [
                     'stu_id' => $absentId,
-                    'session_id' => $scheduleId,
+                    'session_id' => null,
                     'subj_id' => $subjId,
                     'sect_id' => $sectId,
                     'sy_id' => $activeSyId,

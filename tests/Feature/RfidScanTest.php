@@ -159,6 +159,8 @@ test('student scan after teacher tap links attendance to the active session', fu
     $this->assertDatabaseHas('attendance', [
         'stu_id' => $student->stu_id,
         'sect_id' => $section->sect_id,
+        'subj_id' => $subject->subj_id,
+        'session_id' => null,
     ]);
 });
 

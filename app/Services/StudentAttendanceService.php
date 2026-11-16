@@ -198,7 +198,7 @@ class StudentAttendanceService
         // ── First tap: time in ────────────────────────────────────────────────
         $attendance = Attendance::create([
             'stu_id' => $student->stu_id,
-            'session_id' => $session['schedule_id'],
+            'session_id' => null,
             'subj_id' => $subjId,
             'sect_id' => (int) $session['sect_id'],
             'sy_id' => $this->resolveActiveSyId(),
