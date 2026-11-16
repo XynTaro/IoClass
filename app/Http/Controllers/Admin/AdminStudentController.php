@@ -61,6 +61,7 @@ class AdminStudentController extends Controller
             ->leftJoin('section as sec', 'sec.sect_id', '=', 'ss.sect_id')
             ->leftJoin('address as addr', 'addr.add_id', '=', 's.add_id')
             ->leftJoin('parent as p', 'p.stu_par_id', '=', 's.stu_id')
+            ->leftJoin('address as curr_addr', 'curr_addr.add_id', '=', 'p.add_id')
             ->leftJoin('father as f', 'f.f_id', '=', 'p.f_id')
             ->leftJoin('mother as m', 'm.mother_id', '=', 'p.mother_id')
             ->leftJoin('parentguardian as g', 'g.guardian_id', '=', 'p.guardian_id')
@@ -84,6 +85,11 @@ class AdminStudentController extends Controller
                 'addr.province',
                 'addr.municipality',
                 'addr.barangay',
+                // Current address fields (when separate from permanent)
+                'curr_addr.region as curr_region',
+                'curr_addr.province as curr_province',
+                'curr_addr.municipality as curr_municipality',
+                'curr_addr.barangay as curr_barangay',
                 // Father fields
                 'f.father_name',
                 'f.father_mname',
@@ -107,6 +113,7 @@ class AdminStudentController extends Controller
                 's.rfid_uid', 's.status', 's.is_deleted', 's.add_id', 'ss.sect_id',
                 'sec.gr_level', 'sec.sect_name',
                 'addr.region', 'addr.province', 'addr.municipality', 'addr.barangay',
+                'curr_addr.region', 'curr_addr.province', 'curr_addr.municipality', 'curr_addr.barangay',
                 'f.father_name', 'f.father_mname', 'f.father_lname', 'f.contact_number',
                 'm.mother_name', 'm.mother_mname', 'm.mother_lname', 'm.contact_number',
                 'g.name', 'g.guardian_mname', 'g.guardian_lname', 'g.contact_number'
@@ -217,6 +224,11 @@ class AdminStudentController extends Controller
             'province' => 'nullable|string|max:100',
             'municipality' => 'nullable|string|max:100',
             'barangay' => 'nullable|string|max:100',
+            'same_as_permanent' => 'nullable|boolean',
+            'curr_region' => 'nullable|string|max:100',
+            'curr_province' => 'nullable|string|max:100',
+            'curr_municipality' => 'nullable|string|max:100',
+            'curr_barangay' => 'nullable|string|max:100',
             // Parent Deceased Flags
             'father_is_deceased' => 'nullable|boolean',
             'mother_is_deceased' => 'nullable|boolean',
@@ -352,7 +364,7 @@ class AdminStudentController extends Controller
             'sy_id' => $activeSyId,
         ]);
 
-        // Create address record if any address field was provided
+        // Create permanent address record if any address field was provided
         $hasAddress = ! empty($validated['region'])
             || ! empty($validated['province'])
             || ! empty($validated['municipality'])
@@ -364,9 +376,29 @@ class AdminStudentController extends Controller
                 'province' => $validated['province'] ?? null,
                 'municipality' => $validated['municipality'] ?? null,
                 'barangay' => $validated['barangay'] ?? null,
-                'add_type' => 'current',
+                'add_type' => 'permanent',
             ], 'add_id');
             $student->update(['add_id' => $addId]);
+        }
+
+        // Create separate current address record if different from permanent
+        $sameAsPermanent = $request->has('same_as_permanent') ? $request->boolean('same_as_permanent') : true;
+        $hasCurrAddress = ! $sameAsPermanent && (
+            ! empty($validated['curr_region'])
+            || ! empty($validated['curr_province'])
+            || ! empty($validated['curr_municipality'])
+            || ! empty($validated['curr_barangay'])
+        );
+
+        $currAddId = null;
+        if ($hasCurrAddress) {
+            $currAddId = DB::table('address')->insertGetId([
+                'region' => $validated['curr_region'] ?? null,
+                'province' => $validated['curr_province'] ?? null,
+                'municipality' => $validated['curr_municipality'] ?? null,
+                'barangay' => $validated['curr_barangay'] ?? null,
+                'add_type' => 'current',
+            ], 'add_id');
         }
 
         // Create parent / guardian records
@@ -407,9 +439,10 @@ class AdminStudentController extends Controller
             $guardianId = $guardian->guardian_id;
         }
 
-        if ($fatherId || $motherId || $guardianId) {
+        if ($fatherId || $motherId || $guardianId || $currAddId) {
             ParentGuardian::create([
                 'stu_par_id' => $student->stu_id,
+                'add_id' => $currAddId,
                 'f_id' => $fatherId,
                 'mother_id' => $motherId,
                 'guardian_id' => $guardianId,
@@ -604,6 +637,11 @@ class AdminStudentController extends Controller
             'province' => 'nullable|string|max:100',
             'municipality' => 'nullable|string|max:100',
             'barangay' => 'nullable|string|max:100',
+            'same_as_permanent' => 'nullable|boolean',
+            'curr_region' => 'nullable|string|max:100',
+            'curr_province' => 'nullable|string|max:100',
+            'curr_municipality' => 'nullable|string|max:100',
+            'curr_barangay' => 'nullable|string|max:100',
         ];
 
         if ($hasParentFields) {
@@ -761,9 +799,57 @@ class AdminStudentController extends Controller
                         'province' => $province,
                         'municipality' => $municipality,
                         'barangay' => $barangay,
-                        'add_type' => 'current',
+                        'add_type' => 'permanent',
                     ]);
                     $student->update(['add_id' => $address->add_id]);
+                }
+            }
+
+            // 2b. Update Current Address (stored via parent link add_id when different from permanent)
+            $sameAsPermanent = $request->has('same_as_permanent') ? $request->boolean('same_as_permanent') : true;
+            $currRegion = $validated['curr_region'] ?? null;
+            $currProvince = $validated['curr_province'] ?? null;
+            $currMunicipality = $validated['curr_municipality'] ?? null;
+            $currBarangay = $validated['curr_barangay'] ?? null;
+            $hasCurrAddress = ! $sameAsPermanent && ($currRegion || $currProvince || $currMunicipality || $currBarangay);
+
+            if ($hasCurrAddress) {
+                $parentLinkForAddr = ParentGuardian::where('stu_par_id', $student->stu_id)->first();
+                if (! $parentLinkForAddr) {
+                    $parentLinkForAddr = new ParentGuardian(['stu_par_id' => $student->stu_id]);
+                }
+
+                if ($parentLinkForAddr->add_id && $currAddress = Address::find($parentLinkForAddr->add_id)) {
+                    $currAddress->update([
+                        'region' => $currRegion,
+                        'province' => $currProvince,
+                        'municipality' => $currMunicipality,
+                        'barangay' => $currBarangay,
+                        'add_type' => 'current',
+                    ]);
+                } else {
+                    $currAddress = Address::create([
+                        'region' => $currRegion,
+                        'province' => $currProvince,
+                        'municipality' => $currMunicipality,
+                        'barangay' => $currBarangay,
+                        'add_type' => 'current',
+                    ]);
+                    $parentLinkForAddr->add_id = $currAddress->add_id;
+                }
+
+                $parentLinkForAddr->save();
+            } elseif ($request->has('same_as_permanent') && $sameAsPermanent) {
+                $parentLinkForAddr = ParentGuardian::where('stu_par_id', $student->stu_id)->first();
+                if ($parentLinkForAddr && $parentLinkForAddr->add_id) {
+                    $oldCurrAddId = $parentLinkForAddr->add_id;
+                    $parentLinkForAddr->add_id = null;
+                    if ($parentLinkForAddr->f_id || $parentLinkForAddr->mother_id || $parentLinkForAddr->guardian_id) {
+                        $parentLinkForAddr->save();
+                    } else {
+                        $parentLinkForAddr->delete();
+                    }
+                    Address::where('add_id', $oldCurrAddId)->delete();
                 }
             }
 
@@ -865,7 +951,7 @@ class AdminStudentController extends Controller
                     $parentLink->guardian_id = null;
                 }
 
-                if ($parentLink->f_id || $parentLink->mother_id || $parentLink->guardian_id) {
+                if ($parentLink->f_id || $parentLink->mother_id || $parentLink->guardian_id || $parentLink->add_id) {
                     $parentLink->save();
                 } elseif ($parentLink->exists) {
                     $parentLink->delete();

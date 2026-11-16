@@ -163,6 +163,10 @@ export interface Student {
     province?: string | null;
     municipality?: string | null;
     barangay?: string | null;
+    curr_region?: string | null;
+    curr_province?: string | null;
+    curr_municipality?: string | null;
+    curr_barangay?: string | null;
     father_name?: string | null;
     father_mname?: string | null;
     father_lname?: string | null;
@@ -193,6 +197,11 @@ interface StudentFormData {
     province: string;
     municipality: string;
     barangay: string;
+    same_as_permanent: boolean;
+    curr_region: string;
+    curr_province: string;
+    curr_municipality: string;
+    curr_barangay: string;
     father_name: string;
     father_mname: string;
     father_lname: string;
@@ -234,6 +243,11 @@ const emptyForm: StudentFormData = {
     province: '',
     municipality: '',
     barangay: '',
+    same_as_permanent: true,
+    curr_region: '',
+    curr_province: '',
+    curr_municipality: '',
+    curr_barangay: '',
     father_name: '',
     father_mname: '',
     father_lname: '',
@@ -578,6 +592,15 @@ export default function StudentModal({
 
             const fatherDeceased = (!hasFather && hasGuardian) || (!hasFather && hasMother && hasGuardian);
             const motherDeceased = (!hasMother && hasGuardian) || (!hasMother && hasFather && hasGuardian);
+            const hasCurrAddress = Boolean(
+                (student.curr_region && student.curr_region.trim()) ||
+                    (student.curr_province && student.curr_province.trim()) ||
+                    (student.curr_municipality &&
+                        student.curr_municipality.trim()) ||
+                    (student.curr_barangay && student.curr_barangay.trim()),
+            );
+
+            setSameAsPermanent(!hasCurrAddress);
 
             form.setData({
                 ...emptyForm,
@@ -596,6 +619,11 @@ export default function StudentModal({
                 province: student.province ?? '',
                 municipality: student.municipality ?? '',
                 barangay: student.barangay ?? '',
+                same_as_permanent: !hasCurrAddress,
+                curr_region: student.curr_region ?? '',
+                curr_province: student.curr_province ?? '',
+                curr_municipality: student.curr_municipality ?? '',
+                curr_barangay: student.curr_barangay ?? '',
                 father_name: student.father_name ?? '',
                 father_mname: student.father_mname ?? '',
                 father_lname: student.father_lname ?? '',
@@ -621,6 +649,17 @@ export default function StudentModal({
                 });
             } else {
                 permCascade.reset();
+            }
+
+            if (hasCurrAddress && student.curr_region) {
+                currCascade.initializeFromNames({
+                    region: student.curr_region,
+                    province: student.curr_province,
+                    municipality: student.curr_municipality,
+                    barangay: student.curr_barangay,
+                });
+            } else {
+                currCascade.reset();
             }
         }
     }, [student, mode, open]);
@@ -809,13 +848,17 @@ export default function StudentModal({
         setCurrAddressErrors({});
         setAddressStepError(null);
 
-        const addr = sameAsPermanent ? permAddress : currAddress;
         form.setData({
             ...form.data,
-            region: addr.region,
-            province: addr.province,
-            municipality: addr.municipality,
-            barangay: addr.barangay,
+            region: permAddress.region,
+            province: permAddress.province,
+            municipality: permAddress.municipality,
+            barangay: permAddress.barangay,
+            same_as_permanent: sameAsPermanent,
+            curr_region: sameAsPermanent ? '' : currAddress.region,
+            curr_province: sameAsPermanent ? '' : currAddress.province,
+            curr_municipality: sameAsPermanent ? '' : currAddress.municipality,
+            curr_barangay: sameAsPermanent ? '' : currAddress.barangay,
         });
         setStep(3);
     };
@@ -861,6 +904,26 @@ export default function StudentModal({
             );
             return;
         }
+
+        // Validate current address in edit mode when not same as permanent
+        if (!form.data.same_as_permanent) {
+            const currErrors = validateAddress(
+                {
+                    region: form.data.curr_region,
+                    province: form.data.curr_province,
+                    municipality: form.data.curr_municipality,
+                    barangay: form.data.curr_barangay,
+                },
+                currCascade.hasProvinces,
+            );
+            if (Object.keys(currErrors).length > 0) {
+                setCurrAddressErrors(currErrors);
+                setEditTab('address');
+                setSubmitError(null);
+                return;
+            }
+        }
+        setCurrAddressErrors({});
 
         // Validate family fields in edit mode
         const familyErrors: Record<string, string> = {};
@@ -983,6 +1046,11 @@ export default function StudentModal({
                     'province',
                     'municipality',
                     'barangay',
+                    'same_as_permanent',
+                    'curr_region',
+                    'curr_province',
+                    'curr_municipality',
+                    'curr_barangay',
                 ];
                 const step3Fields = [
                     'father_name',
@@ -1161,6 +1229,11 @@ export default function StudentModal({
                     'province',
                     'municipality',
                     'barangay',
+                    'same_as_permanent',
+                    'curr_region',
+                    'curr_province',
+                    'curr_municipality',
+                    'curr_barangay',
                 ];
                 if (step1Fields.some((f) => f in errors)) {
                     setStep(1);
@@ -1303,11 +1376,18 @@ export default function StudentModal({
                                         cascade={permCascade}
                                         barangayValue={form.data.barangay}
                                         errors={{
-                                            region: form.errors.region,
-                                            province: form.errors.province,
+                                            region:
+                                                form.errors.region ??
+                                                permAddressErrors.region,
+                                            province:
+                                                form.errors.province ??
+                                                permAddressErrors.province,
                                             municipality:
-                                                form.errors.municipality,
-                                            barangay: form.errors.barangay,
+                                                form.errors.municipality ??
+                                                permAddressErrors.municipality,
+                                            barangay:
+                                                form.errors.barangay ??
+                                                permAddressErrors.barangay,
                                         }}
                                         onRegionChange={(_code, name) => {
                                             form.setData((d) => ({
@@ -1317,6 +1397,13 @@ export default function StudentModal({
                                                 municipality: '',
                                                 barangay: '',
                                             }));
+                                            setPermAddressErrors((prev) => ({
+                                                ...prev,
+                                                region: undefined,
+                                                province: undefined,
+                                                municipality: undefined,
+                                                barangay: undefined,
+                                            }));
                                         }}
                                         onProvinceChange={(_code, name) => {
                                             form.setData((d) => ({
@@ -1325,6 +1412,12 @@ export default function StudentModal({
                                                 municipality: '',
                                                 barangay: '',
                                             }));
+                                            setPermAddressErrors((prev) => ({
+                                                ...prev,
+                                                province: undefined,
+                                                municipality: undefined,
+                                                barangay: undefined,
+                                            }));
                                         }}
                                         onMunicipalityChange={(_code, name) => {
                                             form.setData((d) => ({
@@ -1332,11 +1425,162 @@ export default function StudentModal({
                                                 municipality: name,
                                                 barangay: '',
                                             }));
+                                            setPermAddressErrors((prev) => ({
+                                                ...prev,
+                                                municipality: undefined,
+                                                barangay: undefined,
+                                            }));
                                         }}
                                         onBarangayChange={(name) => {
                                             form.setData('barangay', name);
+                                            setPermAddressErrors((prev) => ({
+                                                ...prev,
+                                                barangay: undefined,
+                                            }));
                                         }}
                                     />
+
+                                    {/* Same-address checkbox */}
+                                    <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
+                                        <Checkbox
+                                            id="same_as_permanent_stu_edit"
+                                            checked={
+                                                form.data.same_as_permanent
+                                            }
+                                            onCheckedChange={(checked) => {
+                                                const isSame = Boolean(checked);
+                                                setSameAsPermanent(isSame);
+                                                if (isSame) {
+                                                    currCascade.reset();
+                                                    form.setData((d) => ({
+                                                        ...d,
+                                                        same_as_permanent: true,
+                                                        curr_region: '',
+                                                        curr_province: '',
+                                                        curr_municipality: '',
+                                                        curr_barangay: '',
+                                                    }));
+                                                    setCurrAddressErrors({});
+                                                } else {
+                                                    form.setData(
+                                                        'same_as_permanent',
+                                                        false,
+                                                    );
+                                                }
+                                            }}
+                                        />
+                                        <Label
+                                            htmlFor="same_as_permanent_stu_edit"
+                                            className="cursor-pointer text-sm"
+                                        >
+                                            Current address is the same as
+                                            permanent address
+                                        </Label>
+                                    </div>
+
+                                    {/* Current address — shown only when not same */}
+                                    {!form.data.same_as_permanent && (
+                                        <div className="space-y-3 rounded-md border p-3">
+                                            <AddressSection
+                                                title="Current Address"
+                                                cascade={currCascade}
+                                                barangayValue={
+                                                    form.data.curr_barangay
+                                                }
+                                                required
+                                                errors={{
+                                                    region:
+                                                        form.errors
+                                                            .curr_region ??
+                                                        currAddressErrors.region,
+                                                    province:
+                                                        form.errors
+                                                            .curr_province ??
+                                                        currAddressErrors.province,
+                                                    municipality:
+                                                        form.errors
+                                                            .curr_municipality ??
+                                                        currAddressErrors.municipality,
+                                                    barangay:
+                                                        form.errors
+                                                            .curr_barangay ??
+                                                        currAddressErrors.barangay,
+                                                }}
+                                                onRegionChange={(
+                                                    _code,
+                                                    name,
+                                                ) => {
+                                                    form.setData((d) => ({
+                                                        ...d,
+                                                        curr_region: name,
+                                                        curr_province: '',
+                                                        curr_municipality: '',
+                                                        curr_barangay: '',
+                                                    }));
+                                                    setCurrAddressErrors(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            region: undefined,
+                                                            province: undefined,
+                                                            municipality:
+                                                                undefined,
+                                                            barangay: undefined,
+                                                        }),
+                                                    );
+                                                }}
+                                                onProvinceChange={(
+                                                    _code,
+                                                    name,
+                                                ) => {
+                                                    form.setData((d) => ({
+                                                        ...d,
+                                                        curr_province: name,
+                                                        curr_municipality: '',
+                                                        curr_barangay: '',
+                                                    }));
+                                                    setCurrAddressErrors(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            province: undefined,
+                                                            municipality:
+                                                                undefined,
+                                                            barangay: undefined,
+                                                        }),
+                                                    );
+                                                }}
+                                                onMunicipalityChange={(
+                                                    _code,
+                                                    name,
+                                                ) => {
+                                                    form.setData((d) => ({
+                                                        ...d,
+                                                        curr_municipality: name,
+                                                        curr_barangay: '',
+                                                    }));
+                                                    setCurrAddressErrors(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            municipality:
+                                                                undefined,
+                                                            barangay: undefined,
+                                                        }),
+                                                    );
+                                                }}
+                                                onBarangayChange={(name) => {
+                                                    form.setData(
+                                                        'curr_barangay',
+                                                        name,
+                                                    );
+                                                    setCurrAddressErrors(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            barangay: undefined,
+                                                        }),
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ) : mode === 'edit' && editTab === 'family' ? (
                                 <div className="space-y-4 pt-1">

@@ -379,3 +379,73 @@ test('teacher adviser assignment can be added, changed, and removed on edit', fu
         ->exists()
     )->toBeFalse();
 });
+
+test('student separate current address can be saved on edit and cleared when same as permanent', function () {
+    $student = Student::create([
+        'stu_fname' => 'Paolo',
+        'stu_lname' => 'Mendoza',
+        'rfid_uid' => 'STURFID105',
+        'is_deleted' => false,
+    ]);
+
+    DB::table('student_section')->insert([
+        'stu_id' => $student->stu_id,
+        'sect_id' => $this->sectionA->sect_id,
+        'sy_id' => $this->syId,
+    ]);
+
+    // 1. Save with separate current address (same_as_permanent = false)
+    $this->actingAs($this->admin, 'admin')->put(route('admin.student.update', $student->stu_id), [
+        'stu_fname' => 'Paolo',
+        'stu_lname' => 'Mendoza',
+        'rfid_uid' => 'STURFID105',
+        'sect_id' => $this->sectionA->sect_id,
+        'region' => 'REGION X',
+        'province' => 'Bukidnon',
+        'municipality' => 'Malaybalay',
+        'barangay' => 'Casisang',
+        'same_as_permanent' => false,
+        'curr_region' => 'REGION X',
+        'curr_province' => 'Misamis Oriental',
+        'curr_municipality' => 'Cagayan de Oro',
+        'curr_barangay' => 'Carmen',
+    ])->assertRedirect(route('admin.student.index'))
+        ->assertSessionHasNoErrors();
+
+    $student->refresh();
+    expect($student->add_id)->not->toBeNull();
+
+    $permAddress = Address::find($student->add_id);
+    expect($permAddress->municipality)->toBe('Malaybalay')
+        ->and($permAddress->barangay)->toBe('Casisang');
+
+    $parentLink = ParentGuardian::where('stu_par_id', $student->stu_id)->first();
+    expect($parentLink)->not->toBeNull()
+        ->and($parentLink->add_id)->not->toBeNull();
+
+    $currAddress = Address::find($parentLink->add_id);
+    expect($currAddress->province)->toBe('Misamis Oriental')
+        ->and($currAddress->municipality)->toBe('Cagayan de Oro')
+        ->and($currAddress->barangay)->toBe('Carmen')
+        ->and($currAddress->add_type)->toBe('current');
+
+    // 2. Toggle same_as_permanent back to true -> removes separate current address
+    $this->actingAs($this->admin, 'admin')->put(route('admin.student.update', $student->stu_id), [
+        'stu_fname' => 'Paolo',
+        'stu_lname' => 'Mendoza',
+        'rfid_uid' => 'STURFID105',
+        'sect_id' => $this->sectionA->sect_id,
+        'region' => 'REGION X',
+        'province' => 'Bukidnon',
+        'municipality' => 'Malaybalay',
+        'barangay' => 'Casisang',
+        'same_as_permanent' => true,
+        'curr_region' => '',
+        'curr_province' => '',
+        'curr_municipality' => '',
+        'curr_barangay' => '',
+    ])->assertRedirect(route('admin.student.index'))
+        ->assertSessionHasNoErrors();
+
+    expect(Address::find($currAddress->add_id))->toBeNull();
+});
