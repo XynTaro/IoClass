@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import { ModalHeader } from '@/components/modal-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -111,6 +112,7 @@ function SubjectContent({
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [isAttaching, setIsAttaching] = useState(false);
     const [removingStudentId, setRemovingStudentId] = useState<number | null>(null);
+    const [studentToRemove, setStudentToRemove] = useState<EnrolledStudentItem | null>(null);
 
     useEffect(() => {
         let ignore = false;
@@ -237,16 +239,19 @@ function SubjectContent({
         );
     };
 
-    const handleDetachStudent = (stuId: number) => {
-        if (!subjectId) return;
-        if (!confirm('Remove this student from the subject?')) return;
-        setRemovingStudentId(stuId);
+    const handleConfirmDetachStudent = () => {
+        if (!subjectId || !studentToRemove) return;
+        setRemovingStudentId(studentToRemove.stu_id);
         router.delete(
-            route('admin.subject.students.detach', { id: subjectId, studentId: stuId }),
+            route('admin.subject.students.detach', {
+                id: subjectId,
+                studentId: studentToRemove.stu_id,
+            }),
             {
                 preserveScroll: true,
                 preserveState: true,
                 onSuccess: () => {
+                    setStudentToRemove(null);
                     refetch();
                     onDataUpdated?.();
                 },
@@ -531,7 +536,7 @@ function SubjectContent({
                                                 size="sm"
                                                 className="size-8 shrink-0 rounded-lg p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                                 disabled={removingStudentId === student.stu_id}
-                                                onClick={() => handleDetachStudent(student.stu_id)}
+                                                onClick={() => setStudentToRemove(student)}
                                                 title="Remove student from subject"
                                             >
                                                 {removingStudentId === student.stu_id ? (
@@ -691,6 +696,29 @@ function SubjectContent({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <ConfirmationModal
+                isOpen={Boolean(studentToRemove)}
+                onClose={() => {
+                    if (removingStudentId === null) {
+                        setStudentToRemove(null);
+                    }
+                }}
+                onConfirm={handleConfirmDetachStudent}
+                title="Remove Enrolled Student"
+                description={
+                    studentToRemove
+                        ? `Are you sure you want to remove ${studentFullName(studentToRemove)}${
+                              data?.subject?.subj_name
+                                  ? ` from ${data.subject.subj_name}`
+                                  : ' from this subject'
+                          }?`
+                        : 'Are you sure you want to remove this student from the subject?'
+                }
+                type="delete"
+                confirmText="Remove"
+                isLoading={removingStudentId !== null}
+            />
         </div>
     );
 }

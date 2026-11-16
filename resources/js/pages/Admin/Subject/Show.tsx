@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, BookOpen, Check, GraduationCap, Mail, Pencil, Phone, Plus, Search, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
 import { route } from 'ziggy-js';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import SubjectModal from '@/components/SubjectModal';
 import { Button } from '@/components/ui/button';
 import { formatContactNumberInput } from '@/lib/utils';
@@ -71,6 +72,7 @@ export default function Show() {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [processing, setProcessing] = useState(false);
     const [removingId, setRemovingId] = useState<number | null>(null);
+    const [studentToRemove, setStudentToRemove] = useState<EnrolledStudent | null>(null);
 
     const handleSaveSuccess = () => {
         router.reload();
@@ -134,13 +136,17 @@ export default function Show() {
         );
     };
 
-    const handleRemove = (studentId: number) => {
-        if (!confirm('Remove this student from the subject?')) return;
-        setRemovingId(studentId);
+    const handleConfirmRemove = () => {
+        if (!studentToRemove) return;
+        setRemovingId(studentToRemove.stu_id);
         router.delete(
-            route('admin.subject.students.detach', { id: subject.subj_id, studentId }),
+            route('admin.subject.students.detach', {
+                id: subject.subj_id,
+                studentId: studentToRemove.stu_id,
+            }),
             {
                 preserveScroll: true,
+                onSuccess: () => setStudentToRemove(null),
                 onFinish: () => setRemovingId(null),
             },
         );
@@ -302,7 +308,7 @@ export default function Show() {
                                         size="sm"
                                         className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         disabled={removingId === student.stu_id}
-                                        onClick={() => handleRemove(student.stu_id)}
+                                        onClick={() => setStudentToRemove(student)}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -439,6 +445,29 @@ export default function Show() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <ConfirmationModal
+                isOpen={Boolean(studentToRemove)}
+                onClose={() => {
+                    if (removingId === null) {
+                        setStudentToRemove(null);
+                    }
+                }}
+                onConfirm={handleConfirmRemove}
+                title="Remove Enrolled Student"
+                description={
+                    studentToRemove
+                        ? `Are you sure you want to remove ${[studentToRemove.stu_fname, studentToRemove.stu_mname, studentToRemove.stu_lname].filter(Boolean).join(' ')}${
+                              subject?.subj_name
+                                  ? ` from ${subject.subj_name}`
+                                  : ' from this subject'
+                          }?`
+                        : 'Are you sure you want to remove this student from the subject?'
+                }
+                type="delete"
+                confirmText="Remove"
+                isLoading={removingId !== null}
+            />
         </AdminLayout>
     );
 }
