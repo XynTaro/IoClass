@@ -615,7 +615,7 @@ class AdminStudentController extends Controller
 
         $requireFather = ! $fatherIsDeceased && ($hasExistingFather || $hasFatherInput);
         $requireMother = ! $motherIsDeceased && ($hasExistingMother || $hasMotherInput);
-        $requireGuardian = $bothParentsDeceased || ($hasExistingGuardian && ! $request->has('guardian_name')) || $hasGuardianInput;
+        $requireGuardian = $bothParentsDeceased || $hasExistingGuardian || $hasGuardianInput || $request->has('guardian_name');
 
         $hasParentFields = $hasParentInput && ($fatherIsDeceased
             || $motherIsDeceased
@@ -686,20 +686,20 @@ class AdminStudentController extends Controller
                 'regex:/^\+?[\d\s]+$/',
             ];
             $rules['guardian_name'] = [
-                $bothParentsDeceased ? 'required' : 'nullable',
+                $requireGuardian ? 'required' : 'nullable',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ];
             $rules['guardian_mname'] = ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'];
             $rules['guardian_lname'] = [
-                $bothParentsDeceased ? 'required' : 'nullable',
+                $requireGuardian ? 'required' : 'nullable',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ];
             $rules['guardian_contact_number'] = [
-                $bothParentsDeceased ? 'required' : 'nullable',
+                $requireGuardian ? 'required' : 'nullable',
                 'string',
                 'max:20',
                 'regex:/^\+?[\d\s]+$/',

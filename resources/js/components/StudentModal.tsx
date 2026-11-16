@@ -965,44 +965,23 @@ export default function StudentModal({
             }
         }
 
-        const bothParentsDeceased = Boolean(
-            form.data.father_is_deceased && form.data.mother_is_deceased,
-        );
-        if (bothParentsDeceased) {
-            if (!form.data.guardian_name.trim()) {
-                familyErrors.guardian_name =
-                    'Guardian first name is required when both parents are deceased.';
-            }
-            if (!form.data.guardian_lname.trim()) {
-                familyErrors.guardian_lname =
-                    'Guardian last name is required when both parents are deceased.';
-            }
-            if (!form.data.guardian_contact_number.trim()) {
+        if (!form.data.guardian_name.trim()) {
+            familyErrors.guardian_name = 'Guardian first name is required.';
+        }
+        if (!form.data.guardian_lname.trim()) {
+            familyErrors.guardian_lname = 'Guardian last name is required.';
+        }
+        if (!form.data.guardian_contact_number.trim()) {
+            familyErrors.guardian_contact_number =
+                'Guardian contact number is required.';
+        } else {
+            const cleanNum = form.data.guardian_contact_number.replace(
+                /\D/g,
+                '',
+            );
+            if (cleanNum.length !== 11) {
                 familyErrors.guardian_contact_number =
-                    'Guardian contact number is required when both parents are deceased.';
-            } else {
-                const cleanNum = form.data.guardian_contact_number.replace(
-                    /\D/g,
-                    '',
-                );
-                if (cleanNum.length !== 11) {
-                    familyErrors.guardian_contact_number =
-                        'Contact number must be exactly 11 digits.';
-                }
-            }
-        } else if (
-            form.data.guardian_name.trim() ||
-            form.data.guardian_contact_number.trim()
-        ) {
-            if (form.data.guardian_contact_number.trim()) {
-                const cleanNum = form.data.guardian_contact_number.replace(
-                    /\D/g,
-                    '',
-                );
-                if (cleanNum.length !== 11) {
-                    familyErrors.guardian_contact_number =
-                        'Contact number must be exactly 11 digits.';
-                }
+                    'Contact number must be exactly 11 digits.';
             }
         }
 
@@ -1160,42 +1139,24 @@ export default function StudentModal({
             }
         }
 
-        // Guardian validation (required only if both parents are deceased)
-        const bothParentsDeceased = Boolean(
-            form.data.father_is_deceased && form.data.mother_is_deceased,
-        );
-        if (bothParentsDeceased) {
-            if (!form.data.guardian_name.trim()) {
-                errors.guardian_name =
-                    'Guardian first name is required when both parents are deceased.';
-            }
-            if (!form.data.guardian_lname.trim()) {
-                errors.guardian_lname =
-                    'Guardian last name is required when both parents are deceased.';
-            }
-            if (!form.data.guardian_contact_number.trim()) {
-                errors.guardian_contact_number =
-                    'Guardian contact number is required when both parents are deceased.';
-            } else {
-                const cleanNum = form.data.guardian_contact_number.replace(
-                    /\D/g,
-                    '',
-                );
-                if (cleanNum.length !== 11) {
-                    errors.guardian_contact_number =
-                        'Contact number must be exactly 11 digits.';
-                }
-            }
+        // Guardian validation (required)
+        if (!form.data.guardian_name.trim()) {
+            errors.guardian_name = 'Guardian first name is required.';
+        }
+        if (!form.data.guardian_lname.trim()) {
+            errors.guardian_lname = 'Guardian last name is required.';
+        }
+        if (!form.data.guardian_contact_number.trim()) {
+            errors.guardian_contact_number =
+                'Guardian contact number is required.';
         } else {
-            if (form.data.guardian_contact_number.trim()) {
-                const cleanNum = form.data.guardian_contact_number.replace(
-                    /\D/g,
-                    '',
-                );
-                if (cleanNum.length !== 11) {
-                    errors.guardian_contact_number =
-                        'Contact number must be exactly 11 digits.';
-                }
+            const cleanNum = form.data.guardian_contact_number.replace(
+                /\D/g,
+                '',
+            );
+            if (cleanNum.length !== 11) {
+                errors.guardian_contact_number =
+                    'Contact number must be exactly 11 digits.';
             }
         }
 
@@ -1669,16 +1630,7 @@ export default function StudentModal({
                                         data={form.data}
                                         errors={form.errors}
                                         onChange={setField}
-                                        required={Boolean(
-                                            form.data.father_is_deceased &&
-                                                form.data.mother_is_deceased,
-                                        )}
-                                        badgeNote={
-                                            form.data.father_is_deceased &&
-                                            form.data.mother_is_deceased
-                                                ? 'Parents deceased'
-                                                : undefined
-                                        }
+                                        required
                                     />
                                 </div>
                             ) : (
@@ -2301,8 +2253,7 @@ export default function StudentModal({
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
                                         Parents are required unless deceased.
-                                        Guardian is required if both parents are
-                                        deceased.
+                                        Guardian information is required.
                                     </p>
                                 </div>
                             </div>
@@ -2408,16 +2359,7 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
-                                required={Boolean(
-                                    form.data.father_is_deceased &&
-                                    form.data.mother_is_deceased,
-                                )}
-                                badgeNote={
-                                    form.data.father_is_deceased &&
-                                    form.data.mother_is_deceased
-                                        ? 'Parents deceased'
-                                        : undefined
-                                }
+                                required
                             />
                         </form>
 
