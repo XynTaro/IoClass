@@ -173,6 +173,14 @@ function statusBadge(status: AttendanceStatus) {
 export default function MyAttendanceIndex() {
     const { attendance, summary, filters } = usePage<PageProps>().props;
 
+    const today = useMemo(() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }, []);
+
     const [search, setSearch] = useState(filters?.q ?? '');
     const [selectedDate, setSelectedDate] = useState(filters?.date ?? '');
     const [attendanceFilter, setAttendanceFilter] = useState<string>(
@@ -209,7 +217,8 @@ export default function MyAttendanceIndex() {
         next?: Partial<{ q: string; date: string; attendance: string }>,
     ) {
         const q = (next?.q ?? search).trim();
-        const nextDate = next?.date ?? selectedDate;
+        const rawDate = next?.date ?? selectedDate;
+        const nextDate = rawDate && rawDate > today ? today : rawDate;
         const nextAttendance = next?.attendance ?? attendanceFilter;
 
         const query: Record<string, string> = {};
@@ -226,6 +235,7 @@ export default function MyAttendanceIndex() {
     }
 
     const handleDateChange = (newDate: string) => {
+        if (newDate && newDate > today) return;
         setSelectedDate(newDate);
         applyFilters({ date: newDate });
     };
@@ -496,10 +506,11 @@ export default function MyAttendanceIndex() {
                                 id="my-attendance-date"
                                 type="date"
                                 value={selectedDate}
+                                max={today}
                                 onChange={(e) =>
                                     handleDateChange(e.target.value)
                                 }
-                                className="h-9 focus-visible:ring-1"
+                                className="h-9 focus-visible:ring-1 cursor-pointer"
                             />
                         </div>
 

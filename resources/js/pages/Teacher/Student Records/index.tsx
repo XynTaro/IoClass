@@ -50,6 +50,14 @@ export default function TeacherStudentRecords() {
     const { students, subjects, schoolYears, filters, gradeLevels, sections } =
         usePage<PageProps>().props;
 
+    const today = useMemo(() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }, []);
+
     const [search, setSearch] = useState(filters?.q ?? '');
     const [gradeLevel, setGradeLevel] = useState<string>(
         filters?.gradeLevel ?? 'all',
@@ -94,7 +102,8 @@ export default function TeacherStudentRecords() {
         const nextGradeLevel = next?.gradeLevel ?? gradeLevel;
         const nextSection = next?.section ?? section;
         const nextSyId = next?.syId ?? syId;
-        const nextDate = next?.date ?? date;
+        const rawDate = next?.date ?? date;
+        const nextDate = rawDate && rawDate > today ? today : rawDate;
 
         const query: Record<string, string> = {};
 
@@ -275,8 +284,10 @@ export default function TeacherStudentRecords() {
                             <Input
                                 type="date"
                                 value={date}
+                                max={today}
                                 onChange={(e) => {
                                     const nextDate = e.target.value;
+                                    if (nextDate && nextDate > today) return;
                                     setDate(nextDate);
                                     applyFilters({ date: nextDate });
                                 }}

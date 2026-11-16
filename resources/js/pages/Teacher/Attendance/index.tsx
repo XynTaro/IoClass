@@ -185,6 +185,14 @@ export default function TeacherAttendanceIndex() {
     const { attendance, summary, filters, gradeLevels, sections } =
         usePage<PageProps>().props;
 
+    const today = useMemo(() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }, []);
+
     // ── Local filter state (mirrors server-side query params) ──────────
     const [search, setSearch] = useState(filters?.q ?? '');
     const [date, setDate] = useState(filters?.date ?? '');
@@ -362,7 +370,8 @@ export default function TeacherAttendanceIndex() {
         }>,
     ) {
         const q = (next?.q ?? search).trim();
-        const nextDate = next?.date ?? date;
+        const rawDate = next?.date ?? date;
+        const nextDate = rawDate && rawDate > today ? today : rawDate;
         const nextGradeLevel = next?.gradeLevel ?? gradeLevel;
         const nextSection = next?.section ?? section;
         const nextAttendance = next?.attendance ?? attendanceFilter;
@@ -592,11 +601,14 @@ export default function TeacherAttendanceIndex() {
                                 id="attendance-date"
                                 type="date"
                                 value={date}
+                                max={today}
                                 onChange={(e) => {
-                                    setDate(e.target.value);
-                                    applyFilters({ date: e.target.value });
+                                    const nextDate = e.target.value;
+                                    if (nextDate && nextDate > today) return;
+                                    setDate(nextDate);
+                                    applyFilters({ date: nextDate });
                                 }}
-                                className="h-9 focus-visible:ring-1"
+                                className="h-9 focus-visible:ring-1 cursor-pointer"
                             />
                         </div>
 

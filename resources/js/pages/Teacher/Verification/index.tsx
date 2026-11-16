@@ -135,6 +135,14 @@ export default function TeacherVerificationIndex() {
         message,
     } = usePage<Props>().props;
 
+    const today = useMemo(() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }, []);
+
     const [rows, setRows] = useState<
         Array<VerificationRow & { status: string }>
     >(() => initialRows.map((r) => ({ ...r, status: 'absent' })));
@@ -182,7 +190,8 @@ export default function TeacherVerificationIndex() {
         sect_id?: number | null;
     }) => {
         const query: Record<string, string> = {};
-        const nextDate = next.date ?? selectedDate;
+        const rawDate = next.date ?? selectedDate;
+        const nextDate = rawDate && rawDate > today ? today : rawDate;
         const nextSubj = next.subj_id ?? selected?.subj_id ?? null;
         const nextSect = next.sect_id ?? selected?.sect_id ?? null;
 
@@ -271,11 +280,14 @@ export default function TeacherVerificationIndex() {
                             id="verification-date"
                             type="date"
                             value={selectedDate}
+                            max={today}
                             onChange={(e) => {
-                                setSelectedDate(e.target.value);
-                                navigate({ date: e.target.value });
+                                const nextDate = e.target.value;
+                                if (nextDate && nextDate > today) return;
+                                setSelectedDate(nextDate);
+                                navigate({ date: nextDate });
                             }}
-                            className="h-9"
+                            className="h-9 cursor-pointer"
                         />
                     </div>
 

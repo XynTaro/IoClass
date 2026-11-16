@@ -121,7 +121,13 @@ export default function TeacherAttendanceIndex() {
     const [editTimeIn, setEditTimeIn] = useState<string>('');
     const [editRemarks, setEditRemarks] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
-    const today = new Date().toISOString().split('T')[0];
+    const today = useMemo(() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }, []);
     const isFilterActive =
         searchQuery.trim() !== '' ||
         statusFilter !== 'all' ||
@@ -170,8 +176,9 @@ export default function TeacherAttendanceIndex() {
         const query: Record<string, string> = {};
 
         const q = newParams.q !== undefined ? newParams.q : searchQuery;
-        const date =
+        const rawDate =
             newParams.date !== undefined ? newParams.date : selectedDate;
+        const date = rawDate && rawDate > today ? today : rawDate;
         const status =
             newParams.status !== undefined ? newParams.status : statusFilter;
 
@@ -187,6 +194,7 @@ export default function TeacherAttendanceIndex() {
     };
 
     const handleDateChange = (newDate: string) => {
+        if (newDate && newDate > today) return;
         setSelectedDate(newDate);
         applyFilters({ date: newDate });
     };
@@ -615,10 +623,11 @@ export default function TeacherAttendanceIndex() {
                                 id="attendance-date"
                                 type="date"
                                 value={selectedDate}
+                                max={today}
                                 onChange={(e) =>
                                     handleDateChange(e.target.value)
                                 }
-                                className="h-9 focus-visible:ring-1"
+                                className="h-9 focus-visible:ring-1 cursor-pointer"
                             />
                         </div>
 
