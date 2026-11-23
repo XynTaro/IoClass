@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,6 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import TeacherLayout from '@/layouts/teacher/teacher-layout';
+import { cn } from '@/lib/utils';
 import teacher from '@/routes/teacher';
 
 export type VerificationRow = {
@@ -58,12 +60,52 @@ type Props = {
     message: string | null;
 };
 
-const STATUS_OPTIONS = [
-    { value: 'absent', label: 'Absent' },
-    { value: 'excused', label: 'Excused' },
-    { value: 'present', label: 'Present (manual)' },
-    { value: 'late', label: 'Late (manual)' },
-] as const;
+type VerificationStatus = 'present' | 'late' | 'excused' | 'absent';
+
+const STATUS_OPTIONS: ReadonlyArray<{
+    value: VerificationStatus;
+    label: string;
+    checkboxClass: string;
+    headerTextClass: string;
+    pillClass: string;
+}> = [
+    {
+        value: 'present',
+        label: 'Present',
+        checkboxClass:
+            'border-emerald-400/70 data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600 data-[state=checked]:text-white data-[state=indeterminate]:border-emerald-500 data-[state=indeterminate]:bg-emerald-500/20 data-[state=indeterminate]:text-emerald-700 dark:data-[state=indeterminate]:text-emerald-300',
+        headerTextClass: 'text-emerald-700 dark:text-emerald-400',
+        pillClass:
+            'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+    },
+    {
+        value: 'late',
+        label: 'Late',
+        checkboxClass:
+            'border-amber-400/70 data-[state=checked]:border-amber-500 data-[state=checked]:bg-amber-500 data-[state=checked]:text-white data-[state=indeterminate]:border-amber-500 data-[state=indeterminate]:bg-amber-500/20 data-[state=indeterminate]:text-amber-700 dark:data-[state=indeterminate]:text-amber-300',
+        headerTextClass: 'text-amber-700 dark:text-amber-400',
+        pillClass:
+            'bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+    },
+    {
+        value: 'excused',
+        label: 'Excused',
+        checkboxClass:
+            'border-slate-400/70 data-[state=checked]:border-slate-600 data-[state=checked]:bg-slate-600 data-[state=checked]:text-white data-[state=indeterminate]:border-slate-500 data-[state=indeterminate]:bg-slate-500/20 data-[state=indeterminate]:text-slate-700 dark:data-[state=indeterminate]:text-slate-300',
+        headerTextClass: 'text-slate-700 dark:text-slate-300',
+        pillClass:
+            'bg-slate-500/10 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',
+    },
+    {
+        value: 'absent',
+        label: 'Absent',
+        checkboxClass:
+            'border-red-400/70 data-[state=checked]:border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:text-white data-[state=indeterminate]:border-red-500 data-[state=indeterminate]:bg-red-500/20 data-[state=indeterminate]:text-red-700 dark:data-[state=indeterminate]:text-red-300',
+        headerTextClass: 'text-red-700 dark:text-red-400',
+        pillClass:
+            'bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+    },
+];
 
 const summaryCards = [
     {
@@ -144,7 +186,7 @@ export default function TeacherVerificationIndex() {
     }, []);
 
     const [rows, setRows] = useState<
-        Array<VerificationRow & { status: string }>
+        Array<VerificationRow & { status: VerificationStatus }>
     >(() => initialRows.map((r) => ({ ...r, status: 'absent' })));
     const [submitting, setSubmitting] = useState(false);
     const [nameSearch, setNameSearch] = useState('');
@@ -178,11 +220,33 @@ export default function TeacherVerificationIndex() {
         });
     }, [rows, nameSearch]);
 
-    const setStatus = (stuId: number, status: string) => {
+    const setStatus = (stuId: number, status: VerificationStatus) => {
         setRows((prev) =>
             prev.map((r) => (r.stu_id === stuId ? { ...r, status } : r)),
         );
     };
+
+    const setStatusForVisible = (status: VerificationStatus) => {
+        const visibleIds = new Set(filteredRows.map((r) => r.stu_id));
+        setRows((prev) =>
+            prev.map((r) =>
+                visibleIds.has(r.stu_id) ? { ...r, status } : r,
+            ),
+        );
+    };
+
+    const pendingCounts = useMemo(() => {
+        const counts: Record<VerificationStatus, number> = {
+            present: 0,
+            late: 0,
+            excused: 0,
+            absent: 0,
+        };
+        for (const row of rows) {
+            counts[row.status] += 1;
+        }
+        return counts;
+    }, [rows]);
 
     const navigate = (next: {
         date?: string;
@@ -405,23 +469,43 @@ export default function TeacherVerificationIndex() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        <div className="max-w-md space-y-1.5">
-                            <Label htmlFor="verify-name-search">
-                                Search by name
-                            </Label>
-                            <div className="relative">
-                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    id="verify-name-search"
-                                    type="search"
-                                    placeholder="Last name, first name…"
-                                    value={nameSearch}
-                                    onChange={(e) =>
-                                        setNameSearch(e.target.value)
-                                    }
-                                    autoComplete="off"
-                                    className="h-9 pl-9"
-                                />
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                            <div className="w-full max-w-md space-y-1.5">
+                                <Label htmlFor="verify-name-search">
+                                    Search by name
+                                </Label>
+                                <div className="relative">
+                                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        id="verify-name-search"
+                                        type="search"
+                                        placeholder="Last name, first name…"
+                                        value={nameSearch}
+                                        onChange={(e) =>
+                                            setNameSearch(e.target.value)
+                                        }
+                                        autoComplete="off"
+                                        className="h-9 pl-9"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                <span className="mr-1 font-medium text-muted-foreground">
+                                    Selected:
+                                </span>
+                                {STATUS_OPTIONS.map((opt) => (
+                                    <span
+                                        key={opt.value}
+                                        className={cn(
+                                            'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold tabular-nums',
+                                            opt.pillClass,
+                                        )}
+                                    >
+                                        <span>{pendingCounts[opt.value]}</span>
+                                        <span>{opt.label}</span>
+                                    </span>
+                                ))}
                             </div>
                         </div>
 
@@ -432,7 +516,7 @@ export default function TeacherVerificationIndex() {
                             </p>
                         ) : (
                             <div className="overflow-x-auto rounded-xl border bg-background shadow-sm">
-                                <table className="w-full min-w-[720px] text-sm">
+                                <table className="w-full min-w-[780px] text-sm">
                                     <thead>
                                         <tr className="border-b bg-muted/70 text-left text-foreground/70">
                                             <th className="px-3 py-2.5 font-medium">
@@ -444,56 +528,108 @@ export default function TeacherVerificationIndex() {
                                             <th className="px-3 py-2.5 font-medium">
                                                 Grade / Section
                                             </th>
-                                            <th className="px-3 py-2.5 font-medium">
-                                                Set status
-                                            </th>
+                                            {STATUS_OPTIONS.map((opt) => {
+                                                const matchedCount =
+                                                    filteredRows.filter(
+                                                        (r) =>
+                                                            r.status ===
+                                                            opt.value,
+                                                    ).length;
+                                                const checkedState:
+                                                    | boolean
+                                                    | 'indeterminate' =
+                                                    matchedCount === 0
+                                                        ? false
+                                                        : matchedCount ===
+                                                            filteredRows.length
+                                                          ? true
+                                                          : 'indeterminate';
+
+                                                return (
+                                                    <th
+                                                        key={opt.value}
+                                                        className="px-3 py-2.5 text-center font-medium"
+                                                    >
+                                                        <label
+                                                            title={`Select all shown students as ${opt.label}`}
+                                                            className="inline-flex cursor-pointer items-center justify-center gap-1.5 select-none"
+                                                        >
+                                                            <Checkbox
+                                                                checked={
+                                                                    checkedState
+                                                                }
+                                                                onCheckedChange={() =>
+                                                                    setStatusForVisible(
+                                                                        opt.value,
+                                                                    )
+                                                                }
+                                                                aria-label={`Select all shown students as ${opt.label}`}
+                                                                className={cn(
+                                                                    'cursor-pointer',
+                                                                    opt.checkboxClass,
+                                                                )}
+                                                            />
+                                                            <span
+                                                                className={cn(
+                                                                    'text-xs font-semibold',
+                                                                    opt.headerTextClass,
+                                                                )}
+                                                            >
+                                                                {opt.label}
+                                                            </span>
+                                                        </label>
+                                                    </th>
+                                                );
+                                            })}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredRows.map((r) => (
                                             <tr
                                                 key={r.stu_id}
-                                                className="border-b last:border-0"
+                                                className="border-b transition-colors hover:bg-muted/30 last:border-0"
                                             >
-                                                <td className="px-3 py-2 font-mono text-xs tabular-nums">
+                                                <td className="px-3 py-2.5 font-mono text-xs tabular-nums">
                                                     {formatLrn(r.lrn)}
                                                 </td>
-                                                <td className="px-3 py-2">
+                                                <td className="px-3 py-2.5">
                                                     <span className="font-medium">
                                                         {r.stu_lname},{' '}
                                                         {r.stu_fname}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-2 text-muted-foreground">
+                                                <td className="px-3 py-2.5 text-muted-foreground">
                                                     {r.gr_level} / {r.sect}
                                                 </td>
-                                                <td className="px-3 py-2">
-                                                    <select
-                                                        className="w-full max-w-52 rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                        value={r.status}
-                                                        onChange={(e) =>
-                                                            setStatus(
-                                                                r.stu_id,
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                    >
-                                                        {STATUS_OPTIONS.map(
-                                                            (o) => (
-                                                                <option
-                                                                    key={
-                                                                        o.value
+                                                {STATUS_OPTIONS.map((opt) => {
+                                                    const isSelected =
+                                                        r.status === opt.value;
+                                                    return (
+                                                        <td
+                                                            key={opt.value}
+                                                            className="px-3 py-2.5 text-center"
+                                                        >
+                                                            <div className="flex items-center justify-center">
+                                                                <Checkbox
+                                                                    checked={
+                                                                        isSelected
                                                                     }
-                                                                    value={
-                                                                        o.value
+                                                                    onCheckedChange={() =>
+                                                                        setStatus(
+                                                                            r.stu_id,
+                                                                            opt.value,
+                                                                        )
                                                                     }
-                                                                >
-                                                                    {o.label}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                </td>
+                                                                    aria-label={`Mark ${r.stu_lname}, ${r.stu_fname} as ${opt.label}`}
+                                                                    className={cn(
+                                                                        'size-4.5 cursor-pointer',
+                                                                        opt.checkboxClass,
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
                                             </tr>
                                         ))}
                                     </tbody>
