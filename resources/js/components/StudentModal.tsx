@@ -217,6 +217,7 @@ interface StudentFormData {
     guardian_mname: string;
     guardian_lname: string;
     guardian_contact_number: string;
+    guardian_is_na: boolean;
     main_contact: 'father' | 'mother' | 'guardian' | '';
 }
 
@@ -264,6 +265,7 @@ const emptyForm: StudentFormData = {
     guardian_mname: '',
     guardian_lname: '',
     guardian_contact_number: '',
+    guardian_is_na: false,
     main_contact: '',
 };
 
@@ -345,6 +347,7 @@ interface ParentSectionProps {
     errors: Partial<Record<keyof StudentFormData, string>>;
     onChange: (field: keyof StudentFormData, val: string) => void;
     onNaChange?: (isNa: boolean) => void;
+    naDisabled?: boolean;
     onMainContactChange: (selected: boolean) => void;
     required?: boolean;
     badgeNote?: string;
@@ -359,11 +362,10 @@ const FIRST_NAME_KEY: Record<
     guardian: 'guardian_name',
 };
 
-const NA_KEY: Partial<
-    Record<'father' | 'mother' | 'guardian', keyof StudentFormData>
-> = {
+const NA_KEY: Record<'father' | 'mother' | 'guardian', keyof StudentFormData> = {
     father: 'father_is_na',
     mother: 'mother_is_na',
+    guardian: 'guardian_is_na',
 };
 
 const PARENT_STYLE: Record<
@@ -398,6 +400,7 @@ function ParentSection({
     errors,
     onChange,
     onNaChange,
+    naDisabled = false,
     onMainContactChange,
     required = false,
     badgeNote,
@@ -487,22 +490,37 @@ function ParentSection({
                     </div>
                     {naKey && onNaChange && (
                         <div
-                            title="Not Applicable"
+                            title={
+                                naDisabled && !isNa
+                                    ? 'At least one contact (Father, Mother, or Guardian) is required'
+                                    : 'Not Applicable'
+                            }
                             className={cn(
                                 'flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
-                                isNa ? 'bg-muted' : 'hover:bg-muted/50',
+                                isNa
+                                    ? 'bg-muted'
+                                    : naDisabled
+                                      ? 'bg-muted/40 opacity-50'
+                                      : 'hover:bg-muted/50',
                             )}
                         >
                             <Checkbox
                                 id={`${prefix}_is_na`}
                                 checked={isNa}
-                                onCheckedChange={(checked) =>
-                                    onNaChange(Boolean(checked))
-                                }
+                                disabled={naDisabled && !isNa}
+                                onCheckedChange={(checked) => {
+                                    if (naDisabled && !isNa) return;
+                                    onNaChange(Boolean(checked));
+                                }}
                             />
                             <Label
                                 htmlFor={`${prefix}_is_na`}
-                                className="cursor-pointer text-xs text-muted-foreground"
+                                className={cn(
+                                    'text-xs text-muted-foreground',
+                                    naDisabled && !isNa
+                                        ? 'cursor-not-allowed'
+                                        : 'cursor-pointer',
+                                )}
                             >
                                 N/A
                             </Label>
@@ -641,14 +659,15 @@ export default function StudentModal({
             const hasMother = Boolean(student.mother_name && student.mother_name.trim());
             const hasGuardian = Boolean(student.guardian_name && student.guardian_name.trim());
 
-            const fatherNa = (!hasFather && hasGuardian) || (!hasFather && hasMother && hasGuardian);
-            const motherNa = (!hasMother && hasGuardian) || (!hasMother && hasFather && hasGuardian);
+            const fatherNa = !hasFather && (hasMother || hasGuardian);
+            const motherNa = !hasMother && (hasFather || hasGuardian);
+            const guardianNa = !hasGuardian && (hasFather || hasMother);
             const initialMainContact =
                 student.main_contact === 'father' && !fatherNa
                     ? 'father'
                     : student.main_contact === 'mother' && !motherNa
                       ? 'mother'
-                      : student.main_contact === 'guardian'
+                      : student.main_contact === 'guardian' && !guardianNa
                         ? 'guardian'
                         : '';
             const hasCurrAddress = Boolean(
@@ -697,6 +716,7 @@ export default function StudentModal({
                 guardian_mname: student.guardian_mname ?? '',
                 guardian_lname: student.guardian_lname ?? '',
                 guardian_contact_number: student.guardian_contact_number ?? '',
+                guardian_is_na: guardianNa,
                 main_contact: initialMainContact,
             });
 
@@ -800,7 +820,8 @@ export default function StudentModal({
             Boolean(form.data.guardian_name.trim()) ||
             Boolean(form.data.main_contact) ||
             form.data.father_is_na ||
-            form.data.mother_is_na;
+            form.data.mother_is_na ||
+            form.data.guardian_is_na;
 
         if (hasContent) {
             sessionStorage.setItem(
@@ -988,7 +1009,14 @@ export default function StudentModal({
 
         // Validate family fields in edit mode
         const familyErrors: Record<string, string> = {};
-        if (!form.data.main_contact) {
+        if (
+            form.data.father_is_na &&
+            form.data.mother_is_na &&
+            form.data.guardian_is_na
+        ) {
+            familyErrors.main_contact =
+                'At least one contact (Father, Mother, or Guardian) must be provided.';
+        } else if (!form.data.main_contact) {
             familyErrors.main_contact =
                 'Please select a main contact (Father, Mother, or Guardian).';
         } else if (
@@ -1003,6 +1031,12 @@ export default function StudentModal({
         ) {
             familyErrors.main_contact =
                 'Mother cannot be the main contact when marked as N/A.';
+        } else if (
+            form.data.main_contact === 'guardian' &&
+            form.data.guardian_is_na
+        ) {
+            familyErrors.main_contact =
+                'Guardian cannot be the main contact when marked as N/A.';
         }
 
         if (
@@ -1057,23 +1091,25 @@ export default function StudentModal({
             }
         }
 
-        if (!form.data.guardian_name.trim()) {
-            familyErrors.guardian_name = 'Guardian first name is required.';
-        }
-        if (!form.data.guardian_lname.trim()) {
-            familyErrors.guardian_lname = 'Guardian last name is required.';
-        }
-        if (!form.data.guardian_contact_number.trim()) {
-            familyErrors.guardian_contact_number =
-                'Guardian contact number is required.';
-        } else {
-            const cleanNum = form.data.guardian_contact_number.replace(
-                /\D/g,
-                '',
-            );
-            if (cleanNum.length !== 11) {
+        if (!form.data.guardian_is_na) {
+            if (!form.data.guardian_name.trim()) {
+                familyErrors.guardian_name = 'Guardian first name is required.';
+            }
+            if (!form.data.guardian_lname.trim()) {
+                familyErrors.guardian_lname = 'Guardian last name is required.';
+            }
+            if (!form.data.guardian_contact_number.trim()) {
                 familyErrors.guardian_contact_number =
-                    'Contact number must be exactly 11 digits.';
+                    'Guardian contact number is required.';
+            } else {
+                const cleanNum = form.data.guardian_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
+                if (cleanNum.length !== 11) {
+                    familyErrors.guardian_contact_number =
+                        'Contact number must be exactly 11 digits.';
+                }
             }
         }
 
@@ -1136,6 +1172,7 @@ export default function StudentModal({
                     'guardian_mname',
                     'guardian_lname',
                     'guardian_contact_number',
+                    'guardian_is_na',
                     'main_contact',
                 ];
                 if (step1Fields.some((f) => f in errors)) {
@@ -1187,7 +1224,14 @@ export default function StudentModal({
         const errors: Record<string, string> = {};
 
         // Main contact validation (required)
-        if (!form.data.main_contact) {
+        if (
+            form.data.father_is_na &&
+            form.data.mother_is_na &&
+            form.data.guardian_is_na
+        ) {
+            errors.main_contact =
+                'At least one contact (Father, Mother, or Guardian) must be provided.';
+        } else if (!form.data.main_contact) {
             errors.main_contact =
                 'Please select a main contact (Father, Mother, or Guardian).';
         } else if (
@@ -1202,6 +1246,12 @@ export default function StudentModal({
         ) {
             errors.main_contact =
                 'Mother cannot be the main contact when marked as N/A.';
+        } else if (
+            form.data.main_contact === 'guardian' &&
+            form.data.guardian_is_na
+        ) {
+            errors.main_contact =
+                'Guardian cannot be the main contact when marked as N/A.';
         }
 
         // Father validation (required unless marked N/A)
@@ -1250,24 +1300,26 @@ export default function StudentModal({
             }
         }
 
-        // Guardian validation (required)
-        if (!form.data.guardian_name.trim()) {
-            errors.guardian_name = 'Guardian first name is required.';
-        }
-        if (!form.data.guardian_lname.trim()) {
-            errors.guardian_lname = 'Guardian last name is required.';
-        }
-        if (!form.data.guardian_contact_number.trim()) {
-            errors.guardian_contact_number =
-                'Guardian contact number is required.';
-        } else {
-            const cleanNum = form.data.guardian_contact_number.replace(
-                /\D/g,
-                '',
-            );
-            if (cleanNum.length !== 11) {
+        // Guardian validation (required unless marked N/A)
+        if (!form.data.guardian_is_na) {
+            if (!form.data.guardian_name.trim()) {
+                errors.guardian_name = 'Guardian first name is required.';
+            }
+            if (!form.data.guardian_lname.trim()) {
+                errors.guardian_lname = 'Guardian last name is required.';
+            }
+            if (!form.data.guardian_contact_number.trim()) {
                 errors.guardian_contact_number =
-                    'Contact number must be exactly 11 digits.';
+                    'Guardian contact number is required.';
+            } else {
+                const cleanNum = form.data.guardian_contact_number.replace(
+                    /\D/g,
+                    '',
+                );
+                if (cleanNum.length !== 11) {
+                    errors.guardian_contact_number =
+                        'Contact number must be exactly 11 digits.';
+                }
             }
         }
 
@@ -1711,6 +1763,10 @@ export default function StudentModal({
                                         errors={form.errors}
                                         onChange={setField}
                                         required={!form.data.father_is_na}
+                                        naDisabled={
+                                            form.data.mother_is_na &&
+                                            form.data.guardian_is_na
+                                        }
                                         onMainContactChange={(selected) => {
                                             form.setData(
                                                 'main_contact',
@@ -1757,6 +1813,10 @@ export default function StudentModal({
                                         errors={form.errors}
                                         onChange={setField}
                                         required={!form.data.mother_is_na}
+                                        naDisabled={
+                                            form.data.father_is_na &&
+                                            form.data.guardian_is_na
+                                        }
                                         onMainContactChange={(selected) => {
                                             form.setData(
                                                 'main_contact',
@@ -1802,6 +1862,11 @@ export default function StudentModal({
                                         data={form.data}
                                         errors={form.errors}
                                         onChange={setField}
+                                        required={!form.data.guardian_is_na}
+                                        naDisabled={
+                                            form.data.father_is_na &&
+                                            form.data.mother_is_na
+                                        }
                                         onMainContactChange={(selected) => {
                                             form.setData(
                                                 'main_contact',
@@ -1809,7 +1874,37 @@ export default function StudentModal({
                                             );
                                             form.clearErrors('main_contact');
                                         }}
-                                        required
+                                        onNaChange={(isNa) => {
+                                            if (isNa) {
+                                                form.setData({
+                                                    ...form.data,
+                                                    guardian_is_na: true,
+                                                    guardian_name: '',
+                                                    guardian_mname: '',
+                                                    guardian_lname: '',
+                                                    guardian_contact_number: '',
+                                                    main_contact:
+                                                        form.data
+                                                            .main_contact ===
+                                                        'guardian'
+                                                            ? ''
+                                                            : form.data
+                                                                  .main_contact,
+                                                });
+                                                form.clearErrors(
+                                                    'guardian_name',
+                                                    'guardian_mname',
+                                                    'guardian_lname',
+                                                    'guardian_contact_number',
+                                                    'main_contact',
+                                                );
+                                            } else {
+                                                form.setData(
+                                                    'guardian_is_na',
+                                                    false,
+                                                );
+                                            }
+                                        }}
                                     />
                                 </div>
                             ) : (
@@ -2431,9 +2526,9 @@ export default function StudentModal({
                                         Parent / Guardian
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
-                                        Parents are required unless marked N/A.
-                                        Guardian information and one Main
-                                        Contact are required.
+                                        At least one contact (Father, Mother, or
+                                        Guardian) and one Main Contact are
+                                        required.
                                     </p>
                                 </div>
                             </div>
@@ -2509,6 +2604,10 @@ export default function StudentModal({
                                 errors={form.errors}
                                 onChange={setField}
                                 required={!form.data.father_is_na}
+                                naDisabled={
+                                    form.data.mother_is_na &&
+                                    form.data.guardian_is_na
+                                }
                                 onMainContactChange={(selected) => {
                                     form.setData(
                                         'main_contact',
@@ -2550,6 +2649,10 @@ export default function StudentModal({
                                 errors={form.errors}
                                 onChange={setField}
                                 required={!form.data.mother_is_na}
+                                naDisabled={
+                                    form.data.father_is_na &&
+                                    form.data.guardian_is_na
+                                }
                                 onMainContactChange={(selected) => {
                                     form.setData(
                                         'main_contact',
@@ -2590,6 +2693,11 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
+                                required={!form.data.guardian_is_na}
+                                naDisabled={
+                                    form.data.father_is_na &&
+                                    form.data.mother_is_na
+                                }
                                 onMainContactChange={(selected) => {
                                     form.setData(
                                         'main_contact',
@@ -2597,7 +2705,32 @@ export default function StudentModal({
                                     );
                                     form.clearErrors('main_contact');
                                 }}
-                                required
+                                onNaChange={(isNa) => {
+                                    if (isNa) {
+                                        form.setData({
+                                            ...form.data,
+                                            guardian_is_na: true,
+                                            guardian_name: '',
+                                            guardian_mname: '',
+                                            guardian_lname: '',
+                                            guardian_contact_number: '',
+                                            main_contact:
+                                                form.data.main_contact ===
+                                                'guardian'
+                                                    ? ''
+                                                    : form.data.main_contact,
+                                        });
+                                        form.clearErrors(
+                                            'guardian_name',
+                                            'guardian_mname',
+                                            'guardian_lname',
+                                            'guardian_contact_number',
+                                            'main_contact',
+                                        );
+                                    } else {
+                                        form.setData('guardian_is_na', false);
+                                    }
+                                }}
                             />
                         </form>
 

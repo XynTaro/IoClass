@@ -210,8 +210,13 @@ class AdminStudentController extends Controller
     {
         $fatherIsNa = $request->boolean('father_is_na');
         $motherIsNa = $request->boolean('mother_is_na');
+        $guardianIsNa = $request->boolean('guardian_is_na');
         $bothParentsNa = $fatherIsNa && $motherIsNa;
-        $requireGuardian = $bothParentsNa || $request->input('main_contact') === 'guardian';
+        $requireGuardian = $bothParentsNa
+            || (! $guardianIsNa && (
+                $request->input('main_contact') === 'guardian'
+                || $request->has('guardian_is_na')
+            ));
 
         $validated = $request->validate([
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn'],
@@ -233,19 +238,31 @@ class AdminStudentController extends Controller
             'curr_province' => 'nullable|string|max:100',
             'curr_municipality' => 'nullable|string|max:100',
             'curr_barangay' => 'nullable|string|max:100',
-            // Parent N/A & Main Contact Flags
+            // Parent / Guardian N/A & Main Contact Flags
             'father_is_na' => 'nullable|boolean',
             'mother_is_na' => 'nullable|boolean',
+            'guardian_is_na' => [
+                'nullable',
+                'boolean',
+                function (string $attribute, mixed $value, Closure $fail) use ($bothParentsNa, $guardianIsNa): void {
+                    if ($bothParentsNa && $guardianIsNa) {
+                        $fail('At least one contact (Father, Mother, or Guardian) must be provided.');
+                    }
+                },
+            ],
             'main_contact' => [
                 'required',
                 'string',
                 'in:father,mother,guardian',
-                function (string $attribute, mixed $value, Closure $fail) use ($fatherIsNa, $motherIsNa): void {
+                function (string $attribute, mixed $value, Closure $fail) use ($fatherIsNa, $motherIsNa, $guardianIsNa): void {
                     if ($value === 'father' && $fatherIsNa) {
                         $fail('Father cannot be the main contact when marked as N/A.');
                     }
                     if ($value === 'mother' && $motherIsNa) {
                         $fail('Mother cannot be the main contact when marked as N/A.');
+                    }
+                    if ($value === 'guardian' && $guardianIsNa) {
+                        $fail('Guardian cannot be the main contact when marked as N/A.');
                     }
                 },
             ],
@@ -453,7 +470,7 @@ class AdminStudentController extends Controller
             $motherId = $mother->mother_id;
         }
 
-        if (! empty($validated['guardian_name'])) {
+        if (! $guardianIsNa && ! empty($validated['guardian_name'])) {
             $guardian = Guardian::create([
                 'name' => $this->formatName($validated['guardian_name']),
                 'guardian_mname' => $this->formatName($validated['guardian_mname'] ?? null),
@@ -622,6 +639,7 @@ class AdminStudentController extends Controller
 
         $fatherIsNa = $request->boolean('father_is_na');
         $motherIsNa = $request->boolean('mother_is_na');
+        $guardianIsNa = $request->boolean('guardian_is_na');
         $bothParentsNa = $fatherIsNa && $motherIsNa;
         $selectedMainContact = $request->input('main_contact');
 
@@ -630,6 +648,7 @@ class AdminStudentController extends Controller
             || $request->has('guardian_name')
             || $request->has('father_is_na')
             || $request->has('mother_is_na')
+            || $request->has('guardian_is_na')
             || $request->has('main_contact');
 
         $existingParent = $hasParentInput ? ParentGuardian::where('stu_par_id', $student->stu_id)->first() : null;
@@ -643,10 +662,12 @@ class AdminStudentController extends Controller
 
         $requireFather = ! $fatherIsNa && ($hasExistingFather || $hasFatherInput || $selectedMainContact === 'father');
         $requireMother = ! $motherIsNa && ($hasExistingMother || $hasMotherInput || $selectedMainContact === 'mother');
-        $requireGuardian = $bothParentsNa || $selectedMainContact === 'guardian' || $hasExistingGuardian || $hasGuardianInput || $request->has('guardian_name');
+        $requireGuardian = $bothParentsNa
+            || (! $guardianIsNa && ($selectedMainContact === 'guardian' || $hasExistingGuardian || $hasGuardianInput || ($request->has('guardian_is_na') && ! $guardianIsNa)));
 
         $hasParentFields = $hasParentInput && ($fatherIsNa
             || $motherIsNa
+            || $guardianIsNa
             || $requireFather
             || $requireMother
             || $requireGuardian
@@ -676,16 +697,28 @@ class AdminStudentController extends Controller
         if ($hasParentFields) {
             $rules['father_is_na'] = 'nullable|boolean';
             $rules['mother_is_na'] = 'nullable|boolean';
+            $rules['guardian_is_na'] = [
+                'nullable',
+                'boolean',
+                function (string $attribute, mixed $value, Closure $fail) use ($bothParentsNa, $guardianIsNa): void {
+                    if ($bothParentsNa && $guardianIsNa) {
+                        $fail('At least one contact (Father, Mother, or Guardian) must be provided.');
+                    }
+                },
+            ];
             $rules['main_contact'] = [
                 'required',
                 'string',
                 'in:father,mother,guardian',
-                function (string $attribute, mixed $value, Closure $fail) use ($fatherIsNa, $motherIsNa): void {
+                function (string $attribute, mixed $value, Closure $fail) use ($fatherIsNa, $motherIsNa, $guardianIsNa): void {
                     if ($value === 'father' && $fatherIsNa) {
                         $fail('Father cannot be the main contact when marked as N/A.');
                     }
                     if ($value === 'mother' && $motherIsNa) {
                         $fail('Mother cannot be the main contact when marked as N/A.');
+                    }
+                    if ($value === 'guardian' && $guardianIsNa) {
+                        $fail('Guardian cannot be the main contact when marked as N/A.');
                     }
                 },
             ];
@@ -821,7 +854,7 @@ class AdminStudentController extends Controller
 
         $previousRfid = RfidUid::normalize($student->rfid_uid);
 
-        DB::transaction(function () use ($student, $validated, $request, $hasParentFields, $fatherIsNa, $motherIsNa) {
+        DB::transaction(function () use ($student, $validated, $request, $hasParentFields, $fatherIsNa, $motherIsNa, $guardianIsNa) {
             // 1. Update Student fields
             $studentFields = array_intersect_key($validated, array_flip([
                 'lrn', 'stu_fname', 'stu_mname', 'stu_lname', 'gender', 'photo', 'rfid_uid', 'status',
@@ -979,7 +1012,9 @@ class AdminStudentController extends Controller
                 }
 
                 // Guardian
-                if (! empty($validated['guardian_name'])) {
+                if ($guardianIsNa) {
+                    $parentLink->guardian_id = null;
+                } elseif (! empty($validated['guardian_name'])) {
                     if ($parentLink->guardian_id && $guardian = Guardian::find($parentLink->guardian_id)) {
                         $guardian->update([
                             'name' => $this->formatName($validated['guardian_name']),

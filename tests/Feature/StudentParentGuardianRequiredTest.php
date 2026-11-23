@@ -331,3 +331,120 @@ test('sms notifiers prioritize the selected main contact phone number', function
     expect($rfidNotifier->guardianPhone($student))->toBe('09193334444');
     expect($absenceNotifier->guardianPhone($student))->toBe('09193334444');
 });
+
+test('guardian can be marked N/A when father or mother is provided', function () {
+    $response = $this->actingAs($this->admin, 'admin')->post(route('admin.student.store'), [
+        'stu_fname' => 'Francisco',
+        'stu_lname' => 'Balagtas',
+        'sect_id' => $this->section->sect_id,
+        'rfid_uid' => 'STUDENT0012',
+        'father_is_na' => false,
+        'father_name' => 'Juan',
+        'father_lname' => 'Balagtas',
+        'father_contact_number' => '09175556666',
+        'mother_is_na' => true,
+        'guardian_is_na' => true,
+        'main_contact' => 'father',
+    ]);
+
+    $response->assertRedirect(route('admin.student.index'));
+    $response->assertSessionHasNoErrors();
+
+    $student = Student::where('rfid_uid', 'STUDENT0012')->first();
+    $link = ParentGuardian::where('stu_par_id', $student->stu_id)->first();
+    expect($link)->not->toBeNull()
+        ->and($link->f_id)->not->toBeNull()
+        ->and($link->mother_id)->toBeNull()
+        ->and($link->guardian_id)->toBeNull()
+        ->and($link->main_contact)->toBe('father');
+});
+
+test('marking all three contacts N/A fails validation', function () {
+    $response = $this->actingAs($this->admin, 'admin')->post(route('admin.student.store'), [
+        'stu_fname' => 'Lapu',
+        'stu_lname' => 'Lapu',
+        'sect_id' => $this->section->sect_id,
+        'rfid_uid' => 'STUDENT0013',
+        'father_is_na' => true,
+        'mother_is_na' => true,
+        'guardian_is_na' => true,
+        'main_contact' => 'guardian',
+    ]);
+
+    $response->assertSessionHasErrors([
+        'guardian_is_na' => 'At least one contact (Father, Mother, or Guardian) must be provided.',
+        'main_contact' => 'Guardian cannot be the main contact when marked as N/A.',
+    ]);
+});
+
+test('guardian marked N/A cannot be selected as main contact', function () {
+    $response = $this->actingAs($this->admin, 'admin')->post(route('admin.student.store'), [
+        'stu_fname' => 'Diego',
+        'stu_lname' => 'Silang',
+        'sect_id' => $this->section->sect_id,
+        'rfid_uid' => 'STUDENT0014',
+        'father_is_na' => false,
+        'father_name' => 'Miguel',
+        'father_lname' => 'Silang',
+        'father_contact_number' => '09178889999',
+        'mother_is_na' => true,
+        'guardian_is_na' => true,
+        'main_contact' => 'guardian',
+    ]);
+
+    $response->assertSessionHasErrors([
+        'main_contact' => 'Guardian cannot be the main contact when marked as N/A.',
+    ]);
+});
+
+test('guardian can be marked N/A and unlinked on edit', function () {
+    $student = Student::create([
+        'stu_fname' => 'Ramon',
+        'stu_lname' => 'Magsaysay',
+        'rfid_uid' => 'STUDENT0015',
+        'status' => 'active',
+        'is_deleted' => false,
+    ]);
+
+    $mother = Mother::create([
+        'mother_name' => 'Perfecta',
+        'mother_lname' => 'Del Fierro',
+        'contact_number' => '09181112233',
+        'is_deleted' => false,
+    ]);
+
+    $guardian = Guardian::create([
+        'name' => 'Exequiel',
+        'guardian_lname' => 'Magsaysay',
+        'contact_number' => '09184445566',
+        'is_deleted' => false,
+    ]);
+
+    $link = ParentGuardian::create([
+        'stu_par_id' => $student->stu_id,
+        'mother_id' => $mother->mother_id,
+        'guardian_id' => $guardian->guardian_id,
+        'main_contact' => 'guardian',
+    ]);
+
+    $response = $this->actingAs($this->admin, 'admin')->put(route('admin.student.update', $student->stu_id), [
+        'stu_fname' => 'Ramon',
+        'stu_lname' => 'Magsaysay',
+        'rfid_uid' => 'STUDENT0015',
+        'father_is_na' => true,
+        'mother_is_na' => false,
+        'mother_name' => 'Perfecta',
+        'mother_lname' => 'Del Fierro',
+        'mother_contact_number' => '09181112233',
+        'guardian_is_na' => true,
+        'main_contact' => 'mother',
+    ]);
+
+    $response->assertRedirect(route('admin.student.index'));
+    $response->assertSessionHasNoErrors();
+
+    $link->refresh();
+    expect($link->guardian_id)->toBeNull()
+        ->and($link->mother_id)->not->toBeNull()
+        ->and($link->main_contact)->toBe('mother');
+});
