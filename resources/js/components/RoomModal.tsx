@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import { AlertCircle, DoorOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
@@ -41,42 +41,59 @@ interface RoomFormData {
     room_id: number | '';
     room_no: string;
     building_id: number | null;
+    stay_on_page?: boolean;
 }
 
 interface RoomModalProps {
     open: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    onRoomCreated?: (created: { room_no: string; building_id: number }) => void;
     room?: Room;
     mode: 'edit' | 'create';
     buildings: BuildingOption[];
+    defaultBuildingId?: number | null;
+    stayOnPage?: boolean;
 }
 
 export default function RoomModal({
     open,
     onClose,
     onSuccess,
+    onRoomCreated,
     room,
     mode,
     buildings,
+    defaultBuildingId = null,
+    stayOnPage = false,
 }: RoomModalProps) {
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     const form = useForm<RoomFormData>({
         room_id: '',
         room_no: '',
-        building_id: null,
+        building_id: defaultBuildingId,
+        stay_on_page: stayOnPage,
     });
 
     useEffect(() => {
+        if (!open) return;
         if (room && mode === 'edit') {
             form.setData({
                 room_id: room.room_id ?? '',
                 room_no: room.room_no ?? '',
                 building_id: room.building_id ?? null,
+                stay_on_page: stayOnPage,
+            });
+        } else if (mode === 'create') {
+            form.setData({
+                room_id: '',
+                room_no: '',
+                building_id: defaultBuildingId ?? null,
+                stay_on_page: stayOnPage,
             });
         }
-    }, [room, mode, open]);
+    }, [room, mode, open, defaultBuildingId, stayOnPage]);
 
     useEffect(() => {
         if (!open) {
@@ -127,9 +144,23 @@ export default function RoomModal({
                 },
             });
         } else {
+            const submittedRoomNo = String(form.data.room_no ?? '').trim();
+            const submittedBuildingId = form.data.building_id;
+            form.transform((data) => ({
+                ...data,
+                stay_on_page: stayOnPage,
+            }));
             form.post(route('admin.room.store'), {
+                preserveState: stayOnPage,
+                preserveScroll: stayOnPage,
                 onSuccess: () => {
                     setSubmitError(null);
+                    if (submittedRoomNo && submittedBuildingId != null) {
+                        onRoomCreated?.({
+                            room_no: submittedRoomNo,
+                            building_id: submittedBuildingId,
+                        });
+                    }
                     onSuccess?.();
                     onClose();
                 },
@@ -223,14 +254,28 @@ export default function RoomModal({
                                     <SelectValue placeholder="Select a building" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {buildings.map((b) => (
-                                        <SelectItem
-                                            key={b.building_id}
-                                            value={String(b.building_id)}
-                                        >
-                                            {b.building_name}
-                                        </SelectItem>
-                                    ))}
+                                    {buildings.length === 0 ? (
+                                        <div className="space-y-1.5 px-3 py-3 text-center text-xs text-muted-foreground">
+                                            <p>No buildings available yet.</p>
+                                            <Link
+                                                href={route(
+                                                    'admin.building.index',
+                                                )}
+                                                className="inline-block font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
+                                            >
+                                                Go to Buildings →
+                                            </Link>
+                                        </div>
+                                    ) : (
+                                        buildings.map((b) => (
+                                            <SelectItem
+                                                key={b.building_id}
+                                                value={String(b.building_id)}
+                                            >
+                                                {b.building_name}
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                             <FormFieldError

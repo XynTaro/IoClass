@@ -50,6 +50,11 @@ class RoomController extends Controller
             'is_deleted' => false,
         ]);
 
+        if ($request->boolean('stay_on_page')) {
+            return redirect()->back()
+                ->with('success', 'Room successfully added.');
+        }
+
         return redirect()->route('admin.room.index')
             ->with('success', 'Room successfully added.');
     }

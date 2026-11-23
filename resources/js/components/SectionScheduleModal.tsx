@@ -1,6 +1,7 @@
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import {
     CalendarClock,
+    DoorOpen,
     Plus,
     Trash2,
     BookOpen,
@@ -9,6 +10,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
 import { ModalHeader } from '@/components/modal-header';
+import RoomModal, { type BuildingOption } from '@/components/RoomModal';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -161,6 +163,7 @@ interface SectionScheduleModalProps {
     allSchedules?: any[];
     teachers: SlotTeacher[];
     rooms: SlotRoom[];
+    buildings?: BuildingOption[];
     subjects: SlotSubject[];
     slot?: ExistingSlot;
     mode: 'create' | 'edit';
@@ -179,6 +182,7 @@ export default function SectionScheduleModal({
     allSchedules,
     teachers,
     rooms,
+    buildings: buildingsProp = [],
     subjects,
     slot,
     mode,
@@ -190,17 +194,35 @@ export default function SectionScheduleModal({
         return subjects.filter((s) => s.gr_level === sectionGrLevel);
     }, [subjects, sectionGrLevel]);
 
-    const buildings = useMemo(
-        () =>
-            [
-                ...new Map(
-                    rooms
-                        .filter((r) => r.building)
-                        .map((r) => [r.building!.building_id, r.building!]),
-                ).values(),
-            ].sort((a, b) => a.building_name.localeCompare(b.building_name)),
-        [rooms],
-    );
+    const buildings = useMemo(() => {
+        const map = new Map<number, BuildingOption>();
+        for (const b of buildingsProp) {
+            map.set(b.building_id, b);
+        }
+        for (const r of rooms) {
+            if (r.building && !map.has(r.building.building_id)) {
+                map.set(r.building.building_id, r.building);
+            }
+        }
+        return [...map.values()].sort((a, b) =>
+            a.building_name.localeCompare(b.building_name),
+        );
+    }, [buildingsProp, rooms]);
+
+    const [addRoomModal, setAddRoomModal] = useState<{
+        open: boolean;
+        slotIndex: number;
+        defaultBuildingId: number | null;
+    }>({
+        open: false,
+        slotIndex: 0,
+        defaultBuildingId: null,
+    });
+    const [pendingAutoSelectRoom, setPendingAutoSelectRoom] = useState<{
+        slotIndex: number;
+        roomNo: string;
+        buildingId: number;
+    } | null>(null);
 
     const form = useForm<FormData>({
         tch_id: '',
@@ -347,8 +369,46 @@ export default function SectionScheduleModal({
                     buildingFilter: '',
                 },
             ]);
+            setAddRoomModal({
+                open: false,
+                slotIndex: 0,
+                defaultBuildingId: null,
+            });
+            setPendingAutoSelectRoom(null);
         }
     }, [open]);
+
+    useEffect(() => {
+        if (!pendingAutoSelectRoom) return;
+        const matched = rooms.find(
+            (r) =>
+                r.room_no.toLowerCase() ===
+                    pendingAutoSelectRoom.roomNo.toLowerCase() &&
+                r.building_id === pendingAutoSelectRoom.buildingId,
+        );
+        if (matched) {
+            updateSlot(pendingAutoSelectRoom.slotIndex, {
+                buildingFilter: String(matched.building_id ?? ''),
+                room_id: matched.room_id,
+            });
+            setPendingAutoSelectRoom(null);
+        }
+    }, [rooms, pendingAutoSelectRoom]);
+
+    const openAddRoomForSlot = (slotIndex: number, buildingFilter?: string) => {
+        const parsedBuildingId =
+            buildingFilter && buildingFilter !== 'all-buildings'
+                ? Number(buildingFilter)
+                : null;
+        setAddRoomModal({
+            open: true,
+            slotIndex,
+            defaultBuildingId:
+                parsedBuildingId && !Number.isNaN(parsedBuildingId)
+                    ? parsedBuildingId
+                    : null,
+        });
+    };
 
     const scheduleConflicts = useMemo<
         Array<{
@@ -672,7 +732,8 @@ export default function SectionScheduleModal({
         Object.entries(errors).find(([k]) => k.includes('subj_id'))?.[1];
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
+        <>
+            <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-lg overflow-hidden p-0 sm:max-w-2xl">
                 <div className="space-y-4 p-6 pt-4">
                     <ModalHeader
@@ -895,6 +956,26 @@ export default function SectionScheduleModal({
                                         return parts.join(' ');
                                     })();
 
+                                    const roomsInSelectedBuilding =
+                                        slot.buildingFilter &&
+                                        slot.buildingFilter !== 'all-buildings'
+                                            ? rooms.filter(
+                                                  (r) =>
+                                                      r.building_id ===
+                                                      Number(
+                                                          slot.buildingFilter,
+                                                      ),
+                                              )
+                                            : [];
+                                    const hasSelectedBuilding = Boolean(
+                                        slot.buildingFilter &&
+                                            slot.buildingFilter !==
+                                                'all-buildings',
+                                    );
+                                    const noRoomsInSelectedBuilding =
+                                        hasSelectedBuilding &&
+                                        roomsInSelectedBuilding.length === 0;
+
                                     return (
                                         <div
                                             key={index}
@@ -934,6 +1015,54 @@ export default function SectionScheduleModal({
                                                         </Button>
                                                     )}
                                             </div>
+
+                                            {rooms.length === 0 && (
+                                                <div className="flex flex-col gap-2.5 rounded-xl border border-orange-200 bg-orange-50/70 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-orange-900/50 dark:bg-orange-950/30">
+                                                    <div className="flex items-start gap-2.5">
+                                                        <DoorOpen className="mt-0.5 size-4 shrink-0 text-orange-600 dark:text-orange-400" />
+                                                        <div className="text-xs">
+                                                            <p className="font-semibold text-orange-900 dark:text-orange-200">
+                                                                {buildings.length ===
+                                                                0
+                                                                    ? 'No buildings or rooms available yet'
+                                                                    : 'No rooms available yet'}
+                                                            </p>
+                                                            <p className="text-[11px] text-orange-800/80 dark:text-orange-300/80">
+                                                                {buildings.length ===
+                                                                0
+                                                                    ? 'Add a building first so you can create rooms for this schedule.'
+                                                                    : 'Create a room first so you can assign it to this schedule slot.'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {buildings.length === 0 ? (
+                                                        <Link
+                                                            href={route(
+                                                                'admin.building.index',
+                                                            )}
+                                                            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
+                                                        >
+                                                            <Plus className="size-3.5" />
+                                                            Add Building
+                                                        </Link>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                openAddRoomForSlot(
+                                                                    index,
+                                                                    slot.buildingFilter,
+                                                                )
+                                                            }
+                                                            className="h-8 shrink-0 gap-1 rounded-lg bg-orange-600 px-3 text-xs font-semibold text-white hover:bg-orange-700"
+                                                        >
+                                                            <Plus className="size-3.5" />
+                                                            Add Room
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* Building & Room Selection */}
                                             <div className="grid gap-3 sm:grid-cols-2">
@@ -978,21 +1107,29 @@ export default function SectionScheduleModal({
                                                             <SelectValue placeholder="Select Building" />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
-                                                            {buildings.map(
-                                                                (b) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            b.building_id
-                                                                        }
-                                                                        value={String(
-                                                                            b.building_id,
-                                                                        )}
-                                                                    >
-                                                                        {
-                                                                            b.building_name
-                                                                        }
-                                                                    </SelectItem>
-                                                                ),
+                                                            {buildings.length ===
+                                                            0 ? (
+                                                                <p className="px-3 py-3 text-center text-xs text-muted-foreground">
+                                                                    No buildings
+                                                                    available.
+                                                                </p>
+                                                            ) : (
+                                                                buildings.map(
+                                                                    (b) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                b.building_id
+                                                                            }
+                                                                            value={String(
+                                                                                b.building_id,
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                b.building_name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )
                                                             )}
                                                         </SelectContent>
                                                     </Select>
@@ -1003,12 +1140,29 @@ export default function SectionScheduleModal({
                                                 </div>
 
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-xs font-semibold text-foreground/80">
-                                                        Room{' '}
-                                                        <span className="text-destructive">
-                                                            *
-                                                        </span>
-                                                    </Label>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <Label className="text-xs font-semibold text-foreground/80">
+                                                            Room{' '}
+                                                            <span className="text-destructive">
+                                                                *
+                                                            </span>
+                                                        </Label>
+                                                        {noRoomsInSelectedBuilding && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    openAddRoomForSlot(
+                                                                        index,
+                                                                        slot.buildingFilter,
+                                                                    )
+                                                                }
+                                                                className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-orange-500/10 px-2 py-0.5 text-[11px] font-semibold text-orange-700 transition-colors hover:bg-orange-500/20 dark:text-orange-300"
+                                                            >
+                                                                <Plus className="size-3" />
+                                                                Add Room
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <Select
                                                         value={
                                                             slot.room_id === ''
@@ -1017,7 +1171,7 @@ export default function SectionScheduleModal({
                                                                     slot.room_id,
                                                                 )
                                                         }
-                                                        disabled={!slot.buildingFilter || slot.buildingFilter === 'all-buildings'}
+                                                        disabled={!hasSelectedBuilding}
                                                         onValueChange={(
                                                             value,
                                                         ) => {
@@ -1042,38 +1196,58 @@ export default function SectionScheduleModal({
                                                         >
                                                             <SelectValue
                                                                 placeholder={
-                                                                    !slot.buildingFilter || slot.buildingFilter === 'all-buildings'
+                                                                    !hasSelectedBuilding
                                                                         ? 'Select building first'
-                                                                        : 'Select Room'
+                                                                        : noRoomsInSelectedBuilding
+                                                                          ? 'No rooms in this building'
+                                                                          : 'Select Room'
                                                                 }
                                                             />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
-                                                            {(slot.buildingFilter &&
-                                                            slot.buildingFilter !==
-                                                                'all-buildings'
-                                                                ? rooms.filter(
-                                                                    (r) =>
-                                                                        r.building_id ===
-                                                                        Number(
-                                                                            slot.buildingFilter,
-                                                                        ),
+                                                            {noRoomsInSelectedBuilding ? (
+                                                                <div className="space-y-2 px-3 py-3 text-center">
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        No rooms
+                                                                        in this
+                                                                        building
+                                                                        yet.
+                                                                    </p>
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        onClick={() =>
+                                                                            openAddRoomForSlot(
+                                                                                index,
+                                                                                slot.buildingFilter,
+                                                                            )
+                                                                        }
+                                                                        className="h-7.5 gap-1 rounded-lg bg-orange-600 px-2.5 text-xs font-semibold text-white hover:bg-orange-700"
+                                                                    >
+                                                                        <Plus className="size-3.5" />
+                                                                        Add Room
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                roomsInSelectedBuilding.map(
+                                                                    (r) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                r.room_id
+                                                                            }
+                                                                            value={String(
+                                                                                r.room_id,
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                r.room_no
+                                                                            }{' '}
+                                                                            {r.building &&
+                                                                                `(${r.building.building_name})`}
+                                                                        </SelectItem>
+                                                                    ),
                                                                 )
-                                                                : []
-                                                            ).map((r) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        r.room_id
-                                                                    }
-                                                                    value={String(
-                                                                        r.room_id,
-                                                                    )}
-                                                                >
-                                                                    {r.room_no}{' '}
-                                                                    {r.building &&
-                                                                        `(${r.building.building_name})`}
-                                                                </SelectItem>
-                                                            ))}
+                                                            )}
                                                         </SelectContent>
                                                     </Select>
                                                     <FormFieldError
@@ -1381,5 +1555,24 @@ export default function SectionScheduleModal({
                 </div>
             </DialogContent>
         </Dialog>
+
+        <RoomModal
+            open={addRoomModal.open}
+            onClose={() =>
+                setAddRoomModal((prev) => ({ ...prev, open: false }))
+            }
+            mode="create"
+            buildings={buildings}
+            defaultBuildingId={addRoomModal.defaultBuildingId}
+            stayOnPage
+            onRoomCreated={({ room_no, building_id }) => {
+                setPendingAutoSelectRoom({
+                    slotIndex: addRoomModal.slotIndex,
+                    roomNo: room_no,
+                    buildingId: building_id,
+                });
+            }}
+        />
+        </>
     );
 }

@@ -6,6 +6,7 @@ import { IoMdAdd, IoMdSearch } from 'react-icons/io';
 import { route } from 'ziggy-js';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { DataTable } from '@/components/DataTable';
+import type { BuildingOption } from '@/components/RoomModal';
 import SectionScheduleModal, {
     type ExistingSlot,
     type SlotRoom,
@@ -73,15 +74,23 @@ function formatTime(time: string): string {
 }
 
 export default function Show() {
-    const { section, schedules, allSchedules, teachers, rooms, subjects } =
-        usePage<any>().props as {
-            section: Section;
-            schedules: ScheduleSlot[];
-            allSchedules?: ScheduleSlot[];
-            teachers: SlotTeacher[];
-            rooms: SlotRoom[];
-            subjects: SlotSubject[];
-        };
+    const {
+        section,
+        schedules,
+        allSchedules,
+        teachers,
+        rooms,
+        buildings = [],
+        subjects,
+    } = usePage<any>().props as {
+        section: Section;
+        schedules: ScheduleSlot[];
+        allSchedules?: ScheduleSlot[];
+        teachers: SlotTeacher[];
+        rooms: SlotRoom[];
+        buildings?: BuildingOption[];
+        subjects: SlotSubject[];
+    };
 
     const [search, setSearch] = useState('');
     const [addOpen, setAddOpen] = useState(false);
@@ -487,6 +496,7 @@ export default function Show() {
                 allSchedules={allSchedules}
                 teachers={teachers}
                 rooms={rooms}
+                buildings={buildings}
                 subjects={subjects}
             />
 
@@ -508,6 +518,7 @@ export default function Show() {
                 allSchedules={allSchedules}
                 teachers={teachers}
                 rooms={rooms}
+                buildings={buildings}
                 subjects={subjects}
             />
 

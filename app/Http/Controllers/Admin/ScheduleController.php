@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Building;
 use App\Models\Class_Schedule;
 use App\Models\Room;
 use App\Models\Section;
@@ -58,6 +59,10 @@ class ScheduleController extends Controller
             ->orderBy('room_no')
             ->get();
 
+        $buildings = Building::where('is_deleted', false)
+            ->orderBy('building_name')
+            ->get(['building_id', 'building_name']);
+
         $subjects = Subject::select('subj_id', 'subj_code', 'subj_name', 'gr_level')
             ->where('is_deleted', false)
             ->orderBy('gr_level')
@@ -83,6 +88,7 @@ class ScheduleController extends Controller
             'allSchedules' => $allSchedules,
             'teachers' => $teachers,
             'rooms' => $rooms,
+            'buildings' => $buildings,
             'subjects' => $subjects,
         ]);
     }
