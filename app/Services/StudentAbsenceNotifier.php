@@ -28,6 +28,7 @@ class StudentAbsenceNotifier
         ?string $subjectName = null,
         ?string $sectionName = null,
         bool $force = false,
+        ?string $timeRange = null,
     ): bool {
         $studentModel = $student instanceof Student
             ? $student
@@ -56,7 +57,7 @@ class StudentAbsenceNotifier
             return false;
         }
 
-        $message = $this->formatMessage($studentModel, $dateStr, $subjectName, $sectionName);
+        $message = $this->formatMessage($studentModel, $dateStr, $subjectName, $sectionName, $timeRange);
 
         try {
             $this->sms->send($phone, $message);
@@ -94,11 +95,12 @@ class StudentAbsenceNotifier
         ?string $subjectName = null,
         ?string $sectionName = null,
         bool $force = false,
+        ?string $timeRange = null,
     ): int {
         $sentCount = 0;
 
         foreach ($students as $student) {
-            if ($this->notify($student, $date, $subjectName, $sectionName, $force)) {
+            if ($this->notify($student, $date, $subjectName, $sectionName, $force, $timeRange)) {
                 $sentCount++;
             }
         }
@@ -137,13 +139,33 @@ class StudentAbsenceNotifier
     }
 
     /**
-     * Compose the SMS message content.
+     * Format a class schedule start/end time pair (e.g. "7:00 AM-8:00 AM").
+     */
+    public function formatTimeRange(?string $startTime, ?string $endTime): ?string
+    {
+        if (! filled($startTime) && ! filled($endTime)) {
+            return null;
+        }
+
+        $start = filled($startTime) ? Carbon::parse($startTime)->format('g:i A') : null;
+        $end = filled($endTime) ? Carbon::parse($endTime)->format('g:i A') : null;
+
+        if ($start !== null && $end !== null) {
+            return "{$start}-{$end}";
+        }
+
+        return $start ?? $end;
+    }
+
+    /**
+     * Compose the SMS message content with date and class time (or timestamp).
      */
     public function formatMessage(
         Student $student,
         string $date,
         ?string $subjectName = null,
         ?string $sectionName = null,
+        ?string $timeRange = null,
     ): string {
         $name = trim(collect([
             $student->stu_fname,
@@ -156,10 +178,18 @@ class StudentAbsenceNotifier
         if (filled($subjectName)) {
             $context = $subjectName.(filled($sectionName) ? " ({$sectionName})" : '');
 
-            return "IoClass Alert: {$name} was marked ABSENT in {$context} on {$formattedDate}. Please contact the school if you have any questions.";
+            if (filled($timeRange)) {
+                return "IoClass Alert: {$name} was marked ABSENT in {$context} on {$formattedDate} ({$timeRange}). Please contact the school for inquiries.";
+            }
+
+            $timeNow = now()->format('g:i A');
+
+            return "IoClass Alert: {$name} was marked ABSENT in {$context} on {$formattedDate} at {$timeNow}. Please contact the school for inquiries.";
         }
 
-        return "IoClass Alert: {$name} was marked ABSENT today ({$formattedDate}). Please contact the school if you have any questions.";
+        $timeLabel = filled($timeRange) ? $timeRange : now()->format('g:i A');
+
+        return "IoClass Alert: {$name} was marked ABSENT on {$formattedDate} at {$timeLabel}. Please contact the school for inquiries.";
     }
 
     /**
@@ -240,6 +270,8 @@ class StudentAbsenceNotifier
                 sectionName: $schedule->section?->sect_name,
                 studentId: $studentId,
                 force: $force,
+                startTime: $schedule->getRawOriginal('start_time') ?? (string) $schedule->start_time,
+                endTime: $schedule->getRawOriginal('end_time') ?? (string) $schedule->end_time,
             );
 
             $absencesFound += $finalized['absences_found'];
@@ -273,6 +305,8 @@ class StudentAbsenceNotifier
         ?string $sectionName = null,
         ?int $studentId = null,
         bool $force = false,
+        ?string $startTime = null,
+        ?string $endTime = null,
     ): array {
         $dateStr = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
 
@@ -385,6 +419,24 @@ class StudentAbsenceNotifier
         $resolvedSubjectName = $subjectName ?? DB::table('subject')->where('subj_id', $subjId)->value('subj_name');
         $resolvedSectionName = $sectionName ?? DB::table('section')->where('sect_id', $sectId)->value('sect_name');
 
+        if (! filled($startTime) || ! filled($endTime)) {
+            $scheduleRow = $scheduleId !== null
+                ? DB::table('class_schedule')->where('schedule_id', $scheduleId)->first(['start_time', 'end_time'])
+                : DB::table('class_schedule')
+                    ->where('subj_id', $subjId)
+                    ->where('sect_id', $sectId)
+                    ->where('day_of_week', Carbon::parse($dateStr)->format('l'))
+                    ->where(function ($query) use ($activeSyId): void {
+                        $query->where('sy_id', $activeSyId)->orWhereNull('sy_id');
+                    })
+                    ->first(['start_time', 'end_time']);
+
+            $startTime ??= $scheduleRow?->start_time;
+            $endTime ??= $scheduleRow?->end_time;
+        }
+
+        $timeRange = $this->formatTimeRange($startTime, $endTime);
+
         $notifiedCount = 0;
         foreach ($absentStudentIds as $absentId) {
             $sent = $this->notify(
@@ -393,6 +445,7 @@ class StudentAbsenceNotifier
                 subjectName: $resolvedSubjectName,
                 sectionName: $resolvedSectionName,
                 force: $force,
+                timeRange: $timeRange,
             );
 
             if ($sent) {

@@ -21,7 +21,9 @@ return [
     |
     | Comma-separated list of allowed device tokens when using multiple ESP32s.
     | Takes precedence over device_token when set.
-    | Example: RFID_DEVICE_TOKENS=esp32-room-a,esp32-room-b
+    | Lock a device to a section by including `sect-{sect_id}` (and an optional
+    | human-readable section name suffix), e.g.:
+    | RFID_DEVICE_TOKENS=esp32-sect-3-rizal,esp32-sect-4-bonifacio,esp32-admin
     |
     */
 

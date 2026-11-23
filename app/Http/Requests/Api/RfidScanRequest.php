@@ -24,6 +24,7 @@ class RfidScanRequest extends FormRequest
     {
         return [
             'rfid_uid' => ['required', 'string', 'max:100'],
+            'scanned_at' => ['nullable', 'date'],
         ];
     }
 

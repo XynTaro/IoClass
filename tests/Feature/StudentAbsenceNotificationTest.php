@@ -123,7 +123,9 @@ test('confirming an absent student sends an absence sms to the guardian', functi
         ->and($this->sms->messages[0]['message'])->toContain('Carlo M Dalisay')
         ->and($this->sms->messages[0]['message'])->toContain('ABSENT')
         ->and($this->sms->messages[0]['message'])->toContain('English 8')
-        ->and($this->sms->messages[0]['message'])->toContain('Diamond');
+        ->and($this->sms->messages[0]['message'])->toContain('Diamond')
+        ->and($this->sms->messages[0]['message'])->toContain('Jun 01, 2026')
+        ->and($this->sms->messages[0]['message'])->toContain('9:00 AM-10:00 AM');
 
     $record = DB::table('attendance')
         ->where('stu_id', $student->stu_id)

@@ -45,8 +45,12 @@ class StudentAttendanceService
      *     started_at: int,
      * }|null $session
      */
-    public function recordForStudent(Student $student, ?CarbonInterface $scannedAt = null, ?array $session = null): array
-    {
+    public function recordForStudent(
+        Student $student,
+        ?CarbonInterface $scannedAt = null,
+        ?array $session = null,
+        ?int $lockedSectId = null,
+    ): array {
         $scannedAt = Carbon::instance($scannedAt ?? now());
         $attDate = $scannedAt->toDateString();
 
@@ -64,6 +68,11 @@ class StudentAttendanceService
                 'time_in' => $scannedAt->toIso8601String(),
                 'time_out' => null,
             ];
+        }
+
+        // ── Device-locked section check (even before a teacher opens a session) ──
+        if ($lockedSectId !== null && ! $this->isEnrolledInSection((int) $student->stu_id, $lockedSectId)) {
+            return $this->blocked('not_your_class', 'You are not enrolled in this section.', $scannedAt);
         }
 
         // ── Class-window rules ────────────────────────────────────────────────
@@ -96,6 +105,8 @@ class StudentAttendanceService
                     date: $attDate,
                     subjectName: isset($session['subj_name']) && is_string($session['subj_name']) ? $session['subj_name'] : null,
                     sectionName: isset($session['sect_name']) && is_string($session['sect_name']) ? $session['sect_name'] : null,
+                    startTime: isset($session['start_time']) && is_string($session['start_time']) ? $session['start_time'] : null,
+                    endTime: isset($session['end_time']) && is_string($session['end_time']) ? $session['end_time'] : null,
                 );
             }
 

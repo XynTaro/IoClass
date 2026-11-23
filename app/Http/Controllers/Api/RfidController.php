@@ -7,6 +7,7 @@ use App\Http\Requests\Api\RfidRegisterRequest;
 use App\Http\Requests\Api\RfidScanRequest;
 use App\Models\Class_Schedule;
 use App\Models\School_Year;
+use App\Models\Section;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Services\StudentAbsenceNotifier;
@@ -17,6 +18,7 @@ use App\Support\RfidRegistryCache;
 use App\Support\RfidSessionCache;
 use App\Support\RfidUid;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -46,7 +48,12 @@ class RfidController extends Controller
         School_Year::syncActiveIfNeeded();
 
         $uid = $request->validated('rfid_uid');
-        $deviceKey = RfidCaptureCache::deviceKeyFromRequest($request->header('X-Device-Token'));
+        $scannedAt = $request->filled('scanned_at')
+            ? Carbon::parse((string) $request->validated('scanned_at'))->timezone(config('app.timezone'))
+            : now();
+        $deviceToken = $request->header('X-Device-Token');
+        $deviceKey = RfidCaptureCache::deviceKeyFromRequest($deviceToken);
+        $lockedSectId = RfidCaptureCache::sectionIdFromDeviceToken($deviceToken);
 
         RfidCaptureCache::store($deviceKey, $uid);
 
@@ -64,11 +71,11 @@ class RfidController extends Controller
             ->first();
 
         if ($teacher !== null) {
-            $teacherAttendance = $this->teacherAttendanceService->recordForTeacher($teacher);
             $existingSession = RfidSessionCache::get($deviceKey);
-            $matchingSchedule = $this->findMatchingSchedule($teacher);
+            $matchingSchedule = $this->findMatchingSchedule($teacher, $lockedSectId, $scannedAt);
 
-            if ($this->shouldEndSession($existingSession, $teacher, $matchingSchedule)) {
+            if ($this->shouldEndSession($existingSession, $teacher, $matchingSchedule, $scannedAt)) {
+                $teacherAttendance = $this->teacherAttendanceService->recordForTeacher($teacher, $scannedAt);
                 $finalized = $this->closeAndFinalizeSession($deviceKey, $existingSession);
 
                 return response()->json([
@@ -88,6 +95,26 @@ class RfidController extends Controller
                 ]);
             }
 
+            if ($lockedSectId !== null && $matchingSchedule === null) {
+                $lockedSectionName = Section::query()
+                    ->where('sect_id', $lockedSectId)
+                    ->value('sect_name');
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'teacher',
+                    'action' => 'wrong_section',
+                    'message' => 'You have no active schedule for this section.',
+                    'data' => $teacher->only(['tch_id', 'tch_fname', 'tch_mname', 'tch_lname']),
+                    'device_section' => [
+                        'sect_id' => $lockedSectId,
+                        'sect_name' => $lockedSectionName,
+                    ],
+                ]);
+            }
+
+            $teacherAttendance = $this->teacherAttendanceService->recordForTeacher($teacher, $scannedAt);
+
             if (
                 $existingSession !== null
                 && ! empty($existingSession['subj_id'])
@@ -97,7 +124,7 @@ class RfidController extends Controller
                 $this->closeAndFinalizeSession($deviceKey, $existingSession);
             }
 
-            $session = $this->openSession($deviceKey, $teacher, $matchingSchedule);
+            $session = $this->openSession($deviceKey, $teacher, $matchingSchedule, $lockedSectId, $scannedAt);
 
             return response()->json([
                 'success' => true,
@@ -123,7 +150,7 @@ class RfidController extends Controller
 
         if ($student !== null) {
             $activeSession = RfidSessionCache::get($deviceKey);
-            $attendance = $this->studentAttendanceService->recordForStudent($student, null, $activeSession);
+            $attendance = $this->studentAttendanceService->recordForStudent($student, $scannedAt, $activeSession, $lockedSectId);
             $action = ($attendance['action'] ?? null) === 'time_out' ? 'time_out' : 'attendance';
 
             return response()->json([
@@ -191,11 +218,15 @@ class RfidController extends Controller
     }
 
     /**
-     * Find the teacher's matching class schedule for the current time.
+     * Find the teacher's matching class schedule for the given time,
+     * optionally scoped to a device-locked section ID.
      */
-    private function findMatchingSchedule(Teacher $teacher): ?Class_Schedule
-    {
-        $now = now();
+    private function findMatchingSchedule(
+        Teacher $teacher,
+        ?int $lockedSectId = null,
+        ?CarbonInterface $at = null,
+    ): ?Class_Schedule {
+        $now = $at ? Carbon::instance($at) : now();
         $dayName = $now->format('l');
         $timeNow = $now->format('H:i:s');
         $earlyMinutes = (int) config('attendance.teacher_tap_early_minutes', 10);
@@ -207,6 +238,9 @@ class RfidController extends Controller
 
         return Class_Schedule::query()
             ->where('tch_id', $teacher->tch_id)
+            ->when($lockedSectId !== null, function ($query) use ($lockedSectId): void {
+                $query->where('sect_id', $lockedSectId);
+            })
             ->when($activeSyId, function ($query) use ($activeSyId): void {
                 $query->where(function ($sub) use ($activeSyId): void {
                     $sub->where('sy_id', $activeSyId)->orWhereNull('sy_id');
@@ -225,8 +259,12 @@ class RfidController extends Controller
      *
      * @param  array<string, mixed>|null  $existingSession
      */
-    private function shouldEndSession(?array $existingSession, Teacher $teacher, ?Class_Schedule $matchingSchedule): bool
-    {
+    private function shouldEndSession(
+        ?array $existingSession,
+        Teacher $teacher,
+        ?Class_Schedule $matchingSchedule,
+        ?CarbonInterface $at = null,
+    ): bool {
         if (
             $existingSession === null
             || (int) ($existingSession['tch_id'] ?? 0) !== (int) $teacher->tch_id
@@ -235,9 +273,10 @@ class RfidController extends Controller
             return false;
         }
 
+        $now = $at ? Carbon::instance($at) : now();
         $cooldown = (int) config('attendance.tap_cooldown_seconds', 30);
         $elapsed = isset($existingSession['started_at'])
-            ? abs(now()->timestamp - (int) $existingSession['started_at'])
+            ? abs($now->timestamp - (int) $existingSession['started_at'])
             : $cooldown;
 
         if ($elapsed < $cooldown) {
@@ -274,6 +313,8 @@ class RfidController extends Controller
             date: isset($session['date']) && is_string($session['date']) ? $session['date'] : now()->toDateString(),
             subjectName: isset($session['subj_name']) && is_string($session['subj_name']) ? $session['subj_name'] : null,
             sectionName: isset($session['sect_name']) && is_string($session['sect_name']) ? $session['sect_name'] : null,
+            startTime: isset($session['start_time']) && is_string($session['start_time']) ? $session['start_time'] : null,
+            endTime: isset($session['end_time']) && is_string($session['end_time']) ? $session['end_time'] : null,
         );
     }
 
@@ -302,10 +343,15 @@ class RfidController extends Controller
      *     auto_transferred: int,
      * }
      */
-    private function openSession(string $deviceKey, Teacher $teacher, ?Class_Schedule $schedule = null): array
-    {
-        $now = now();
-        $schedule ??= $this->findMatchingSchedule($teacher);
+    private function openSession(
+        string $deviceKey,
+        Teacher $teacher,
+        ?Class_Schedule $schedule = null,
+        ?int $lockedSectId = null,
+        ?CarbonInterface $at = null,
+    ): array {
+        $now = $at ? Carbon::instance($at) : now();
+        $schedule ??= $this->findMatchingSchedule($teacher, $lockedSectId, $now);
 
         $tchName = trim(collect([
             $teacher->tch_fname,

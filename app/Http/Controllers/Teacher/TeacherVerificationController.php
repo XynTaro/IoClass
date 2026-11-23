@@ -333,11 +333,24 @@ class TeacherVerificationController extends Controller
         $sectionName = DB::table('section')->where('sect_id', $sectId)->value('sect_name');
 
         if (! empty($absentStuIds)) {
+            $scheduleSlot = DB::table('class_schedule')
+                ->where('tch_id', $teacher->tch_id)
+                ->where('subj_id', $subjId)
+                ->where('sect_id', $sectId)
+                ->where('day_of_week', Carbon::parse($attDate)->format('l'))
+                ->first(['start_time', 'end_time']);
+
+            $timeRange = $this->absenceNotifier->formatTimeRange(
+                $scheduleSlot?->start_time,
+                $scheduleSlot?->end_time,
+            );
+
             $this->absenceNotifier->notifyMultiple(
                 students: $absentStuIds,
                 date: $attDate,
                 subjectName: $subjectName,
                 sectionName: $sectionName,
+                timeRange: $timeRange,
             );
         }
 

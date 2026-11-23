@@ -96,6 +96,28 @@ class RfidCaptureCache
         return 'default';
     }
 
+    /**
+     * Extract a locked section ID from a device token formatted with `sect-{id}`
+     * (e.g. `esp32-sect-3-rizal`, `sect-3-alpha`, or `esp32-sect-3`).
+     *
+     * The trailing section name is treated as a human-readable label only;
+     * matching is always performed using the numeric `sect_id`.
+     */
+    public static function sectionIdFromDeviceToken(?string $deviceToken): ?int
+    {
+        if (! is_string($deviceToken) || trim($deviceToken) === '') {
+            return null;
+        }
+
+        if (preg_match('/(?:^|[-_])sect[-_](\d+)(?:[-_]|$)/i', trim($deviceToken), $matches) === 1) {
+            $sectId = (int) $matches[1];
+
+            return $sectId > 0 ? $sectId : null;
+        }
+
+        return null;
+    }
+
     private static function cacheKey(string $deviceKey): string
     {
         return 'rfid.capture.'.hash('sha256', $deviceKey);
