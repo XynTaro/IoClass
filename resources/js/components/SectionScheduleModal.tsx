@@ -1067,12 +1067,14 @@ export default function SectionScheduleModal({
                                             {/* Building & Room Selection */}
                                             <div className="grid gap-3 sm:grid-cols-2">
                                                 <div className="space-y-1.5">
-                                                    <Label className="text-xs font-semibold text-foreground/80">
-                                                        Building{' '}
-                                                        <span className="text-destructive">
-                                                            *
-                                                        </span>
-                                                    </Label>
+                                                    <div className="flex min-h-5 items-center">
+                                                        <Label className="text-xs font-semibold text-foreground/80">
+                                                            Building{' '}
+                                                            <span className="text-destructive">
+                                                                *
+                                                            </span>
+                                                        </Label>
+                                                    </div>
                                                     <Select
                                                         value={
                                                             slot.buildingFilter || ''
@@ -1140,14 +1142,14 @@ export default function SectionScheduleModal({
                                                 </div>
 
                                                 <div className="space-y-1.5">
-                                                    <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex min-h-5 items-center justify-between gap-2">
                                                         <Label className="text-xs font-semibold text-foreground/80">
                                                             Room{' '}
                                                             <span className="text-destructive">
                                                                 *
                                                             </span>
                                                         </Label>
-                                                        {noRoomsInSelectedBuilding && (
+                                                        {buildings.length > 0 && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
