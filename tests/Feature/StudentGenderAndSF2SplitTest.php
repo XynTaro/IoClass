@@ -41,6 +41,7 @@ test('admin can create a student with gender and optional photo', function () {
         'mother_name' => 'Pia',
         'mother_lname' => 'Alba',
         'mother_contact_number' => '09123456788',
+        'main_contact' => 'mother',
     ]);
 
     $response->assertRedirect();

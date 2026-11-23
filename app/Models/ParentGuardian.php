@@ -31,7 +31,32 @@ class ParentGuardian extends Model
         'f_id',
         'mother_id',
         'guardian_id',
+        'main_contact',
     ];
+
+    /**
+     * Resolve the primary contact number, honoring the designated main contact first
+     * and falling back to guardian, mother, then father for legacy records.
+     */
+    public function resolvePrimaryPhone(): ?string
+    {
+        $selected = match ($this->main_contact) {
+            'father' => $this->father?->contact_number,
+            'mother' => $this->mother?->contact_number,
+            'guardian' => $this->guardian?->contact_number,
+            default => null,
+        };
+
+        if (filled($selected)) {
+            return (string) $selected;
+        }
+
+        $fallback = $this->guardian?->contact_number
+            ?? $this->mother?->contact_number
+            ?? $this->father?->contact_number;
+
+        return filled($fallback) ? (string) $fallback : null;
+    }
 
     public function student(): BelongsTo
     {

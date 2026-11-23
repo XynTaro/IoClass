@@ -196,14 +196,15 @@ test('student parent details can be updated on edit', function () {
         'stu_fname' => 'Liza',
         'stu_lname' => 'Soberano',
         'rfid_uid' => 'STURFID002',
-        'father_is_deceased' => false,
+        'father_is_na' => false,
         'father_name' => 'Jonathan',
         'father_lname' => 'Soberano',
         'father_contact_number' => '09195556677',
-        'mother_is_deceased' => false,
+        'mother_is_na' => false,
         'mother_name' => 'Jacqueline',
         'mother_lname' => 'Nguyen',
         'mother_contact_number' => '09198889900',
+        'main_contact' => 'mother',
     ]);
 
     $response->assertRedirect(route('admin.student.index'));
@@ -218,7 +219,7 @@ test('student parent details can be updated on edit', function () {
         ->and($mother->contact_number)->toBe('09198889900');
 });
 
-test('student parent can be marked deceased and unlinked on edit', function () {
+test('student parent can be marked N/A and unlinked on edit', function () {
     $student = Student::create([
         'stu_fname' => 'Danilo',
         'stu_lname' => 'Reyes',
@@ -244,17 +245,19 @@ test('student parent can be marked deceased and unlinked on edit', function () {
         'stu_par_id' => $student->stu_id,
         'f_id' => $father->f_id,
         'mother_id' => $mother->mother_id,
+        'main_contact' => 'father',
     ]);
 
     $response = $this->actingAs($this->admin, 'admin')->put(route('admin.student.update', $student->stu_id), [
         'stu_fname' => 'Danilo',
         'stu_lname' => 'Reyes',
         'rfid_uid' => 'STURFID003',
-        'father_is_deceased' => true,
-        'mother_is_deceased' => false,
+        'father_is_na' => true,
+        'mother_is_na' => false,
         'mother_name' => 'Corazon',
         'mother_lname' => 'Reyes',
         'mother_contact_number' => '09194445566',
+        'main_contact' => 'mother',
     ]);
 
     $response->assertRedirect(route('admin.student.index'));
@@ -262,10 +265,11 @@ test('student parent can be marked deceased and unlinked on edit', function () {
 
     $link->refresh();
     expect($link->f_id)->toBeNull()
-        ->and($link->mother_id)->not->toBeNull();
+        ->and($link->mother_id)->not->toBeNull()
+        ->and($link->main_contact)->toBe('mother');
 });
 
-test('student with both parents marked deceased requires guardian on edit', function () {
+test('student with both parents marked N/A requires guardian on edit', function () {
     $student = Student::create([
         'stu_fname' => 'Anna',
         'stu_lname' => 'Cruz',
@@ -273,13 +277,14 @@ test('student with both parents marked deceased requires guardian on edit', func
         'is_deleted' => false,
     ]);
 
-    // Validation fails if both deceased without guardian
+    // Validation fails if both N/A without guardian
     $response = $this->actingAs($this->admin, 'admin')->put(route('admin.student.update', $student->stu_id), [
         'stu_fname' => 'Anna',
         'stu_lname' => 'Cruz',
         'rfid_uid' => 'STURFID004',
-        'father_is_deceased' => true,
-        'mother_is_deceased' => true,
+        'father_is_na' => true,
+        'mother_is_na' => true,
+        'main_contact' => 'guardian',
     ]);
 
     $response->assertSessionHasErrors(['guardian_name', 'guardian_lname', 'guardian_contact_number']);
@@ -289,11 +294,12 @@ test('student with both parents marked deceased requires guardian on edit', func
         'stu_fname' => 'Anna',
         'stu_lname' => 'Cruz',
         'rfid_uid' => 'STURFID004',
-        'father_is_deceased' => true,
-        'mother_is_deceased' => true,
+        'father_is_na' => true,
+        'mother_is_na' => true,
         'guardian_name' => 'Clara',
         'guardian_lname' => 'Cruz',
         'guardian_contact_number' => '09199998877',
+        'main_contact' => 'guardian',
     ]);
 
     $response2->assertRedirect(route('admin.student.index'));

@@ -62,9 +62,7 @@ class StudentRfidRegistrationNotifier
             return null;
         }
 
-        $raw = $link->guardian?->contact_number
-            ?? $link->mother?->contact_number
-            ?? $link->father?->contact_number;
+        $raw = $link->resolvePrimaryPhone();
 
         if (! filled($raw)) {
             return null;

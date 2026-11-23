@@ -50,6 +50,7 @@ test('adding a student sends an rfid registration sms to the guardian', function
             'mother_name' => 'Juana',
             'mother_lname' => 'Cruz',
             'mother_contact_number' => '09191234567',
+            'main_contact' => 'guardian',
         ])
         ->assertRedirect(route('admin.student.index'));
 

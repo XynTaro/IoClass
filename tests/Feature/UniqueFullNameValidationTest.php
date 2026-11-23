@@ -97,6 +97,7 @@ test('adding student with same last name but different first name succeeds', fun
         'mother_name' => 'Mary',
         'mother_lname' => 'Doe',
         'mother_contact_number' => '09123456788',
+        'main_contact' => 'mother',
     ]);
 
     $response->assertSessionHasNoErrors();
@@ -135,6 +136,7 @@ test('adding student with same first and last name but different middle name suc
         'mother_name' => 'Mary',
         'mother_lname' => 'Doe',
         'mother_contact_number' => '09123456788',
+        'main_contact' => 'mother',
     ]);
 
     $response->assertSessionHasNoErrors();

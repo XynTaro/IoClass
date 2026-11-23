@@ -179,6 +179,7 @@ export interface Student {
     guardian_mname?: string | null;
     guardian_lname?: string | null;
     guardian_contact_number?: string | null;
+    main_contact?: 'father' | 'mother' | 'guardian' | null;
 }
 
 interface StudentFormData {
@@ -206,16 +207,17 @@ interface StudentFormData {
     father_mname: string;
     father_lname: string;
     father_contact_number: string;
-    father_is_deceased: boolean;
+    father_is_na: boolean;
     mother_name: string;
     mother_mname: string;
     mother_lname: string;
     mother_contact_number: string;
-    mother_is_deceased: boolean;
+    mother_is_na: boolean;
     guardian_name: string;
     guardian_mname: string;
     guardian_lname: string;
     guardian_contact_number: string;
+    main_contact: 'father' | 'mother' | 'guardian' | '';
 }
 
 interface StudentModalProps {
@@ -252,16 +254,17 @@ const emptyForm: StudentFormData = {
     father_mname: '',
     father_lname: '',
     father_contact_number: '',
-    father_is_deceased: false,
+    father_is_na: false,
     mother_name: '',
     mother_mname: '',
     mother_lname: '',
     mother_contact_number: '',
-    mother_is_deceased: false,
+    mother_is_na: false,
     guardian_name: '',
     guardian_mname: '',
     guardian_lname: '',
     guardian_contact_number: '',
+    main_contact: '',
 };
 
 // ---------------------------------------------------------------------------
@@ -341,7 +344,8 @@ interface ParentSectionProps {
     data: StudentFormData;
     errors: Partial<Record<keyof StudentFormData, string>>;
     onChange: (field: keyof StudentFormData, val: string) => void;
-    onDeceasedChange?: (deceased: boolean) => void;
+    onNaChange?: (isNa: boolean) => void;
+    onMainContactChange: (selected: boolean) => void;
     required?: boolean;
     badgeNote?: string;
 }
@@ -355,11 +359,11 @@ const FIRST_NAME_KEY: Record<
     guardian: 'guardian_name',
 };
 
-const DECEASED_KEY: Partial<
+const NA_KEY: Partial<
     Record<'father' | 'mother' | 'guardian', keyof StudentFormData>
 > = {
-    father: 'father_is_deceased',
-    mother: 'mother_is_deceased',
+    father: 'father_is_na',
+    mother: 'mother_is_na',
 };
 
 const PARENT_STYLE: Record<
@@ -393,7 +397,8 @@ function ParentSection({
     data,
     errors,
     onChange,
-    onDeceasedChange,
+    onNaChange,
+    onMainContactChange,
     required = false,
     badgeNote,
 }: ParentSectionProps) {
@@ -401,13 +406,22 @@ function ParentSection({
     const mnameKey = `${prefix}_mname` as keyof StudentFormData;
     const lnameKey = `${prefix}_lname` as keyof StudentFormData;
     const phoneKey = `${prefix}_contact_number` as keyof StudentFormData;
-    const deceasedKey = DECEASED_KEY[prefix];
-    const isDeceased = deceasedKey ? Boolean(data[deceasedKey]) : false;
+    const naKey = NA_KEY[prefix];
+    const isNa = naKey ? Boolean(data[naKey]) : false;
+    const isMainContact = data.main_contact === prefix;
+    const anotherIsMainContact = Boolean(data.main_contact) && !isMainContact;
+    const mainContactDisabled = isNa || anotherIsMainContact;
     const { icon: Icon, iconBg, iconColor } = PARENT_STYLE[prefix];
 
     return (
-        <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+        <div
+            className={cn(
+                'space-y-3 rounded-xl border bg-card p-4 shadow-sm transition-colors',
+                isMainContact &&
+                    'border-emerald-300 ring-1 ring-emerald-200 dark:border-emerald-800 dark:ring-emerald-900/60',
+            )}
+        >
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                     <div
                         className={cn(
@@ -417,13 +431,13 @@ function ParentSection({
                     >
                         <Icon className={cn('size-4', iconColor)} />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">
                             {title}
                         </p>
-                        {isDeceased ? (
+                        {isNa ? (
                             <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                Deceased
+                                N/A
                             </span>
                         ) : required ? (
                             <span className="rounded-md bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/60 dark:text-red-400">
@@ -436,30 +450,67 @@ function ParentSection({
                         )}
                     </div>
                 </div>
-                {deceasedKey && onDeceasedChange && (
+                <div className="flex flex-wrap items-center gap-2">
                     <div
                         className={cn(
-                            'flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
-                            isDeceased ? 'bg-muted' : 'hover:bg-muted/50',
+                            'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors',
+                            isMainContact
+                                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40'
+                                : mainContactDisabled
+                                  ? 'border-transparent bg-muted/40 opacity-50'
+                                  : 'border-border/60 hover:bg-muted/50',
                         )}
                     >
                         <Checkbox
-                            id={`${prefix}_is_deceased`}
-                            checked={isDeceased}
-                            onCheckedChange={(checked) =>
-                                onDeceasedChange(Boolean(checked))
-                            }
+                            id={`${prefix}_is_main_contact`}
+                            checked={isMainContact}
+                            disabled={mainContactDisabled}
+                            onCheckedChange={(checked) => {
+                                if (mainContactDisabled) return;
+                                onMainContactChange(Boolean(checked));
+                            }}
                         />
                         <Label
-                            htmlFor={`${prefix}_is_deceased`}
-                            className="cursor-pointer text-xs text-muted-foreground"
+                            htmlFor={`${prefix}_is_main_contact`}
+                            className={cn(
+                                'text-xs font-medium',
+                                mainContactDisabled
+                                    ? 'cursor-not-allowed text-muted-foreground'
+                                    : 'cursor-pointer',
+                                isMainContact
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : 'text-foreground',
+                            )}
                         >
-                            Deceased
+                            Main Contact
                         </Label>
                     </div>
-                )}
+                    {naKey && onNaChange && (
+                        <div
+                            title="Not Applicable"
+                            className={cn(
+                                'flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
+                                isNa ? 'bg-muted' : 'hover:bg-muted/50',
+                            )}
+                        >
+                            <Checkbox
+                                id={`${prefix}_is_na`}
+                                checked={isNa}
+                                onCheckedChange={(checked) =>
+                                    onNaChange(Boolean(checked))
+                                }
+                            />
+                            <Label
+                                htmlFor={`${prefix}_is_na`}
+                                className="cursor-pointer text-xs text-muted-foreground"
+                            >
+                                N/A
+                            </Label>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div className={isDeceased ? 'pointer-events-none opacity-40' : ''}>
+            <div className={isNa ? 'pointer-events-none opacity-40' : ''}>
                 <div className="grid gap-3 sm:grid-cols-3">
                     <Field
                         id={fnameKey}
@@ -467,10 +518,10 @@ function ParentSection({
                         value={data[fnameKey] as string}
                         onChange={(v) => onChange(fnameKey, formatNameInput(v))}
                         error={errors[fnameKey]}
-                        required={required && !isDeceased}
+                        required={required && !isNa}
                         inputProps={{
                             placeholder: 'First name',
-                            disabled: isDeceased,
+                            disabled: isNa,
                         }}
                     />
                     <Field
@@ -481,7 +532,7 @@ function ParentSection({
                         error={errors[mnameKey]}
                         inputProps={{
                             placeholder: 'Middle name',
-                            disabled: isDeceased,
+                            disabled: isNa,
                         }}
                     />
                     <Field
@@ -490,10 +541,10 @@ function ParentSection({
                         value={data[lnameKey] as string}
                         onChange={(v) => onChange(lnameKey, formatNameInput(v))}
                         error={errors[lnameKey]}
-                        required={required && !isDeceased}
+                        required={required && !isNa}
                         inputProps={{
                             placeholder: 'Last name',
-                            disabled: isDeceased,
+                            disabled: isNa,
                         }}
                     />
                 </div>
@@ -506,10 +557,10 @@ function ParentSection({
                             onChange(phoneKey, formatContactNumberInput(v))
                         }
                         error={errors[phoneKey]}
-                        required={required && !isDeceased}
+                        required={required && !isNa}
                         inputProps={{
                             placeholder: '09XX XXX XXXX',
-                            disabled: isDeceased,
+                            disabled: isNa,
                             maxLength: 13,
                         }}
                     />
@@ -590,8 +641,16 @@ export default function StudentModal({
             const hasMother = Boolean(student.mother_name && student.mother_name.trim());
             const hasGuardian = Boolean(student.guardian_name && student.guardian_name.trim());
 
-            const fatherDeceased = (!hasFather && hasGuardian) || (!hasFather && hasMother && hasGuardian);
-            const motherDeceased = (!hasMother && hasGuardian) || (!hasMother && hasFather && hasGuardian);
+            const fatherNa = (!hasFather && hasGuardian) || (!hasFather && hasMother && hasGuardian);
+            const motherNa = (!hasMother && hasGuardian) || (!hasMother && hasFather && hasGuardian);
+            const initialMainContact =
+                student.main_contact === 'father' && !fatherNa
+                    ? 'father'
+                    : student.main_contact === 'mother' && !motherNa
+                      ? 'mother'
+                      : student.main_contact === 'guardian'
+                        ? 'guardian'
+                        : '';
             const hasCurrAddress = Boolean(
                 (student.curr_region && student.curr_region.trim()) ||
                     (student.curr_province && student.curr_province.trim()) ||
@@ -628,16 +687,17 @@ export default function StudentModal({
                 father_mname: student.father_mname ?? '',
                 father_lname: student.father_lname ?? '',
                 father_contact_number: student.father_contact_number ?? '',
-                father_is_deceased: fatherDeceased,
+                father_is_na: fatherNa,
                 mother_name: student.mother_name ?? '',
                 mother_mname: student.mother_mname ?? '',
                 mother_lname: student.mother_lname ?? '',
                 mother_contact_number: student.mother_contact_number ?? '',
-                mother_is_deceased: motherDeceased,
+                mother_is_na: motherNa,
                 guardian_name: student.guardian_name ?? '',
                 guardian_mname: student.guardian_mname ?? '',
                 guardian_lname: student.guardian_lname ?? '',
                 guardian_contact_number: student.guardian_contact_number ?? '',
+                main_contact: initialMainContact,
             });
 
             if (student.region) {
@@ -738,8 +798,9 @@ export default function StudentModal({
             Boolean(form.data.father_name.trim()) ||
             Boolean(form.data.mother_name.trim()) ||
             Boolean(form.data.guardian_name.trim()) ||
-            form.data.father_is_deceased ||
-            form.data.mother_is_deceased;
+            Boolean(form.data.main_contact) ||
+            form.data.father_is_na ||
+            form.data.mother_is_na;
 
         if (hasContent) {
             sessionStorage.setItem(
@@ -927,7 +988,31 @@ export default function StudentModal({
 
         // Validate family fields in edit mode
         const familyErrors: Record<string, string> = {};
-        if (!form.data.father_is_deceased && form.data.father_name.trim()) {
+        if (!form.data.main_contact) {
+            familyErrors.main_contact =
+                'Please select a main contact (Father, Mother, or Guardian).';
+        } else if (
+            form.data.main_contact === 'father' &&
+            form.data.father_is_na
+        ) {
+            familyErrors.main_contact =
+                'Father cannot be the main contact when marked as N/A.';
+        } else if (
+            form.data.main_contact === 'mother' &&
+            form.data.mother_is_na
+        ) {
+            familyErrors.main_contact =
+                'Mother cannot be the main contact when marked as N/A.';
+        }
+
+        if (
+            !form.data.father_is_na &&
+            (form.data.father_name.trim() ||
+                form.data.main_contact === 'father')
+        ) {
+            if (!form.data.father_name.trim()) {
+                familyErrors.father_name = 'Father first name is required.';
+            }
             if (!form.data.father_lname.trim()) {
                 familyErrors.father_lname = 'Father last name is required.';
             }
@@ -946,7 +1031,14 @@ export default function StudentModal({
             }
         }
 
-        if (!form.data.mother_is_deceased && form.data.mother_name.trim()) {
+        if (
+            !form.data.mother_is_na &&
+            (form.data.mother_name.trim() ||
+                form.data.main_contact === 'mother')
+        ) {
+            if (!form.data.mother_name.trim()) {
+                familyErrors.mother_name = 'Mother first name is required.';
+            }
             if (!form.data.mother_lname.trim()) {
                 familyErrors.mother_lname = 'Mother last name is required.';
             }
@@ -1044,6 +1136,7 @@ export default function StudentModal({
                     'guardian_mname',
                     'guardian_lname',
                     'guardian_contact_number',
+                    'main_contact',
                 ];
                 if (step1Fields.some((f) => f in errors)) {
                     setEditTab('student');
@@ -1093,8 +1186,26 @@ export default function StudentModal({
         form.clearErrors();
         const errors: Record<string, string> = {};
 
-        // Father validation (required unless marked deceased)
-        if (!form.data.father_is_deceased) {
+        // Main contact validation (required)
+        if (!form.data.main_contact) {
+            errors.main_contact =
+                'Please select a main contact (Father, Mother, or Guardian).';
+        } else if (
+            form.data.main_contact === 'father' &&
+            form.data.father_is_na
+        ) {
+            errors.main_contact =
+                'Father cannot be the main contact when marked as N/A.';
+        } else if (
+            form.data.main_contact === 'mother' &&
+            form.data.mother_is_na
+        ) {
+            errors.main_contact =
+                'Mother cannot be the main contact when marked as N/A.';
+        }
+
+        // Father validation (required unless marked N/A)
+        if (!form.data.father_is_na) {
             if (!form.data.father_name.trim()) {
                 errors.father_name = 'Father first name is required.';
             }
@@ -1116,8 +1227,8 @@ export default function StudentModal({
             }
         }
 
-        // Mother validation (required unless marked deceased)
-        if (!form.data.mother_is_deceased) {
+        // Mother validation (required unless marked N/A)
+        if (!form.data.mother_is_na) {
             if (!form.data.mother_name.trim()) {
                 errors.mother_name = 'Mother first name is required.';
             }
@@ -1545,14 +1656,45 @@ export default function StudentModal({
                                 </div>
                             ) : mode === 'edit' && editTab === 'family' ? (
                                 <div className="space-y-4 pt-1">
-                                    {form.data.father_is_deceased &&
-                                        form.data.mother_is_deceased && (
+                                    {form.errors.main_contact ? (
+                                        <ErrorBanner
+                                            message={form.errors.main_contact}
+                                        />
+                                    ) : (
+                                        <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3 text-xs text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+                                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                            <div>
+                                                <p className="font-semibold">
+                                                    {form.data.main_contact
+                                                        ? `Main Contact: ${
+                                                              form.data
+                                                                  .main_contact ===
+                                                              'father'
+                                                                  ? 'Father'
+                                                                  : form.data
+                                                                          .main_contact ===
+                                                                      'mother'
+                                                                    ? 'Mother'
+                                                                    : 'Guardian'
+                                                          }`
+                                                        : 'Main Contact is required'}
+                                                </p>
+                                                <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90">
+                                                    {form.data.main_contact
+                                                        ? 'Uncheck the current Main Contact if you want to select another.'
+                                                        : 'Check one Main Contact (Father, Mother, or Guardian) to receive SMS notifications.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {form.data.father_is_na &&
+                                        form.data.mother_is_na && (
                                             <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                                                 <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                                                 <div>
                                                     <p className="font-semibold">
                                                         Both parents are marked
-                                                        deceased
+                                                        N/A (Not Applicable)
                                                     </p>
                                                     <p className="text-[11px] text-amber-800 dark:text-amber-300">
                                                         Guardian first name,
@@ -1568,26 +1710,41 @@ export default function StudentModal({
                                         data={form.data}
                                         errors={form.errors}
                                         onChange={setField}
-                                        required={!form.data.father_is_deceased}
-                                        onDeceasedChange={(deceased) => {
-                                            if (deceased) {
+                                        required={!form.data.father_is_na}
+                                        onMainContactChange={(selected) => {
+                                            form.setData(
+                                                'main_contact',
+                                                selected ? 'father' : '',
+                                            );
+                                            form.clearErrors('main_contact');
+                                        }}
+                                        onNaChange={(isNa) => {
+                                            if (isNa) {
                                                 form.setData({
                                                     ...form.data,
-                                                    father_is_deceased: true,
+                                                    father_is_na: true,
                                                     father_name: '',
                                                     father_mname: '',
                                                     father_lname: '',
                                                     father_contact_number: '',
+                                                    main_contact:
+                                                        form.data
+                                                            .main_contact ===
+                                                        'father'
+                                                            ? ''
+                                                            : form.data
+                                                                  .main_contact,
                                                 });
                                                 form.clearErrors(
                                                     'father_name',
                                                     'father_mname',
                                                     'father_lname',
                                                     'father_contact_number',
+                                                    'main_contact',
                                                 );
                                             } else {
                                                 form.setData(
-                                                    'father_is_deceased',
+                                                    'father_is_na',
                                                     false,
                                                 );
                                             }
@@ -1599,26 +1756,41 @@ export default function StudentModal({
                                         data={form.data}
                                         errors={form.errors}
                                         onChange={setField}
-                                        required={!form.data.mother_is_deceased}
-                                        onDeceasedChange={(deceased) => {
-                                            if (deceased) {
+                                        required={!form.data.mother_is_na}
+                                        onMainContactChange={(selected) => {
+                                            form.setData(
+                                                'main_contact',
+                                                selected ? 'mother' : '',
+                                            );
+                                            form.clearErrors('main_contact');
+                                        }}
+                                        onNaChange={(isNa) => {
+                                            if (isNa) {
                                                 form.setData({
                                                     ...form.data,
-                                                    mother_is_deceased: true,
+                                                    mother_is_na: true,
                                                     mother_name: '',
                                                     mother_mname: '',
                                                     mother_lname: '',
                                                     mother_contact_number: '',
+                                                    main_contact:
+                                                        form.data
+                                                            .main_contact ===
+                                                        'mother'
+                                                            ? ''
+                                                            : form.data
+                                                                  .main_contact,
                                                 });
                                                 form.clearErrors(
                                                     'mother_name',
                                                     'mother_mname',
                                                     'mother_lname',
                                                     'mother_contact_number',
+                                                    'main_contact',
                                                 );
                                             } else {
                                                 form.setData(
-                                                    'mother_is_deceased',
+                                                    'mother_is_na',
                                                     false,
                                                 );
                                             }
@@ -1630,6 +1802,13 @@ export default function StudentModal({
                                         data={form.data}
                                         errors={form.errors}
                                         onChange={setField}
+                                        onMainContactChange={(selected) => {
+                                            form.setData(
+                                                'main_contact',
+                                                selected ? 'guardian' : '',
+                                            );
+                                            form.clearErrors('main_contact');
+                                        }}
                                         required
                                     />
                                 </div>
@@ -2252,8 +2431,9 @@ export default function StudentModal({
                                         Parent / Guardian
                                     </DialogTitle>
                                     <p className="text-xs text-muted-foreground">
-                                        Parents are required unless deceased.
-                                        Guardian information is required.
+                                        Parents are required unless marked N/A.
+                                        Guardian information and one Main
+                                        Contact are required.
                                     </p>
                                 </div>
                             </div>
@@ -2275,13 +2455,44 @@ export default function StudentModal({
                             onSubmit={handleCreateSubmit}
                             className="max-h-[68vh] space-y-4 overflow-y-auto pr-1"
                         >
-                            {form.data.father_is_deceased &&
-                                form.data.mother_is_deceased && (
+                            {form.errors.main_contact ? (
+                                <ErrorBanner
+                                    message={form.errors.main_contact}
+                                />
+                            ) : (
+                                <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3 text-xs text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+                                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                    <div>
+                                        <p className="font-semibold">
+                                            {form.data.main_contact
+                                                ? `Main Contact: ${
+                                                      form.data.main_contact ===
+                                                      'father'
+                                                          ? 'Father'
+                                                          : form.data
+                                                                  .main_contact ===
+                                                              'mother'
+                                                            ? 'Mother'
+                                                            : 'Guardian'
+                                                  }`
+                                                : 'Main Contact is required'}
+                                        </p>
+                                        <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90">
+                                            {form.data.main_contact
+                                                ? 'Uncheck the current Main Contact if you want to select another.'
+                                                : 'Check one Main Contact (Father, Mother, or Guardian) to receive SMS notifications.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {form.data.father_is_na &&
+                                form.data.mother_is_na && (
                                     <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                                         <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                                         <div>
                                             <p className="font-semibold">
-                                                Both parents are marked deceased
+                                                Both parents are marked N/A (Not
+                                                Applicable)
                                             </p>
                                             <p className="text-[11px] text-amber-800 dark:text-amber-300">
                                                 Guardian first name, last name,
@@ -2297,28 +2508,38 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
-                                required={!form.data.father_is_deceased}
-                                onDeceasedChange={(deceased) => {
-                                    if (deceased) {
+                                required={!form.data.father_is_na}
+                                onMainContactChange={(selected) => {
+                                    form.setData(
+                                        'main_contact',
+                                        selected ? 'father' : '',
+                                    );
+                                    form.clearErrors('main_contact');
+                                }}
+                                onNaChange={(isNa) => {
+                                    if (isNa) {
                                         form.setData({
                                             ...form.data,
-                                            father_is_deceased: true,
+                                            father_is_na: true,
                                             father_name: '',
                                             father_mname: '',
                                             father_lname: '',
                                             father_contact_number: '',
+                                            main_contact:
+                                                form.data.main_contact ===
+                                                'father'
+                                                    ? ''
+                                                    : form.data.main_contact,
                                         });
                                         form.clearErrors(
                                             'father_name',
                                             'father_mname',
                                             'father_lname',
                                             'father_contact_number',
+                                            'main_contact',
                                         );
                                     } else {
-                                        form.setData(
-                                            'father_is_deceased',
-                                            false,
-                                        );
+                                        form.setData('father_is_na', false);
                                     }
                                 }}
                             />
@@ -2328,28 +2549,38 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
-                                required={!form.data.mother_is_deceased}
-                                onDeceasedChange={(deceased) => {
-                                    if (deceased) {
+                                required={!form.data.mother_is_na}
+                                onMainContactChange={(selected) => {
+                                    form.setData(
+                                        'main_contact',
+                                        selected ? 'mother' : '',
+                                    );
+                                    form.clearErrors('main_contact');
+                                }}
+                                onNaChange={(isNa) => {
+                                    if (isNa) {
                                         form.setData({
                                             ...form.data,
-                                            mother_is_deceased: true,
+                                            mother_is_na: true,
                                             mother_name: '',
                                             mother_mname: '',
                                             mother_lname: '',
                                             mother_contact_number: '',
+                                            main_contact:
+                                                form.data.main_contact ===
+                                                'mother'
+                                                    ? ''
+                                                    : form.data.main_contact,
                                         });
                                         form.clearErrors(
                                             'mother_name',
                                             'mother_mname',
                                             'mother_lname',
                                             'mother_contact_number',
+                                            'main_contact',
                                         );
                                     } else {
-                                        form.setData(
-                                            'mother_is_deceased',
-                                            false,
-                                        );
+                                        form.setData('mother_is_na', false);
                                     }
                                 }}
                             />
@@ -2359,6 +2590,13 @@ export default function StudentModal({
                                 data={form.data}
                                 errors={form.errors}
                                 onChange={setField}
+                                onMainContactChange={(selected) => {
+                                    form.setData(
+                                        'main_contact',
+                                        selected ? 'guardian' : '',
+                                    );
+                                    form.clearErrors('main_contact');
+                                }}
                                 required
                             />
                         </form>

@@ -15,6 +15,7 @@ use App\Rules\UniqueRfidUid;
 use App\Services\StudentRfidRegistrationNotifier;
 use App\Support\RfidRegistryCache;
 use App\Support\RfidUid;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +106,7 @@ class AdminStudentController extends Controller
                 'g.guardian_mname',
                 'g.guardian_lname',
                 'g.contact_number as guardian_contact_number',
+                'p.main_contact',
             )
             ->where('s.is_deleted', $archived ? 1 : 0)
             ->groupBy(
@@ -116,7 +118,8 @@ class AdminStudentController extends Controller
                 'curr_addr.region', 'curr_addr.province', 'curr_addr.municipality', 'curr_addr.barangay',
                 'f.father_name', 'f.father_mname', 'f.father_lname', 'f.contact_number',
                 'm.mother_name', 'm.mother_mname', 'm.mother_lname', 'm.contact_number',
-                'g.name', 'g.guardian_mname', 'g.guardian_lname', 'g.contact_number'
+                'g.name', 'g.guardian_mname', 'g.guardian_lname', 'g.contact_number',
+                'p.main_contact'
             )
             ->orderBy('s.stu_lname')
             ->orderBy('s.stu_fname');
@@ -205,9 +208,10 @@ class AdminStudentController extends Controller
      */
     public function store(Request $request)
     {
-        $fatherIsDeceased = $request->boolean('father_is_deceased');
-        $motherIsDeceased = $request->boolean('mother_is_deceased');
-        $bothParentsDeceased = $fatherIsDeceased && $motherIsDeceased;
+        $fatherIsNa = $request->boolean('father_is_na');
+        $motherIsNa = $request->boolean('mother_is_na');
+        $bothParentsNa = $fatherIsNa && $motherIsNa;
+        $requireGuardian = $bothParentsNa || $request->input('main_contact') === 'guardian';
 
         $validated = $request->validate([
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn'],
@@ -229,65 +233,78 @@ class AdminStudentController extends Controller
             'curr_province' => 'nullable|string|max:100',
             'curr_municipality' => 'nullable|string|max:100',
             'curr_barangay' => 'nullable|string|max:100',
-            // Parent Deceased Flags
-            'father_is_deceased' => 'nullable|boolean',
-            'mother_is_deceased' => 'nullable|boolean',
-            // Father (required unless marked deceased)
+            // Parent N/A & Main Contact Flags
+            'father_is_na' => 'nullable|boolean',
+            'mother_is_na' => 'nullable|boolean',
+            'main_contact' => [
+                'required',
+                'string',
+                'in:father,mother,guardian',
+                function (string $attribute, mixed $value, Closure $fail) use ($fatherIsNa, $motherIsNa): void {
+                    if ($value === 'father' && $fatherIsNa) {
+                        $fail('Father cannot be the main contact when marked as N/A.');
+                    }
+                    if ($value === 'mother' && $motherIsNa) {
+                        $fail('Mother cannot be the main contact when marked as N/A.');
+                    }
+                },
+            ],
+            // Father (required unless marked N/A)
             'father_name' => [
-                $fatherIsDeceased ? 'nullable' : 'required',
+                $fatherIsNa ? 'nullable' : 'required',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
             'father_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'father_lname' => [
-                $fatherIsDeceased ? 'nullable' : 'required',
+                $fatherIsNa ? 'nullable' : 'required',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
             'father_contact_number' => [
-                $fatherIsDeceased ? 'nullable' : 'required',
+                $fatherIsNa ? 'nullable' : 'required',
                 'string',
                 'max:20',
                 'regex:/^\+?[\d\s]+$/',
             ],
-            // Mother (required unless marked deceased)
+            // Mother (required unless marked N/A)
             'mother_name' => [
-                $motherIsDeceased ? 'nullable' : 'required',
+                $motherIsNa ? 'nullable' : 'required',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
             'mother_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'mother_lname' => [
-                $motherIsDeceased ? 'nullable' : 'required',
+                $motherIsNa ? 'nullable' : 'required',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
             'mother_contact_number' => [
-                $motherIsDeceased ? 'nullable' : 'required',
+                $motherIsNa ? 'nullable' : 'required',
                 'string',
                 'max:20',
                 'regex:/^\+?[\d\s]+$/',
             ],
-            // Guardian (required if both parents are deceased, optional otherwise)
+            // Guardian (required if both parents are N/A or Guardian is main contact, optional otherwise)
             'guardian_name' => [
-                $bothParentsDeceased ? 'required' : 'nullable',
+                $requireGuardian ? 'required' : 'nullable',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
             'guardian_mname' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/'],
             'guardian_lname' => [
-                $bothParentsDeceased ? 'required' : 'nullable',
+                $requireGuardian ? 'required' : 'nullable',
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z\-\.\']([a-zA-Z\s\-\.\']*)?$/',
             ],
             'guardian_contact_number' => [
-                $bothParentsDeceased ? 'required' : 'nullable',
+                $requireGuardian ? 'required' : 'nullable',
                 'string',
                 'max:20',
                 'regex:/^\+?[\d\s]+$/',
@@ -306,6 +323,8 @@ class AdminStudentController extends Controller
             'photo.image' => 'Photo must be an image file.',
             'photo.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
             'photo.max' => 'Photo must not exceed 2MB.',
+            'main_contact.required' => 'Please select a main contact (Father, Mother, or Guardian).',
+            'main_contact.in' => 'Main contact must be Father, Mother, or Guardian.',
             'father_name.required' => 'Father first name is required.',
             'father_name.regex' => 'Father first name must contain only letters and cannot start with a space.',
             'father_mname.regex' => 'Father middle name must contain only letters and cannot start with a space.',
@@ -320,12 +339,18 @@ class AdminStudentController extends Controller
             'mother_lname.regex' => 'Mother last name must contain only letters and cannot start with a space.',
             'mother_contact_number.required' => 'Mother contact number is required.',
             'mother_contact_number.regex' => 'Mother contact number must contain only numbers.',
-            'guardian_name.required' => 'Guardian first name is required when both parents are deceased.',
+            'guardian_name.required' => $bothParentsNa
+                ? 'Guardian first name is required when both parents are marked N/A.'
+                : 'Guardian first name is required when Guardian is selected as main contact.',
             'guardian_name.regex' => 'Guardian first name must contain only letters and cannot start with a space.',
             'guardian_mname.regex' => 'Guardian middle name must contain only letters and cannot start with a space.',
-            'guardian_lname.required' => 'Guardian last name is required when both parents are deceased.',
+            'guardian_lname.required' => $bothParentsNa
+                ? 'Guardian last name is required when both parents are marked N/A.'
+                : 'Guardian last name is required when Guardian is selected as main contact.',
             'guardian_lname.regex' => 'Guardian last name must contain only letters and cannot start with a space.',
-            'guardian_contact_number.required' => 'Guardian contact number is required when both parents are deceased.',
+            'guardian_contact_number.required' => $bothParentsNa
+                ? 'Guardian contact number is required when both parents are marked N/A.'
+                : 'Guardian contact number is required when Guardian is selected as main contact.',
             'guardian_contact_number.regex' => 'Guardian contact number must contain only numbers.',
         ]);
 
@@ -406,7 +431,7 @@ class AdminStudentController extends Controller
         $motherId = null;
         $guardianId = null;
 
-        if (! $fatherIsDeceased && ! empty($validated['father_name'])) {
+        if (! $fatherIsNa && ! empty($validated['father_name'])) {
             $father = Father::create([
                 'father_name' => $this->formatName($validated['father_name']),
                 'father_mname' => $this->formatName($validated['father_mname'] ?? null),
@@ -417,7 +442,7 @@ class AdminStudentController extends Controller
             $fatherId = $father->f_id;
         }
 
-        if (! $motherIsDeceased && ! empty($validated['mother_name'])) {
+        if (! $motherIsNa && ! empty($validated['mother_name'])) {
             $mother = Mother::create([
                 'mother_name' => $this->formatName($validated['mother_name']),
                 'mother_mname' => $this->formatName($validated['mother_mname'] ?? null),
@@ -446,6 +471,7 @@ class AdminStudentController extends Controller
                 'f_id' => $fatherId,
                 'mother_id' => $motherId,
                 'guardian_id' => $guardianId,
+                'main_contact' => $validated['main_contact'],
             ]);
         }
 
@@ -594,15 +620,17 @@ class AdminStudentController extends Controller
     {
         $student = Student::findOrFail($id);
 
-        $fatherIsDeceased = $request->boolean('father_is_deceased');
-        $motherIsDeceased = $request->boolean('mother_is_deceased');
-        $bothParentsDeceased = $fatherIsDeceased && $motherIsDeceased;
+        $fatherIsNa = $request->boolean('father_is_na');
+        $motherIsNa = $request->boolean('mother_is_na');
+        $bothParentsNa = $fatherIsNa && $motherIsNa;
+        $selectedMainContact = $request->input('main_contact');
 
         $hasParentInput = $request->has('father_name')
             || $request->has('mother_name')
             || $request->has('guardian_name')
-            || $request->has('father_is_deceased')
-            || $request->has('mother_is_deceased');
+            || $request->has('father_is_na')
+            || $request->has('mother_is_na')
+            || $request->has('main_contact');
 
         $existingParent = $hasParentInput ? ParentGuardian::where('stu_par_id', $student->stu_id)->first() : null;
         $hasExistingFather = $existingParent && $existingParent->f_id;
@@ -613,15 +641,16 @@ class AdminStudentController extends Controller
         $hasMotherInput = $request->filled('mother_name') || $request->filled('mother_lname') || $request->filled('mother_contact_number');
         $hasGuardianInput = $request->filled('guardian_name') || $request->filled('guardian_lname') || $request->filled('guardian_contact_number');
 
-        $requireFather = ! $fatherIsDeceased && ($hasExistingFather || $hasFatherInput);
-        $requireMother = ! $motherIsDeceased && ($hasExistingMother || $hasMotherInput);
-        $requireGuardian = $bothParentsDeceased || $hasExistingGuardian || $hasGuardianInput || $request->has('guardian_name');
+        $requireFather = ! $fatherIsNa && ($hasExistingFather || $hasFatherInput || $selectedMainContact === 'father');
+        $requireMother = ! $motherIsNa && ($hasExistingMother || $hasMotherInput || $selectedMainContact === 'mother');
+        $requireGuardian = $bothParentsNa || $selectedMainContact === 'guardian' || $hasExistingGuardian || $hasGuardianInput || $request->has('guardian_name');
 
-        $hasParentFields = $hasParentInput && ($fatherIsDeceased
-            || $motherIsDeceased
+        $hasParentFields = $hasParentInput && ($fatherIsNa
+            || $motherIsNa
             || $requireFather
             || $requireMother
-            || $requireGuardian);
+            || $requireGuardian
+            || $request->has('main_contact'));
 
         $rules = [
             'lrn' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/', 'unique:student,lrn,'.$student->stu_id.',stu_id'],
@@ -645,8 +674,21 @@ class AdminStudentController extends Controller
         ];
 
         if ($hasParentFields) {
-            $rules['father_is_deceased'] = 'nullable|boolean';
-            $rules['mother_is_deceased'] = 'nullable|boolean';
+            $rules['father_is_na'] = 'nullable|boolean';
+            $rules['mother_is_na'] = 'nullable|boolean';
+            $rules['main_contact'] = [
+                'required',
+                'string',
+                'in:father,mother,guardian',
+                function (string $attribute, mixed $value, Closure $fail) use ($fatherIsNa, $motherIsNa): void {
+                    if ($value === 'father' && $fatherIsNa) {
+                        $fail('Father cannot be the main contact when marked as N/A.');
+                    }
+                    if ($value === 'mother' && $motherIsNa) {
+                        $fail('Mother cannot be the main contact when marked as N/A.');
+                    }
+                },
+            ];
             $rules['father_name'] = [
                 $requireFather ? 'required' : 'nullable',
                 'string',
@@ -718,6 +760,8 @@ class AdminStudentController extends Controller
             'photo.image' => 'Photo must be an image file.',
             'photo.mimes' => 'Photo must be a JPEG, PNG, JPG, or WebP file.',
             'photo.max' => 'Photo must not exceed 2MB.',
+            'main_contact.required' => 'Please select a main contact (Father, Mother, or Guardian).',
+            'main_contact.in' => 'Main contact must be Father, Mother, or Guardian.',
             'father_name.required' => 'Father first name is required.',
             'father_name.regex' => 'Father first name must contain only letters and cannot start with a space.',
             'father_mname.regex' => 'Father middle name must contain only letters and cannot start with a space.',
@@ -732,12 +776,18 @@ class AdminStudentController extends Controller
             'mother_lname.regex' => 'Mother last name must contain only letters and cannot start with a space.',
             'mother_contact_number.required' => 'Mother contact number is required.',
             'mother_contact_number.regex' => 'Mother contact number must contain only numbers.',
-            'guardian_name.required' => 'Guardian first name is required when both parents are deceased.',
+            'guardian_name.required' => $bothParentsNa
+                ? 'Guardian first name is required when both parents are marked N/A.'
+                : 'Guardian first name is required.',
             'guardian_name.regex' => 'Guardian first name must contain only letters and cannot start with a space.',
             'guardian_mname.regex' => 'Guardian middle name must contain only letters and cannot start with a space.',
-            'guardian_lname.required' => 'Guardian last name is required when both parents are deceased.',
+            'guardian_lname.required' => $bothParentsNa
+                ? 'Guardian last name is required when both parents are marked N/A.'
+                : 'Guardian last name is required.',
             'guardian_lname.regex' => 'Guardian last name must contain only letters and cannot start with a space.',
-            'guardian_contact_number.required' => 'Guardian contact number is required when both parents are deceased.',
+            'guardian_contact_number.required' => $bothParentsNa
+                ? 'Guardian contact number is required when both parents are marked N/A.'
+                : 'Guardian contact number is required.',
             'guardian_contact_number.regex' => 'Guardian contact number must contain only numbers.',
         ]);
 
@@ -771,7 +821,7 @@ class AdminStudentController extends Controller
 
         $previousRfid = RfidUid::normalize($student->rfid_uid);
 
-        DB::transaction(function () use ($student, $validated, $request, $hasParentFields, $fatherIsDeceased, $motherIsDeceased) {
+        DB::transaction(function () use ($student, $validated, $request, $hasParentFields, $fatherIsNa, $motherIsNa) {
             // 1. Update Student fields
             $studentFields = array_intersect_key($validated, array_flip([
                 'lrn', 'stu_fname', 'stu_mname', 'stu_lname', 'gender', 'photo', 'rfid_uid', 'status',
@@ -883,7 +933,7 @@ class AdminStudentController extends Controller
                 }
 
                 // Father
-                if ($fatherIsDeceased) {
+                if ($fatherIsNa) {
                     $parentLink->f_id = null;
                 } elseif (! empty($validated['father_name'])) {
                     if ($parentLink->f_id && $father = Father::find($parentLink->f_id)) {
@@ -906,7 +956,7 @@ class AdminStudentController extends Controller
                 }
 
                 // Mother
-                if ($motherIsDeceased) {
+                if ($motherIsNa) {
                     $parentLink->mother_id = null;
                 } elseif (! empty($validated['mother_name'])) {
                     if ($parentLink->mother_id && $mother = Mother::find($parentLink->mother_id)) {
@@ -949,6 +999,10 @@ class AdminStudentController extends Controller
                     }
                 } else {
                     $parentLink->guardian_id = null;
+                }
+
+                if (isset($validated['main_contact'])) {
+                    $parentLink->main_contact = $validated['main_contact'];
                 }
 
                 if ($parentLink->f_id || $parentLink->mother_id || $parentLink->guardian_id || $parentLink->add_id) {

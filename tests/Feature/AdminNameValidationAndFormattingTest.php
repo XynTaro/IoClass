@@ -45,6 +45,7 @@ test('student name cannot contain numbers or special symbols and auto capitalize
         'mother_name' => 'Jane',
         'mother_lname' => 'Smith',
         'mother_contact_number' => '09123456788',
+        'main_contact' => 'mother',
     ]);
 
     $validResponse->assertSessionHasNoErrors();
