@@ -229,3 +229,87 @@ test('subject verification does not mark students absent when subject is not sch
             ->has('rows', 0)
         );
 });
+
+test('confirming absent students clears them from subject verification rows', function () {
+    ['syId' => $syId, 'sectId' => $sectId, 'subjId' => $subjId, 'teacher' => $teacher] = seedVerificationAssignment();
+
+    $absentStuId1 = DB::table('student')->insertGetId([
+        'lrn' => '666666666661',
+        'rfid_uid' => 'VERIFCONF01',
+        'stu_fname' => 'Rico',
+        'stu_lname' => 'Vega',
+        'status' => 'active',
+        'is_deleted' => false,
+    ], 'stu_id');
+
+    $absentStuId2 = DB::table('student')->insertGetId([
+        'lrn' => '666666666662',
+        'rfid_uid' => 'VERIFCONF02',
+        'stu_fname' => 'Tessa',
+        'stu_lname' => 'Morales',
+        'status' => 'active',
+        'is_deleted' => false,
+    ], 'stu_id');
+
+    DB::table('student_section')->insert([
+        ['stu_id' => $absentStuId1, 'sect_id' => $sectId, 'sy_id' => $syId],
+        ['stu_id' => $absentStuId2, 'sect_id' => $sectId, 'sy_id' => $syId],
+    ]);
+
+    // Student 2 already has an unverified auto-marked absent record (verified_at = null)
+    DB::table('attendance')->insert([
+        'stu_id' => $absentStuId2,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+        'subj_id' => $subjId,
+        'att_date' => '2026-06-01',
+        'status' => 'absent',
+        'verified_at' => null,
+    ]);
+
+    // Before confirming: both absent students appear in the verification table
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.verification.index', [
+            'date' => '2026-06-01',
+            'subj_id' => $subjId,
+            'sect_id' => $sectId,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Teacher/Verification/index')
+            ->has('rows', 2)
+            ->where('isVerified', false)
+        );
+
+    // Teacher confirms both students as absent
+    $this->actingAs($teacher, 'teacher')
+        ->post(route('teacher.verification.confirm'), [
+            'date' => '2026-06-01',
+            'subj_id' => $subjId,
+            'sect_id' => $sectId,
+            'rows' => [
+                ['stu_id' => $absentStuId1, 'status' => 'absent'],
+                ['stu_id' => $absentStuId2, 'status' => 'absent'],
+            ],
+        ])
+        ->assertRedirect(route('teacher.verification.index', [
+            'date' => '2026-06-01',
+            'subj_id' => $subjId,
+            'sect_id' => $sectId,
+        ]));
+
+    // After confirming: verification table has no pending rows, while summary still shows 2 absent
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.verification.index', [
+            'date' => '2026-06-01',
+            'subj_id' => $subjId,
+            'sect_id' => $sectId,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Teacher/Verification/index')
+            ->has('rows', 0)
+            ->where('isVerified', true)
+            ->where('summary.absent', 2)
+        );
+});

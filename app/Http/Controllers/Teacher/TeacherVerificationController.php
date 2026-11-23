@@ -170,6 +170,7 @@ class TeacherVerificationController extends Controller
                 'a.status as attendance_status',
                 'a.time_in',
                 'a.time_out',
+                'a.verified_at',
             )
             ->orderBy('s.stu_lname')
             ->orderBy('s.stu_fname')
@@ -193,9 +194,13 @@ class TeacherVerificationController extends Controller
             'absent' => $rows->where('attendance_status', 'absent')->count(),
         ];
 
+        $hasVerifiedRecords = $rows->contains(fn ($row) => $row->verified_at !== null);
+
         $rows = $rows
-            ->filter(fn ($row) => $row->attendance_status === 'absent')
+            ->filter(fn ($row) => $row->attendance_status === 'absent' && $row->verified_at === null)
             ->values();
+
+        $isVerified = $hasVerifiedRecords && $rows->isEmpty();
 
         $message = null;
         if ($nonSchoolDay !== null) {
@@ -218,6 +223,7 @@ class TeacherVerificationController extends Controller
             'rows' => $rows,
             'summary' => $summary,
             'message' => $message,
+            'isVerified' => $isVerified,
         ]);
     }
 
@@ -270,6 +276,8 @@ class TeacherVerificationController extends Controller
         $absentStuIds = [];
 
         DB::transaction(function () use ($validated, $allowedSet, $attDate, $activeSyId, $sectId, $subjId, &$absentStuIds): void {
+            $now = now();
+
             foreach ($validated['rows'] as $row) {
                 $stuId = (int) $row['stu_id'];
                 if (! isset($allowedSet[$stuId])) {
@@ -291,6 +299,7 @@ class TeacherVerificationController extends Controller
                         'status' => 'absent',
                         'time_in' => null,
                         'time_out' => null,
+                        'verified_at' => $now,
                     ];
 
                     DB::table('attendance')->updateOrInsert(
@@ -305,7 +314,6 @@ class TeacherVerificationController extends Controller
                     continue;
                 }
 
-                $now = now();
                 $payload = [
                     'stu_id' => $stuId,
                     'session_id' => null,
@@ -316,6 +324,7 @@ class TeacherVerificationController extends Controller
                     'status' => $status,
                     'time_in' => in_array($status, ['present', 'late'], true) ? $now : null,
                     'time_out' => in_array($status, ['present', 'late'], true) ? $now : null,
+                    'verified_at' => $now,
                 ];
 
                 DB::table('attendance')->updateOrInsert(

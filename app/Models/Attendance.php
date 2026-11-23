@@ -30,6 +30,7 @@ class Attendance extends Model
         'time_in',
         'time_out',
         'status',
+        'verified_at',
     ];
 
     /**
@@ -41,6 +42,7 @@ class Attendance extends Model
             'att_date' => 'date',
             'time_in' => 'datetime',
             'time_out' => 'datetime',
+            'verified_at' => 'datetime',
         ];
     }
 

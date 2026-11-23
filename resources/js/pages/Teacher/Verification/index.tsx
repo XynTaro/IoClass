@@ -58,6 +58,7 @@ type Props = {
         absent: number;
     };
     message: string | null;
+    isVerified?: boolean;
 };
 
 type VerificationStatus = 'present' | 'late' | 'excused' | 'absent';
@@ -175,6 +176,7 @@ export default function TeacherVerificationIndex() {
         rows: initialRows,
         summary,
         message,
+        isVerified = false,
     } = usePage<Props>().props;
 
     const today = useMemo(() => {
@@ -464,8 +466,9 @@ export default function TeacherVerificationIndex() {
                     </div>
                 ) : rows.length === 0 ? (
                     <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-                        No absent students to verify for this subject on this
-                        date.
+                        {isVerified
+                            ? 'Attendance has already been verified for this subject on this date.'
+                            : 'No absent students to verify for this subject on this date.'}
                     </div>
                 ) : (
                     <div className="space-y-3">
