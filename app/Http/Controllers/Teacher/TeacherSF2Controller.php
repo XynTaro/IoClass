@@ -141,6 +141,7 @@ class TeacherSF2Controller extends Controller
         $periodStart = Carbon::createFromDate($selectedYear, $selectedMonth, 1)->startOfMonth();
         $periodEnd = $periodStart->copy()->endOfMonth();
         $daysInMonth = $periodEnd->day;
+        $today = now()->toDateString();
 
         $rows = [];
         $maleSummaryByDay = array_fill(1, $daysInMonth, ['present' => 0, 'late' => 0, 'absent' => 0, 'excused' => 0]);
@@ -185,21 +186,17 @@ class TeacherSF2Controller extends Controller
                 $excused = 0;
 
                 for ($day = 1; $day <= $daysInMonth; $day++) {
-                    $date = Carbon::createFromDate($selectedYear, $selectedMonth, $day)->toDateString();
-                    $resolvedStatus = $this->resolveDailyStatus($stuRecords, $date);
+                    $currentDate = Carbon::createFromDate($selectedYear, $selectedMonth, $day);
+                    $dateStr = $currentDate->toDateString();
 
-                    if ($resolvedStatus !== null) {
-                        $status = $resolvedStatus;
+                    if ($currentDate->isWeekend()) {
+                        $status = 'weekend';
+                    } elseif (isset($nonSchoolDays[$dateStr])) {
+                        $status = 'no_class';
+                    } elseif ($dateStr > $today) {
+                        $status = null;
                     } else {
-                        $currentDate = Carbon::createFromDate($selectedYear, $selectedMonth, $day);
-                        $dateStr = $currentDate->toDateString();
-                        if ($currentDate->isWeekend()) {
-                            $status = 'weekend';
-                        } elseif (isset($nonSchoolDays[$dateStr])) {
-                            $status = 'no_class';
-                        } else {
-                            $status = 'absent';
-                        }
+                        $status = $this->resolveDailyStatus($stuRecords, $dateStr);
                     }
 
                     $days[$day] = $status;
@@ -291,6 +288,13 @@ class TeacherSF2Controller extends Controller
         $periodStart = Carbon::createFromDate($selectedYear, $selectedMonth, 1)->startOfMonth();
         $periodEnd = $periodStart->copy()->endOfMonth();
         $daysInMonth = $periodEnd->day;
+        $today = now()->toDateString();
+
+        $nonSchoolDays = CalendarEvent::nonSchoolDayDatesInRange(
+            $periodStart->toDateString(),
+            $periodEnd->toDateString(),
+            $selectedSyId,
+        );
 
         $sectionInfo = DB::table('section')->where('sect_id', $selectedSectId)->first(['sect_name', 'gr_level']);
         $schoolYearLabel = $schoolYear?->sy_label;
@@ -509,13 +513,18 @@ class TeacherSF2Controller extends Controller
 
             foreach ($dayToCol as $dayNum => $col) {
                 $date = Carbon::createFromDate($selectedYear, $selectedMonth, $dayNum)->toDateString();
-                $status = $this->resolveDailyStatus($stuRecords, $date) ?? 'absent';
+
+                if ($date > $today || isset($nonSchoolDays[$date])) {
+                    continue;
+                }
+
+                $status = $this->resolveDailyStatus($stuRecords, $date);
 
                 if ($status === 'absent') {
                     $sheet->setCellValue($col.$row, 'X');
                     $absent++;
                     $maleDailyAbsent[$col]++;
-                } else {
+                } elseif (in_array($status, ['present', 'late', 'excused'], true)) {
                     $present++;
                 }
             }
@@ -553,13 +562,18 @@ class TeacherSF2Controller extends Controller
 
             foreach ($dayToCol as $dayNum => $col) {
                 $date = Carbon::createFromDate($selectedYear, $selectedMonth, $dayNum)->toDateString();
-                $status = $this->resolveDailyStatus($stuRecords, $date) ?? 'absent';
+
+                if ($date > $today || isset($nonSchoolDays[$date])) {
+                    continue;
+                }
+
+                $status = $this->resolveDailyStatus($stuRecords, $date);
 
                 if ($status === 'absent') {
                     $sheet->setCellValue($col.$row, 'X');
                     $absent++;
                     $femaleDailyAbsent[$col]++;
-                } else {
+                } elseif (in_array($status, ['present', 'late', 'excused'], true)) {
                     $present++;
                 }
             }

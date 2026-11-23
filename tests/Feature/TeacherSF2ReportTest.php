@@ -241,3 +241,124 @@ test('sf2 report aggregates multiple per-subject attendance rows on the same dat
             ->where('rows.0.days.1', 'present')
         );
 });
+
+test('sf2 export and index only mark X on recorded absent days up to today and leave tomorrow and unrecorded days blank', function () {
+    $this->travelTo('2026-11-23 10:00:00');
+
+    $syId = DB::table('school_year')->insertGetId([
+        'sy_label' => '2026-2027',
+        'start_date' => '2026-06-01',
+        'end_date' => '2027-03-31',
+        'is_active' => true,
+        'is_deleted' => false,
+    ], 'sy_id');
+
+    $sectId = DB::table('section')->insertGetId([
+        'sect_name' => 'Neptune',
+        'gr_level' => '8',
+        'is_deleted' => false,
+    ], 'sect_id');
+
+    $teacher = Teacher::create([
+        'tch_fname' => 'Rosa',
+        'tch_lname' => 'Mendoza',
+        'tch_email' => 'rosa.mendoza.sf2@example.com',
+        'tch_pw' => 'password123',
+        'is_deleted' => false,
+        'must_change_password' => false,
+    ]);
+
+    DB::table('adviser')->insert([
+        'tch_id' => $teacher->tch_id,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+        'is_active' => true,
+    ]);
+
+    $stuId = DB::table('student')->insertGetId([
+        'stu_fname' => 'Paolo',
+        'stu_lname' => 'Garcia',
+        'gender' => 'male',
+        'status' => 'active',
+        'is_deleted' => false,
+    ], 'stu_id');
+
+    DB::table('student_section')->insert([
+        'stu_id' => $stuId,
+        'sect_id' => $sectId,
+        'sy_id' => $syId,
+    ]);
+
+    // Nov 20 (Fri) = present, Nov 23 (Mon, today) = absent, Nov 19 (Thu) = no record, Nov 24 (Tue, tomorrow) = future
+    DB::table('attendance')->insert([
+        [
+            'stu_id' => $stuId,
+            'sect_id' => $sectId,
+            'sy_id' => $syId,
+            'att_date' => '2026-11-20',
+            'status' => 'present',
+        ],
+        [
+            'stu_id' => $stuId,
+            'sect_id' => $sectId,
+            'sy_id' => $syId,
+            'att_date' => '2026-11-23',
+            'status' => 'absent',
+        ],
+    ]);
+
+    // Verify web preview does not mark future or unrecorded days absent
+    $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.sf2-reports.index', [
+            'sy_id' => $syId,
+            'month' => 11,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('rows.0.days.19', null)
+            ->where('rows.0.days.20', 'present')
+            ->where('rows.0.days.23', 'absent')
+            ->where('rows.0.days.24', null)
+            ->where('rows.0.totals.absent', 1)
+            ->where('rows.0.totals.present', 1)
+        );
+
+    // Verify Excel export puts X ONLY on day 23 and leaves day 19, 20, and tomorrow (24) blank
+    $response = $this->actingAs($teacher, 'teacher')
+        ->get(route('teacher.sf2-reports.export', [
+            'sy_id' => $syId,
+            'month' => 11,
+        ]))
+        ->assertOk();
+
+    ob_start();
+    $response->sendContent();
+    $content = ob_get_clean();
+
+    $tempFile = storage_path('framework/cache/test_sf2_future_'.uniqid('', true).'.xlsx');
+    file_put_contents($tempFile, $content);
+
+    try {
+        $spreadsheet = IOFactory::load($tempFile);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $dayCols = [];
+        foreach (['K', 'M', 'N', 'O', 'S', 'V', 'W', 'Z', 'AA', 'AB', 'AE', 'AH', 'AI', 'AL', 'AN', 'AP', 'AR', 'AS', 'AU', 'AV', 'AW', 'AY', 'BB', 'BD', 'BE'] as $col) {
+            $dayVal = $sheet->getCell($col.'16')->getValue();
+            if ($dayVal !== null && $dayVal !== '') {
+                $dayCols[(int) $dayVal] = $col;
+            }
+        }
+
+        expect($sheet->getCell($dayCols[23].'18')->getValue())->toBe('X');
+        expect((string) $sheet->getCell($dayCols[24].'18')->getValue())->toBe('');
+        expect((string) $sheet->getCell($dayCols[19].'18')->getValue())->toBe('');
+        expect((string) $sheet->getCell($dayCols[20].'18')->getValue())->toBe('');
+        expect($sheet->getCell('BI18')->getValue())->toBe(1);
+        expect($sheet->getCell('BL18')->getValue())->toBe(1);
+        expect($sheet->getCell($dayCols[23].'33')->getValue())->toBe(1);
+        expect((string) $sheet->getCell($dayCols[24].'33')->getValue())->toBe('');
+    } finally {
+        @unlink($tempFile);
+    }
+});
