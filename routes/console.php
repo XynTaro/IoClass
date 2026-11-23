@@ -15,3 +15,9 @@ Schedule::command('attendance:notify-subject-absences')
     ->everyMinute()
     ->withoutOverlapping()
     ->description('Finalize concluded subjects and notify guardians of absent students immediately after class ends');
+
+// Automatically track and activate the school year covering today's date
+Schedule::command('school-year:sync-active')
+    ->dailyAt('00:01')
+    ->withoutOverlapping()
+    ->description('Synchronize the active school year based on the current calendar date');

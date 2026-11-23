@@ -154,3 +154,162 @@ test('school year model getSemester helper resolves accurate semesters', functio
     expect($syFallback->getSemester('2029-09-01'))->toBe('First Semester');
     expect($syFallback->getSemester('2030-03-01'))->toBe('Second Semester');
 });
+
+test('upcoming school year can be added as inactive without deactivating the current school year', function () {
+    $this->travelTo('2026-11-23 09:00:00');
+    $admin = Admin::factory()->create();
+
+    $currentSy = School_Year::create([
+        'sy_label' => '2026-2027',
+        'start_date' => '2026-06-01',
+        'end_date' => '2027-03-31',
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($admin, 'admin')->post(route('admin.school-year.store'), [
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-06-01',
+        'end_date' => '2028-03-31',
+        'is_active' => false,
+    ]);
+
+    $response->assertRedirect(route('admin.school-year.index'));
+
+    $upcomingSy = School_Year::where('sy_label', '2027-2028')->first();
+    expect($upcomingSy)->not->toBeNull();
+    expect($upcomingSy->is_active)->toBeFalse();
+    expect($upcomingSy->getTrackingStatus())->toBe(School_Year::STATUS_UPCOMING);
+    expect($currentSy->fresh()->is_active)->toBeTrue();
+});
+
+test('upcoming school year cannot be stored or updated as active', function () {
+    $this->travelTo('2026-11-23 09:00:00');
+    $admin = Admin::factory()->create();
+
+    $currentSy = School_Year::create([
+        'sy_label' => '2026-2027',
+        'start_date' => '2026-06-01',
+        'end_date' => '2027-03-31',
+        'is_active' => true,
+    ]);
+
+    $storeResponse = $this->actingAs($admin, 'admin')->post(route('admin.school-year.store'), [
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-06-01',
+        'end_date' => '2028-03-31',
+        'is_active' => true,
+    ]);
+
+    $storeResponse->assertSessionHasErrors(['is_active']);
+    expect(School_Year::where('sy_label', '2027-2028')->exists())->toBeFalse();
+    expect($currentSy->fresh()->is_active)->toBeTrue();
+
+    $upcomingSy = School_Year::create([
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-06-01',
+        'end_date' => '2028-03-31',
+        'is_active' => false,
+    ]);
+
+    $updateResponse = $this->actingAs($admin, 'admin')->put(route('admin.school-year.update', ['id' => $upcomingSy->sy_id]), [
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-06-01',
+        'end_date' => '2028-03-31',
+        'is_active' => true,
+    ]);
+
+    $updateResponse->assertSessionHasErrors(['is_active']);
+    expect($upcomingSy->fresh()->is_active)->toBeFalse();
+    expect($currentSy->fresh()->is_active)->toBeTrue();
+});
+
+test('ended school year cannot be stored or updated as active', function () {
+    $this->travelTo('2026-11-23 09:00:00');
+    $admin = Admin::factory()->create();
+
+    $storeResponse = $this->actingAs($admin, 'admin')->post(route('admin.school-year.store'), [
+        'sy_label' => '2025-2026',
+        'start_date' => '2025-06-01',
+        'end_date' => '2026-03-31',
+        'is_active' => true,
+    ]);
+
+    $storeResponse->assertSessionHasErrors(['is_active']);
+
+    $endedSy = School_Year::create([
+        'sy_label' => '2025-2026',
+        'start_date' => '2025-06-01',
+        'end_date' => '2026-03-31',
+        'is_active' => false,
+    ]);
+
+    $updateResponse = $this->actingAs($admin, 'admin')->put(route('admin.school-year.update', ['id' => $endedSy->sy_id]), [
+        'sy_label' => '2025-2026',
+        'start_date' => '2025-06-01',
+        'end_date' => '2026-03-31',
+        'is_active' => true,
+    ]);
+
+    $updateResponse->assertSessionHasErrors(['is_active']);
+    expect($endedSy->fresh()->is_active)->toBeFalse();
+});
+
+test('system automatically tracks and switches active school year when date rolls over', function () {
+    $this->travelTo('2026-11-23 09:00:00');
+    $admin = Admin::factory()->create();
+
+    $sy2627 = School_Year::create([
+        'sy_label' => '2026-2027',
+        'start_date' => '2026-06-01',
+        'end_date' => '2027-03-31',
+        'is_active' => false,
+    ]);
+
+    $sy2728 = School_Year::create([
+        'sy_label' => '2027-2028',
+        'start_date' => '2027-06-01',
+        'end_date' => '2028-03-31',
+        'is_active' => false,
+    ]);
+
+    // In November 2026, visiting index syncs 2026-2027 as active and marks 2027-2028 as upcoming.
+    $this->actingAs($admin, 'admin')
+        ->get(route('admin.school-year.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/SchoolYear/Index')
+            ->where('today', '2026-11-23')
+            ->where('activeSchoolYear.sy_label', '2026-2027')
+        );
+
+    expect($sy2627->fresh()->is_active)->toBeTrue();
+    expect($sy2728->fresh()->is_active)->toBeFalse();
+
+    // Advance clock into SY 2027-2028; syncing automatically transitions active school year.
+    $this->travelTo('2027-06-01 08:00:00');
+
+    $this->artisan('school-year:sync-active')->assertSuccessful();
+
+    expect($sy2627->fresh()->is_active)->toBeFalse();
+    expect($sy2728->fresh()->is_active)->toBeTrue();
+});
+
+test('archiving an active school year deactivates it', function () {
+    $this->travelTo('2026-11-23 09:00:00');
+    $admin = Admin::factory()->create();
+
+    $sy2627 = School_Year::create([
+        'sy_label' => '2026-2027',
+        'start_date' => '2026-06-01',
+        'end_date' => '2027-03-31',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($admin, 'admin')
+        ->delete(route('admin.school-year.destroy', ['school_Year' => $sy2627->sy_id]))
+        ->assertRedirect(route('admin.school-year.index'));
+
+    $fresh = $sy2627->fresh();
+    expect($fresh->is_deleted)->toBeTrue();
+    expect($fresh->is_active)->toBeFalse();
+});

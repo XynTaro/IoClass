@@ -27,7 +27,12 @@ function formatMonthDay(dateStr: string | null | undefined): string {
 }
 
 export default function Index() {
-    const { schoolYears, archived = false } = usePage<any>().props;
+    const {
+        schoolYears,
+        archived = false,
+        today = '',
+        activeSchoolYear = null,
+    } = usePage<any>().props;
 
     const [schoolYearList, setSchoolYearList] = useState<SchoolYear[]>(schoolYears?.data ?? []);
     const [search, setSearch] = useState('');
@@ -156,22 +161,39 @@ export default function Index() {
             header: 'Status',
             cell: ({ row }) => {
                 const isActive = row.original.is_active;
+                const trackingStatus = row.original.tracking_status;
+
+                let label = 'Inactive';
+                let badgeClass =
+                    'bg-muted text-muted-foreground dark:bg-muted/30 dark:text-muted-foreground';
+                let dotClass = 'bg-muted-foreground/60';
+
+                if (isActive) {
+                    label = 'Active';
+                    badgeClass =
+                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400';
+                    dotClass = 'bg-emerald-500';
+                } else if (trackingStatus === 'upcoming') {
+                    label = 'Upcoming';
+                    badgeClass =
+                        'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400';
+                    dotClass = 'bg-sky-500';
+                } else if (trackingStatus === 'ended') {
+                    label = 'Ended';
+                    badgeClass =
+                        'bg-muted text-muted-foreground dark:bg-muted/30 dark:text-muted-foreground';
+                    dotClass = 'bg-muted-foreground/60';
+                }
+
                 return (
                     <span
                         className={cn(
                             'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize',
-                            isActive
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                : 'bg-muted text-muted-foreground dark:bg-muted/30 dark:text-muted-foreground',
+                            badgeClass,
                         )}
                     >
-                        <span
-                            className={cn(
-                                'size-1.5 rounded-full',
-                                isActive ? 'bg-emerald-500' : 'bg-muted-foreground/60',
-                            )}
-                        />
-                        {isActive ? 'Active' : 'Inactive'}
+                        <span className={cn('size-1.5 rounded-full', dotClass)} />
+                        {label}
                     </span>
                 );
             },
@@ -238,6 +260,26 @@ export default function Index() {
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        {!archived && (
+                            <span
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-xs',
+                                    activeSchoolYear
+                                        ? 'border-emerald-200 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                        : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300',
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        'size-1.5 rounded-full',
+                                        activeSchoolYear ? 'bg-emerald-500' : 'bg-amber-500',
+                                    )}
+                                />
+                                {activeSchoolYear
+                                    ? `Active SY: ${activeSchoolYear.sy_label}`
+                                    : 'No Active SY for Today'}
+                            </span>
+                        )}
                         <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-xs">
                             <Calendar className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                             {schoolYearList.length} {archived ? 'Archived' : 'Years'}
@@ -312,6 +354,7 @@ export default function Index() {
                 onClose={() => setAddOpen(false)}
                 onSuccess={handleSaveSuccess}
                 mode="create"
+                today={today}
             />
             <SchoolYearModal
                 open={editOpen}
@@ -319,6 +362,7 @@ export default function Index() {
                 onSuccess={handleSaveSuccess}
                 schoolYear={selectedSchoolYear ?? undefined}
                 mode="edit"
+                today={today}
             />
 
             <ConfirmationModal

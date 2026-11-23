@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\RfidRegisterRequest;
 use App\Http\Requests\Api\RfidScanRequest;
 use App\Models\Class_Schedule;
+use App\Models\School_Year;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Services\StudentAbsenceNotifier;
@@ -42,6 +43,8 @@ class RfidController extends Controller
      */
     public function scan(RfidScanRequest $request): JsonResponse
     {
+        School_Year::syncActiveIfNeeded();
+
         $uid = $request->validated('rfid_uid');
         $deviceKey = RfidCaptureCache::deviceKeyFromRequest($request->header('X-Device-Token'));
 

@@ -19,6 +19,12 @@ function ErrorBanner({ message }: { message: string }) {
     );
 }
 
+export type SchoolYearTrackingStatus =
+    | 'current'
+    | 'upcoming'
+    | 'ended'
+    | 'unscheduled';
+
 export interface SchoolYear {
     sy_id?: number;
     sy_label: string | null;
@@ -29,6 +35,7 @@ export interface SchoolYear {
     sem2_start_date?: string | null;
     sem2_end_date?: string | null;
     is_active: boolean;
+    tracking_status?: SchoolYearTrackingStatus;
 }
 
 interface SchoolYearFormData {
@@ -48,12 +55,52 @@ const formatDateForInput = (dateStr: string | null | undefined): string => {
     return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
 };
 
+const getLocalTodayDateString = (): string => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getDateTrackingStatus = (
+    startDate: string | null | undefined,
+    endDate: string | null | undefined,
+    today: string,
+): SchoolYearTrackingStatus => {
+    const start = formatDateForInput(startDate);
+    const end = formatDateForInput(endDate);
+    if (!start || !end || start > end) {
+        return 'unscheduled';
+    }
+    if (today < start) {
+        return 'upcoming';
+    }
+    if (today > end) {
+        return 'ended';
+    }
+    return 'current';
+};
+
+const formatReadableDate = (dateStr: string | null | undefined): string => {
+    const normalized = formatDateForInput(dateStr);
+    if (!normalized) return '';
+    const date = new Date(normalized + 'T00:00:00');
+    if (isNaN(date.getTime())) return normalized;
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
+};
+
 interface SchoolYearModalProps {
     open: boolean;
     onClose: () => void;
     onSuccess?: () => void;
     schoolYear?: SchoolYear;
     mode: 'edit' | 'create';
+    today?: string;
 }
 
 const deriveSchoolYearLabel = (
@@ -84,8 +131,10 @@ export default function SchoolYearModal({
     onSuccess,
     schoolYear,
     mode,
+    today,
 }: SchoolYearModalProps) {
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const referenceToday = formatDateForInput(today) || getLocalTodayDateString();
 
     const form = useForm<SchoolYearFormData>({
         sy_id: '',
@@ -99,21 +148,40 @@ export default function SchoolYearModal({
         is_active: false,
     });
 
+    const trackingStatus = getDateTrackingStatus(
+        form.data.start_date,
+        form.data.end_date,
+        referenceToday,
+    );
+    const canBeActive = trackingStatus === 'current';
+    const isLockedActive =
+        mode === 'edit' && Boolean(schoolYear?.is_active) && canBeActive;
+
     useEffect(() => {
         if (schoolYear && mode === 'edit') {
+            const startDate = formatDateForInput(schoolYear.start_date);
+            const endDate = formatDateForInput(schoolYear.end_date);
+            const status = getDateTrackingStatus(
+                startDate,
+                endDate,
+                referenceToday,
+            );
             form.setData({
                 sy_id: schoolYear.sy_id ?? '',
                 sy_label: schoolYear.sy_label ?? '',
-                start_date: formatDateForInput(schoolYear.start_date),
-                end_date: formatDateForInput(schoolYear.end_date),
+                start_date: startDate,
+                end_date: endDate,
                 sem1_start_date: formatDateForInput(schoolYear.sem1_start_date),
                 sem1_end_date: formatDateForInput(schoolYear.sem1_end_date),
                 sem2_start_date: formatDateForInput(schoolYear.sem2_start_date),
                 sem2_end_date: formatDateForInput(schoolYear.sem2_end_date),
-                is_active: schoolYear.is_active ?? false,
+                is_active:
+                    status === 'current'
+                        ? Boolean(schoolYear.is_active)
+                        : false,
             });
         }
-    }, [schoolYear, mode, open]);
+    }, [schoolYear, mode, open, referenceToday]);
 
     useEffect(() => {
         if (!open) {
@@ -125,12 +193,19 @@ export default function SchoolYearModal({
 
     const handleStartDateChange = (val: string) => {
         const newLabel = deriveSchoolYearLabel(val, form.data.end_date);
+        const nextStatus = getDateTrackingStatus(
+            val,
+            form.data.end_date,
+            referenceToday,
+        );
         form.setData((prev) => ({
             ...prev,
             start_date: val,
             sy_label: newLabel || prev.sy_label,
+            is_active: nextStatus === 'current',
         }));
         form.clearErrors('start_date');
+        form.clearErrors('is_active');
         if (newLabel) {
             form.clearErrors('sy_label');
         }
@@ -139,12 +214,19 @@ export default function SchoolYearModal({
 
     const handleEndDateChange = (val: string) => {
         const newLabel = deriveSchoolYearLabel(form.data.start_date, val);
+        const nextStatus = getDateTrackingStatus(
+            form.data.start_date,
+            val,
+            referenceToday,
+        );
         form.setData((prev) => ({
             ...prev,
             end_date: val,
             sy_label: newLabel || prev.sy_label,
+            is_active: nextStatus === 'current',
         }));
         form.clearErrors('end_date');
+        form.clearErrors('is_active');
         if (newLabel) {
             form.clearErrors('sy_label');
         }
@@ -182,6 +264,12 @@ export default function SchoolYearModal({
             form.data.sem2_start_date > form.data.sem2_end_date
         ) {
             errors.sem2_end_date = '2nd semester end date must be on or after 2nd semester start date.';
+        }
+        if (form.data.is_active && !canBeActive) {
+            errors.is_active =
+                trackingStatus === 'upcoming'
+                    ? 'Cannot set an upcoming school year as active before its start date.'
+                    : 'Only the school year covering today\'s date can be set as active.';
         }
         form.setError(errors);
         return Object.keys(errors).length === 0;
@@ -446,33 +534,98 @@ export default function SchoolYearModal({
 
                     <div
                         className={`rounded-xl border p-3 transition-colors ${
-                            form.data.is_active
+                            canBeActive && form.data.is_active
                                 ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30'
-                                : 'border-input'
+                                : trackingStatus === 'upcoming'
+                                  ? 'border-sky-200 bg-sky-50/70 dark:border-sky-900/60 dark:bg-sky-950/30'
+                                  : 'border-input bg-muted/20'
                         }`}
                     >
-                        <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="is_active"
-                                checked={form.data.is_active}
-                                onCheckedChange={(checked) => {
-                                    form.setData('is_active', Boolean(checked));
-                                    setSubmitError(null);
-                                }}
-                            />
-                            <Label
-                                htmlFor="is_active"
-                                className="cursor-pointer text-sm font-medium"
-                            >
-                                Set as active school year
-                            </Label>
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="is_active"
+                                    checked={canBeActive && form.data.is_active}
+                                    disabled={!canBeActive || isLockedActive}
+                                    onCheckedChange={(checked) => {
+                                        if (!canBeActive || isLockedActive) return;
+                                        form.setData('is_active', Boolean(checked));
+                                        form.clearErrors('is_active');
+                                        setSubmitError(null);
+                                    }}
+                                />
+                                <Label
+                                    htmlFor="is_active"
+                                    className={`text-sm font-medium ${
+                                        !canBeActive || isLockedActive
+                                            ? 'cursor-not-allowed text-muted-foreground'
+                                            : 'cursor-pointer'
+                                    }`}
+                                >
+                                    Set as active school year
+                                </Label>
+                            </div>
+                            {trackingStatus !== 'unscheduled' && (
+                                <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                        trackingStatus === 'current'
+                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                            : trackingStatus === 'upcoming'
+                                              ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                              : 'bg-muted text-muted-foreground'
+                                    }`}
+                                >
+                                    {trackingStatus === 'current'
+                                        ? 'Current Year'
+                                        : trackingStatus === 'upcoming'
+                                          ? 'Upcoming'
+                                          : 'Ended'}
+                                </span>
+                            )}
                         </div>
-                        {form.data.is_active && (
-                            <p className="mt-1.5 pl-6 text-xs text-amber-600 dark:text-amber-400">
-                                This will deactivate any currently active school
-                                year.
+
+                        {trackingStatus === 'unscheduled' && (
+                            <p className="mt-1.5 pl-6 text-xs text-muted-foreground">
+                                Select start and end dates first. Active status is tracked automatically against today&apos;s date ({formatReadableDate(referenceToday)}).
                             </p>
                         )}
+                        {trackingStatus === 'upcoming' && (
+                            <p className="mt-1.5 pl-6 text-xs text-sky-700 dark:text-sky-300">
+                                This school year has not started yet and cannot be active now. You can add it today, and the system will automatically activate it starting{' '}
+                                <span className="font-medium">
+                                    {formatReadableDate(form.data.start_date)}
+                                </span>
+                                .
+                            </p>
+                        )}
+                        {trackingStatus === 'ended' && (
+                            <p className="mt-1.5 pl-6 text-xs text-muted-foreground">
+                                This school year ended on{' '}
+                                <span className="font-medium text-foreground">
+                                    {formatReadableDate(form.data.end_date)}
+                                </span>{' '}
+                                and cannot be set as active.
+                            </p>
+                        )}
+                        {trackingStatus === 'current' && isLockedActive && (
+                            <p className="mt-1.5 pl-6 text-xs text-emerald-700 dark:text-emerald-400">
+                                Currently active — tracked automatically because today ({formatReadableDate(referenceToday)}) falls within this school year.
+                            </p>
+                        )}
+                        {trackingStatus === 'current' && !isLockedActive && form.data.is_active && (
+                            <p className="mt-1.5 pl-6 text-xs text-emerald-700 dark:text-emerald-400">
+                                Matches today ({formatReadableDate(referenceToday)}). Saving will set this as the active school year and deactivate any other active school year.
+                            </p>
+                        )}
+                        {trackingStatus === 'current' && !isLockedActive && !form.data.is_active && (
+                            <p className="mt-1.5 pl-6 text-xs text-muted-foreground">
+                                Matches today ({formatReadableDate(referenceToday)}) — eligible to be tracked as the active school year.
+                            </p>
+                        )}
+                        <FormFieldError
+                            label="Active status"
+                            message={form.errors.is_active}
+                        />
                     </div>
 
                     {submitError && <ErrorBanner message={submitError} />}

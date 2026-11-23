@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\School_Year;
 use App\Services\AvatarService;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ class HandleInertiaRequests extends Middleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        School_Year::syncActiveIfNeeded();
+
         $response = parent::handle($request, $next);
 
         $isAuthenticated = auth()->guard('admin')->check() || auth()->guard('teacher')->check();
