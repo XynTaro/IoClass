@@ -95,7 +95,29 @@ class RfidController extends Controller
                 ]);
             }
 
+            if ($matchingSchedule !== null && $this->isScheduleAlreadyVerified($matchingSchedule, $scannedAt)) {
+                return response()->json([
+                    'success' => true,
+                    'type' => 'teacher',
+                    'action' => 'no_schedule',
+                    'message' => 'This class has already been verified.',
+                    'data' => $teacher->only(['tch_id', 'tch_fname', 'tch_mname', 'tch_lname']),
+                ]);
+            }
+
             if ($lockedSectId !== null && $matchingSchedule === null) {
+                $otherSchedule = $this->findMatchingSchedule($teacher, null, $scannedAt);
+
+                if ($otherSchedule === null) {
+                    return response()->json([
+                        'success' => true,
+                        'type' => 'teacher',
+                        'action' => 'no_schedule',
+                        'message' => 'You have no active schedule right now.',
+                        'data' => $teacher->only(['tch_id', 'tch_fname', 'tch_mname', 'tch_lname']),
+                    ]);
+                }
+
                 $lockedSectionName = Section::query()
                     ->where('sect_id', $lockedSectId)
                     ->value('sect_name');
@@ -252,6 +274,20 @@ class RfidController extends Controller
             ->with(['section:sect_id,sect_name', 'subject:subj_id,subj_name'])
             ->orderBy('start_time')
             ->first();
+    }
+
+    /**
+     * Determine whether the teacher has already confirmed/verified attendance
+     * for this subject and section on the given date.
+     */
+    private function isScheduleAlreadyVerified(Class_Schedule $schedule, CarbonInterface $at): bool
+    {
+        return DB::table('attendance')
+            ->where('subj_id', $schedule->subj_id)
+            ->where('sect_id', $schedule->sect_id)
+            ->whereDate('att_date', $at->toDateString())
+            ->whereNotNull('verified_at')
+            ->exists();
     }
 
     /**

@@ -627,3 +627,110 @@ test('offline queued scans replay using scanned_at and send dated and timed abse
         Carbon::setTestNow();
     }
 });
+
+test('after teacher confirms subject verification, subsequent teacher and student scans return no class', function () {
+    Carbon::setTestNow('2026-06-01 08:15:00');
+
+    try {
+        $schoolYear = School_Year::where('is_active', true)->first()
+            ?? School_Year::create(['sy_label' => '2025-2026', 'is_active' => true, 'is_deleted' => false]);
+
+        $section = Section::create([
+            'sect_name' => 'Sturgeon',
+            'gr_level' => 'Grade 7',
+            'is_deleted' => false,
+        ]);
+
+        $subject = Subject::create([
+            'subj_code' => 'SCI7',
+            'subj_name' => 'Science 7',
+            'is_deleted' => false,
+        ]);
+
+        $room = Room::create([
+            'room_no' => '105',
+            'is_deleted' => false,
+        ]);
+
+        $teacher = Teacher::create([
+            'tch_rfid_uid' => 'TCHVERIF01',
+            'tch_fname' => 'Nora',
+            'tch_lname' => 'Lim',
+            'tch_email' => 'nora.lim@example.com',
+            'tch_pw' => 'password123',
+            'is_deleted' => false,
+        ]);
+
+        Class_Schedule::create([
+            'tch_id' => $teacher->tch_id,
+            'subj_id' => $subject->subj_id,
+            'sect_id' => $section->sect_id,
+            'room_id' => $room->room_id,
+            'sy_id' => $schoolYear->sy_id,
+            'day_of_week' => 'Monday',
+            'start_time' => '08:00:00',
+            'end_time' => '09:00:00',
+        ]);
+
+        $student = Student::create([
+            'rfid_uid' => 'STUVERIF01',
+            'stu_fname' => 'Sam',
+            'stu_lname' => 'Tan',
+            'status' => 'active',
+            'is_deleted' => false,
+        ]);
+
+        DB::table('student_section')->insert([
+            'stu_id' => $student->stu_id,
+            'sect_id' => $section->sect_id,
+            'sy_id' => $schoolYear->sy_id,
+        ]);
+
+        $deviceToken = "esp32-sect-{$section->sect_id}-Sturgeon";
+        config(['rfid.device_tokens' => $deviceToken]);
+
+        // 1. Teacher opens the session via RFID
+        $this->withHeader('X-Device-Token', $deviceToken)
+            ->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHVERIF01'])
+            ->assertSuccessful()
+            ->assertJsonPath('action', 'session_started');
+
+        expect(RfidSessionCache::get($deviceToken))->not->toBeNull();
+
+        // 2. Teacher confirms subject verification in the web UI
+        $this->actingAs($teacher, 'teacher')
+            ->post(route('teacher.verification.confirm'), [
+                'date' => '2026-06-01',
+                'subj_id' => $subject->subj_id,
+                'sect_id' => $section->sect_id,
+                'rows' => [
+                    ['stu_id' => $student->stu_id, 'status' => 'absent'],
+                ],
+            ])
+            ->assertRedirect();
+
+        // Active RFID session is now closed
+        expect(RfidSessionCache::get($deviceToken))->toBeNull();
+
+        // 3. Teacher taps RFID again -> returns no_schedule (cannot re-open verified class)
+        $this->withHeader('X-Device-Token', $deviceToken)
+            ->postJson(route('api.rfid.scan'), ['rfid_uid' => 'TCHVERIF01'])
+            ->assertSuccessful()
+            ->assertJsonPath('action', 'no_schedule');
+
+        // 4. Student taps RFID -> returns no_session (NO CLASS NOW) and stays absent
+        $this->withHeader('X-Device-Token', $deviceToken)
+            ->postJson(route('api.rfid.scan'), ['rfid_uid' => 'STUVERIF01'])
+            ->assertSuccessful()
+            ->assertJsonPath('attendance.action', 'no_session')
+            ->assertJsonPath('attendance.recorded', false);
+
+        expect(DB::table('attendance')
+            ->where('stu_id', $student->stu_id)
+            ->where('subj_id', $subject->subj_id)
+            ->value('status')
+        )->toBe('absent');
+    } finally {
+        Carbon::setTestNow();
+    }
+});

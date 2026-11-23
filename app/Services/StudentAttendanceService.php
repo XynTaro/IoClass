@@ -128,6 +128,11 @@ class StudentAttendanceService
         $existing = $query->first();
 
         if ($existing !== null) {
+            // Once the teacher has confirmed/verified this subject's attendance, do not overwrite it.
+            if ($existing->verified_at !== null) {
+                return $this->blocked('no_session', 'Attendance for this class has already been verified.', $scannedAt);
+            }
+
             // Pre-marked absent/excused → a tap counts as time in.
             if (in_array($existing->status, ['absent', 'excused'], true)) {
                 $existing->forceFill([

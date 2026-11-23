@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditTrail;
 use App\Models\CalendarEvent;
 use App\Services\StudentAbsenceNotifier;
+use App\Support\RfidCaptureCache;
+use App\Support\RfidSessionCache;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -340,6 +342,20 @@ class TeacherVerificationController extends Controller
 
         $subjectName = DB::table('subject')->where('subj_id', $subjId)->value('subj_name');
         $sectionName = DB::table('section')->where('sect_id', $sectId)->value('sect_name');
+
+        // Close any open RFID session for this verified subject/section/date so subsequent taps show "No Class".
+        $deviceKeys = array_unique(array_merge(['default'], RfidCaptureCache::allowedDeviceTokens()));
+        foreach ($deviceKeys as $deviceKey) {
+            $activeSession = RfidSessionCache::get($deviceKey);
+            if (
+                $activeSession !== null
+                && (int) ($activeSession['subj_id'] ?? 0) === $subjId
+                && (int) ($activeSession['sect_id'] ?? 0) === $sectId
+                && ($activeSession['date'] ?? null) === $attDate
+            ) {
+                RfidSessionCache::close($deviceKey);
+            }
+        }
 
         if (! empty($absentStuIds)) {
             $scheduleSlot = DB::table('class_schedule')
